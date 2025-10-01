@@ -1,0 +1,13 @@
+package com.badat.study1.controller;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class HomeController {
+
+    @GetMapping("/index")
+    public String index(){
+        return "Hello World";
+    }
+}
