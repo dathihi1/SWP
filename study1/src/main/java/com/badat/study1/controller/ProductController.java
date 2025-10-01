@@ -13,7 +13,7 @@ public class ProductController {
         this.productRepository = productRepository;
     }
 
-    @PostMapping("/products")
+    @PostMapping("/templates/products")
     public Product createProduct(@RequestBody Product product){
         return productRepository.save(product);
     }

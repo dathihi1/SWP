@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 @Entity
-@Table(name = "products")
+@Table(name = "templates/products")
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
