@@ -2,10 +2,10 @@ spring:
   application:
     name: study1
   datasource:
-    url: jdbc:mariadb://localhost:3306/java_backend
-    driver-class-name: org.mariadb.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/mmo_market
+    driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: root
+    password: sa123
   data:
     redis:
       host: localhost
