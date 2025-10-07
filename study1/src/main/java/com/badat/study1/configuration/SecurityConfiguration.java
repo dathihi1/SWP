@@ -19,7 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
-    private static final String[] AUTH_WHITELIST = {"/", "/index", "/home", "/templates/products", "/auth/login", "/users", "/login", "/register", "/seller/register", "/css/**", "/js/**", "/images/**"};
+    private static final String[] AUTH_WHITELIST = {"/", "/index", "/home", "/templates/products", "/auth/login", "/users", "/login", "/register", "/seller/register", "/terms", "/faqs", "/css/**", "/js/**", "/images/**"};
 
     private final UserDetailServiceCustomizer userDetailsService;
     private final JwtDecoderConfiguration jwtDecoderConfiguration;
