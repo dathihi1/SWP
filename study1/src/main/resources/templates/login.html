@@ -94,12 +94,24 @@
                     <input type="password" class="form-control" id="password" placeholder="••••••••" required>
                 </div>
             </div>
+            <div class="mb-3 text-end">
+                <a class="link-primary text-decoration-none" th:href="@{/forgot-password}" href="/forgot-password">Quên mật khẩu?</a>
+            </div>
             <div class="d-grid gap-2">
                 <button type="submit" class="btn btn-primary">
                     <i class="fa-solid fa-right-to-bracket me-2"></i>Đăng nhập
                 </button>
             </div>
         </form>
+        <div class="position-relative my-3">
+            <hr class="text-muted">
+            <span class="position-absolute top-50 start-50 translate-middle bg-white px-2 text-muted small">hoặc</span>
+        </div>
+        <div class="d-grid gap-2">
+            <a class="btn btn-outline-danger" th:href="@{/oauth2/authorization/google}" href="/oauth2/authorization/google">
+                <i class="fa-brands fa-google me-2"></i>Đăng nhập với Google
+            </a>
+        </div>
         <div class="text-center mt-3">
             <span class="text-muted">Chưa có tài khoản?</span>
             <a th:href="@{/register}" href="/register">Đăng ký</a>
