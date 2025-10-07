@@ -6,19 +6,24 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class ViewController {
 
-    @GetMapping({"/", "/homepage"})
+    @GetMapping("/")
     public String homePage() {
-        return "homepage";
+        return "guest/home";
     }
 
     @GetMapping("/login")
     public String loginPage() {
-        return "login";
+        return "customer/login";
     }
 
     @GetMapping("/register")
     public String registerPage() {
-        return "register";
+        return "guest/register";
+    }
+
+    @GetMapping("/seller/register")
+    public String sellerRegisterPage() {
+        return "seller/register";
     }
 }
 
