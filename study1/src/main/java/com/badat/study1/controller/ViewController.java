@@ -25,6 +25,16 @@ public class ViewController {
     public String sellerRegisterPage() {
         return "seller/register";
     }
+
+    @GetMapping("/terms")
+    public String termsPage() {
+        return "customer/terms";
+    }
+
+    @GetMapping("/faqs")
+    public String faqsPage() {
+        return "customer/faqs";
+    }
 }
 
 
