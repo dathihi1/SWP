@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MMO Market - Homepage</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <style>
+        .navbar-brand span { color: #0d6efd; font-weight: 700; }
+        .hero { background:#f8f9fa; border-radius:1rem; padding:2rem; box-shadow:0 6px 20px rgba(0,0,0,.06); }
+        .category-card { border:none; border-radius:1rem; box-shadow:0 6px 20px rgba(0,0,0,.08); transition:transform .2s, box-shadow .2s; }
+        .category-card:hover { transform:translateY(-4px); box-shadow:0 12px 28px rgba(0,0,0,.12); }
+        .category-icon { width:64px; height:64px; display:grid; place-items:center; border-radius:50%; }
+        .category-title { font-weight:700; }
+        .badge-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+        <a class="navbar-brand" th:href="@{/homepage}" href="/homepage">TapHoa<span>MMO</span></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div id="nav" class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link active" th:href="@{/homepage}" href="/homepage">Trang chủ</a></li>
+                <li class="nav-item"><a class="nav-link" th:href="@{/login}" href="/login">Đăng nhập</a></li>
+                <li class="nav-item"><a class="nav-link" th:href="@{/register}" href="/register">Đăng ký</a></li>
+            </ul>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-success-subtle text-success border border-success-subtle">0 VND</span>
+                <a class="btn btn-outline-primary btn-sm" href="#"><i class="fa-solid fa-circle-plus me-1"></i>Nạp tiền</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-4 py-md-5">
+    <section class="hero mb-4 mb-md-5">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg-3">
+                <select class="form-select">
+                    <option>Tùy chọn tìm kiếm</option>
+                    <option>Sản phẩm</option>
+                    <option>Người bán</option>
+                </select>
+            </div>
+            <div class="col-12 col-lg-3">
+                <select class="form-select">
+                    <option>Tất cả</option>
+                    <option>Facebook</option>
+                    <option>Email</option>
+                    <option>Khác</option>
+                </select>
+            </div>
+            <div class="col-12 col-lg-4">
+                <input class="form-control" placeholder="Tên hàng hoặc người bán"/>
+            </div>
+            <div class="col-12 col-lg-2 d-grid">
+                <button class="btn btn-primary"><i class="fa-solid fa-magnifying-glass me-1"></i>Tìm kiếm</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="mb-4 mb-md-5">
+        <h5 class="text-center text-uppercase text-muted mb-3">Danh mục nổi bật</h5>
+        <div class="row g-3 g-md-4">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-success-subtle text-success mb-2"><i class="fa-solid fa-envelope fa-lg"></i></div>
+                    <div class="category-title">Email</div>
+                    <div class="text-muted small">Gmail, Yahoo, Hotmail...</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-compact-disc fa-lg"></i></div>
+                    <div class="category-title">Phần mềm</div>
+                    <div class="text-muted small">Các tool hỗ trợ MMO</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-user fa-lg"></i></div>
+                    <div class="category-title">Tài khoản</div>
+                    <div class="text-muted small">FB, BM, key Windows...</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-info-subtle text-info mb-2"><i class="fa-solid fa-cube fa-lg"></i></div>
+                    <div class="category-title">Khác</div>
+                    <div class="text-muted small">Sản phẩm số khác</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h5 class="text-center text-uppercase text-muted mb-3">Dịch vụ tiêu biểu</h5>
+        <div class="row g-3">
+            <div class="col-12 col-lg-8">
+                <div class="card p-3 h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="https://via.placeholder.com/96x96" class="rounded" alt="banner">
+                        <div>
+                            <div class="fw-semibold">FACEBOOK VIỆT 1000-5000 bạn bè 2020-2025</div>
+                            <div class="small text-muted">Kho: 878 • 39.999đ - 239.999đ</div>
+                            <div class="small text-warning">
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-regular fa-star"></i>
+                                <span class="ms-2">3707 đánh giá</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card p-3 h-100">
+                    <div class="fw-semibold mb-2">Tin tức</div>
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2"><span class="badge-dot bg-success me-2"></span> Hỗ trợ giao dịch an toàn 3 ngày</li>
+                        <li class="mb-2"><span class="badge-dot bg-primary me-2"></span> Nạp tiền tự động 24/7</li>
+                        <li><span class="badge-dot bg-warning me-2"></span> Ưu đãi cho người bán uy tín</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="border-top py-3 mt-4">
+    <div class="container d-flex justify-content-between align-items-center small">
+        <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div class="text-muted">Liên hệ: support@example.com</div>
+    </div>
+    </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MMO Market - Trang chủ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <style>
+        .navbar-brand span { color: #0d6efd; font-weight: 700; }
+        .hero {
+            background: #f8f9fa;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+        }
+        .category-card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+        .category-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.12); }
+        .category-icon { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%; }
+        .category-title { font-weight: 700; }
+        .badge-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        footer { color: #6c757d; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+        <a class="navbar-brand" th:href="@{/}" href="/">
+            TapHoa<span>MMO</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div id="nav" class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link active" aria-current="page" th:href="@{/}" href="/">Sản phẩm</a></li>
+                <li class="nav-item"><a class="nav-link" th:href="@{/login}" href="/login">Đăng nhập</a></li>
+                <li class="nav-item"><a class="nav-link" th:href="@{/register}" href="/register">Đăng ký</a></li>
+            </ul>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-success-subtle text-success border border-success-subtle">0 VND</span>
+                <a class="btn btn-outline-primary btn-sm" href="#"><i class="fa-solid fa-circle-plus me-1"></i>Nạp tiền</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-4 py-md-5">
+    <section class="hero mb-4 mb-md-5">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg-3">
+                <select class="form-select">
+                    <option>Tùy chọn tìm kiếm</option>
+                    <option>Sản phẩm</option>
+                    <option>Người bán</option>
+                </select>
+            </div>
+            <div class="col-12 col-lg-3">
+                <select class="form-select">
+                    <option>Tất cả</option>
+                    <option>Facebook</option>
+                    <option>Email</option>
+                    <option>Khác</option>
+                </select>
+            </div>
+            <div class="col-12 col-lg-4">
+                <input class="form-control" placeholder="Tên hàng hoặc người bán"/>
+            </div>
+            <div class="col-12 col-lg-2 d-grid">
+                <button class="btn btn-primary"><i class="fa-solid fa-magnifying-glass me-1"></i>Tìm kiếm</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="mb-4 mb-md-5">
+        <h5 class="text-center text-uppercase text-muted mb-3">Danh sách sản phẩm</h5>
+        <div class="row g-3 g-md-4">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-success-subtle text-success mb-2"><i class="fa-solid fa-envelope fa-lg"></i></div>
+                    <div class="category-title">Email</div>
+                    <div class="text-muted small">Gmail, Yahoo mail, hotmail... và nhiều hơn nữa</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-compact-disc fa-lg"></i></div>
+                    <div class="category-title">Phần mềm</div>
+                    <div class="text-muted small">Tool chuyên dụng từ những coder uy tín</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-user fa-lg"></i></div>
+                    <div class="category-title">Tài khoản</div>
+                    <div class="text-muted small">FB, BM, key Windows, Kaspersky...</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-info-subtle text-info mb-2"><i class="fa-solid fa-cube fa-lg"></i></div>
+                    <div class="category-title">Khác</div>
+                    <div class="text-muted small">Các sản phẩm số khác</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h5 class="text-center text-uppercase text-muted mb-3">Danh sách dịch vụ</h5>
+        <div class="row g-3">
+            <div class="col-12 col-lg-8">
+                <div class="card p-3 h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="https://via.placeholder.com/96x96" class="rounded" alt="banner">
+                        <div>
+                            <div class="fw-semibold">FACEBOOK VIỆT 1000-5000 bạn bè 2020-2025</div>
+                            <div class="small text-muted">Kho: 878 • 39.999đ - 239.999đ</div>
+                            <div class="small text-warning">
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-regular fa-star"></i>
+                                <span class="ms-2">3707 đánh giá</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card p-3 h-100">
+                    <div class="fw-semibold mb-2">Tin tức</div>
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2"><span class="badge-dot bg-success me-2"></span> Hỗ trợ giao dịch an toàn 3 ngày</li>
+                        <li class="mb-2"><span class="badge-dot bg-primary me-2"></span> Nạp tiền tự động 24/7</li>
+                        <li><span class="badge-dot bg-warning me-2"></span> Ưu đãi cho người bán uy tín</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+</main>
+
+<footer class="border-top py-3 mt-4">
+    <div class="container d-flex justify-content-between align-items-center small">
+        <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div class="text-muted">Liên hệ: support@example.com</div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+
