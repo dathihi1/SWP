@@ -4,13 +4,14 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
 
 @Entity
-@Table(name = "users")
+@Table(name = "User")
 @Getter
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -20,12 +21,12 @@ import java.util.List;
 public class User implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
     public String getUsername() {
-        return email; // trả về email để đăng nhập bằng email
+        return username; // trả về username để hiển thị
     }
 
     @Override
@@ -55,5 +56,16 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false)
     String email;
 
+    @Column(unique = true, nullable = false)
+    String username;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    Role role = Role.USER;
+    
     String password;
+    
+    public enum Role {
+        USER, ADMIN, SELLER
+    }
 }

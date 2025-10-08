@@ -20,12 +20,18 @@ public class UserService {
         if(userRepository.existsByEmail(request.getEmail())){
             throw new RuntimeException("Email already in use");
         }
+        
+        if(userRepository.existsByUsername(request.getUsername())){
+            throw new RuntimeException("Username already in use");
+        }
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
         User user = User.builder()
                 .email(request.getEmail())
+                .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .role(User.Role.USER)
                 .build();
 
         userRepository.save(user);

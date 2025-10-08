@@ -13,7 +13,8 @@ public class UserDetailServiceCustomizer implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepository.findByEmail(username).orElseThrow(() -> new UsernameNotFoundException("User does not exist"));
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        // username parameter thực chất là email từ form login
+        return userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("User does not exist"));
     }
 }
