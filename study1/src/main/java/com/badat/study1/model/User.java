@@ -2,109 +2,70 @@ package com.badat.study1.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.sql.Timestamp;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 @Entity
-@Table(name = "User")
+@Table(name = "users")
 @Getter
 @Setter
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class User implements UserDetails {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(unique = true, length = 50)
-    private String username;
-
-    @Column(nullable = false)
-    private String password;
-
-    @Column(unique = true, nullable = false, length = 100)
-    private String email;
-
-    @Column(length = 20)
-    private String phone;
-
-    @Column(name = "full_name", length = 100)
-    private String fullName;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role = Role.USER;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Status status = Status.ACTIVE;
-
-    @Column(name = "isDelete", columnDefinition = "TINYINT(1) DEFAULT 0")
-    private boolean isDelete = false;
-
-    @Column(length = 50)
-    private String createdBy;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    private Timestamp createdAt;
-
-    @UpdateTimestamp
-    private Timestamp updatedAt;
-
-    @Column(length = 50)
-    private String deletedBy;
-
-    public enum Role {
-        USER, ADMIN, SELLER // Thêm SELLER nếu cần
-    }
-
-    public enum Status {
-        ACTIVE, LOCKED
-    }
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        return List.of();
     }
 
-    // Spring Security sẽ sử dụng email làm username để xác thực
     @Override
     public String getUsername() {
-        return this.email;
-    }
-
-    // Phương thức này để lấy tên người dùng thực tế
-    public String getRealUsername() {
-        return this.username;
+        return email; // trả về email để đăng nhập bằng email
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return true; // cho phép đăng nhập
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return this.status != Status.LOCKED;
+        return true; // cho phép đăng nhập
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
+        return true; // cho phép đăng nhập
     }
 
     @Override
     public boolean isEnabled() {
-        return !this.isDelete;
+        return true; // cho phép đăng nhập
     }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    Long id;
+
+String username;
+
+    String password;
+
+    String email;
+
+    String phone;
+    String full_name;
+    String role;
+    String status;
+    Long isDelete;
+    String createBy;
+    Date createAt;
+    Date deleteAt;
+    Long deleteBy;
 }

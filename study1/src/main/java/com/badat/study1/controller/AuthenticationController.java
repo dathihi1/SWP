@@ -1,6 +1,7 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.dto.request.LoginRequest;
+import com.badat.study1.dto.request.RegisterRequest;
 import com.badat.study1.dto.response.LoginResponse;
 import com.badat.study1.service.AuthenticationService;
 import lombok.RequiredArgsConstructor;
@@ -28,5 +29,10 @@ public class AuthenticationController {
     public void logout(@RequestHeader("Authorization") String authHeader) throws ParseException {
         log.info(authHeader);
         authenticationService.logout(authHeader.replace("Bearer ", ""));
+    }
+
+    @PostMapping("auth/register")
+    public RegisterRequest register(@RequestBody RegisterRequest registerRequest){
+        return authenticationService.
     }
 }
