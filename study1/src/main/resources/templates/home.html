@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MMO Market - Homepage</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <style>
+        .navbar-brand span { color: #0d6efd; font-weight: 700; }
+        .hero { background:#f8f9fa; border-radius:1rem; padding:2rem; box-shadow:0 6px 20px rgba(0,0,0,.06); }
+        .category-card { border:none; border-radius:1rem; box-shadow:0 6px 20px rgba(0,0,0,.08); transition:transform .2s, box-shadow .2s; }
+        .category-card:hover { transform:translateY(-4px); box-shadow:0 12px 28px rgba(0,0,0,.12); }
+        .category-icon { width:64px; height:64px; display:grid; place-items:center; border-radius:50%; }
+        .category-title { font-weight:700; }
+        .badge-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+        .intro { font-size: .95rem; line-height: 1.6; }
+        .intro h2 { font-size: 1.25rem; }
+        .intro h3 { font-size: 1.1rem; }
+        .preview-track { overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
+        .preview-card { display:inline-block; width: 220px; border-radius: .75rem; box-shadow:0 6px 20px rgba(0,0,0,.06); border:1px solid #eee; }
+        .preview-card img { width:100%; height:120px; object-fit:cover; border-top-left-radius:.75rem; border-top-right-radius:.75rem; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
+            <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+            MMO Market
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
+            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
+                <form role="search">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
+                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
+                <!-- Guest user navigation -->
+                <div th:if="${!isAuthenticated}" class="d-flex align-items-center gap-2">
+                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
+                        <i class="fa-regular fa-user"></i>
+                        <span>Đăng nhập</span>
+                    </a>
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>Giỏ hàng</span>
+                    </a>
+                </div>
+                
+                <!-- Authenticated user navigation -->
+                <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
+                    <!-- Current Balance -->
+                    <div class="btn btn-outline-success d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-wallet"></i>
+                        <span class="fw-bold">1,250,000</span>
+                    </div>
+                    
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-user"></i>
+                            <span th:text="${username}">User</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
+                            <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                            <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
+                            <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                    
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>Giỏ hàng</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="container py-4 py-md-5">
+    <!-- Welcome section for authenticated users -->
+    <div th:if="${isAuthenticated}" class="alert alert-success d-flex align-items-center mb-4" role="alert">
+        <i class="fa-solid fa-circle-check me-3"></i>
+        <div>
+            <h6 class="alert-heading mb-1">Chào mừng trở lại!</h6>
+            <p class="mb-0">Xin chào <strong th:text="${username}">User</strong>, chúc bạn có những trải nghiệm mua sắm tuyệt vời!</p>
+        </div>
+    </div>
+
+    <!-- Call to action for guest users -->
+    <div th:if="${!isAuthenticated}" class="hero mb-4 mb-md-5">
+        <div class="text-center">
+            <h1 class="display-5 fw-bold mb-3">Chào mừng đến với MMO Market</h1>
+            <p class="lead mb-4">Nền tảng giao dịch sản phẩm số uy tín và an toàn cho cộng đồng MMO</p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a class="btn btn-primary btn-lg" th:href="@{/register}" href="/register">
+                    <i class="fa-solid fa-user-plus me-2"></i>Đăng ký ngay
+                </a>
+                <a class="btn btn-outline-primary btn-lg" th:href="@{/login}" href="/login">
+                    <i class="fa-solid fa-sign-in-alt me-2"></i>Đăng nhập
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <section class="mb-4 mb-md-5">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <button id="prevPreview" class="btn btn-outline-secondary btn-sm" type="button"><i class="fa-solid fa-chevron-left"></i></button>
+            <button id="nextPreview" class="btn btn-outline-secondary btn-sm" type="button"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <div id="previewTrack" class="preview-track mb-4"></div>
+        <h5 class="text-center text-uppercase text-muted mb-3">Danh mục nổi bật</h5>
+        <div class="row g-3 g-md-4">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-success-subtle text-success mb-2"><i class="fa-solid fa-envelope fa-lg"></i></div>
+                    <div class="category-title">Email</div>
+                    <div class="text-muted small">Gmail, Yahoo, Hotmail...</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-compact-disc fa-lg"></i></div>
+                    <div class="category-title">Phần mềm</div>
+                    <div class="text-muted small">Các tool hỗ trợ MMO</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-user fa-lg"></i></div>
+                    <div class="category-title">Tài khoản</div>
+                    <div class="text-muted small">FB, BM, key Windows...</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100">
+                    <div class="category-icon bg-info-subtle text-info mb-2"><i class="fa-solid fa-cube fa-lg"></i></div>
+                    <div class="category-title">Khác</div>
+                    <div class="text-muted small">Sản phẩm số khác</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- User Dashboard for authenticated users -->
+    <section th:if="${isAuthenticated}" class="mb-4 mb-md-5">
+        <div class="row g-4">
+            <div class="col-12">
+                <h4 class="fw-bold mb-3">Bảng điều khiển của bạn</h4>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                            <i class="fa-solid fa-shopping-bag fa-lg text-primary"></i>
+                        </div>
+                        <h6 class="card-title">Đơn hàng</h6>
+                        <p class="text-muted small mb-3">Theo dõi đơn hàng của bạn</p>
+                        <a href="#" class="btn btn-outline-primary btn-sm">Xem tất cả</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                            <i class="fa-solid fa-heart fa-lg text-success"></i>
+                        </div>
+                        <h6 class="card-title">Yêu thích</h6>
+                        <p class="text-muted small mb-3">Sản phẩm đã lưu</p>
+                        <a href="#" class="btn btn-outline-success btn-sm">Xem danh sách</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                            <i class="fa-solid fa-chart-line fa-lg text-warning"></i>
+                        </div>
+                        <h6 class="card-title">Thống kê</h6>
+                        <p class="text-muted small mb-3">Hoạt động gần đây</p>
+                        <a href="#" class="btn btn-outline-warning btn-sm">Xem chi tiết</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                            <i class="fa-solid fa-cog fa-lg text-info"></i>
+                        </div>
+                        <h6 class="card-title">Cài đặt</h6>
+                        <p class="text-muted small mb-3">Quản lý tài khoản</p>
+                        <a href="#" class="btn btn-outline-info btn-sm">Cấu hình</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick actions for authenticated users -->
+    <section th:if="${isAuthenticated}" class="mb-4 mb-md-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Hành động nhanh</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <a href="#" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2">
+                            <i class="fa-solid fa-search"></i>
+                            <span>Tìm kiếm sản phẩm</span>
+                        </a>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <a href="#" class="btn btn-outline-success w-100 d-flex align-items-center justify-content-center gap-2">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Thêm vào giỏ hàng</span>
+                        </a>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <a href="#" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-2">
+                            <i class="fa-solid fa-star"></i>
+                            <span>Đánh giá sản phẩm</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+</main>
+
+<section class="container pb-4 pb-md-5 intro">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">Giới thiệu MMO Market</div>
+            <button id="introToggleBtn" class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#introCollapse" aria-expanded="false" aria-controls="introCollapse">Mở rộng</button>
+        </div>
+        <div id="introCollapse" class="collapse">
+            <div class="card-body">
+                <div class="my-4"></div>
+                <h2 class="mb-3">🎯 <strong>MMO Market – Nơi giao dịch sản phẩm số uy tín dành cho cộng đồng kiếm tiền online</strong></h2>
+                <p><strong>MMO Market</strong> ra đời với sứ mệnh xây dựng một <strong>thị trường sản phẩm số minh bạch – an toàn – tiện lợi</strong>, giúp người mua và người bán trong cộng đồng MMO (Make Money Online) giao dịch dễ dàng, hạn chế tối đa rủi ro lừa đảo.</p>
+                <p>Trong nhiều năm qua, các hình thức <strong>giao dịch tự do trên mạng xã hội</strong> tiềm ẩn nhiều nguy cơ: hàng trùng, hàng giả, bị scam, hoặc mất tiền vì thiếu trung gian uy tín. Chính vì vậy, <strong>MMO Market</strong> được tạo ra để trở thành <strong>cầu nối đáng tin cậy</strong>, giúp mọi giao dịch diễn ra minh bạch và đảm bảo quyền lợi cho cả hai bên.</p>
+
+                <div class="my-4"><hr class="border-0" style="height:1px;background:#e5e7eb"></div>
+                <h3 class="mt-4">⚙️ <strong>Các tính năng nổi bật của MMO Market</strong></h3>
+                <h5 class="mt-3">🔍 Kiểm tra trùng lặp sản phẩm tự động</h5>
+                <p>Hệ thống của chúng tôi <strong>so sánh và kiểm tra từng sản phẩm</strong> được đăng bán, đảm bảo <strong>không có hàng trùng, hàng bị bán lại</strong>. Mỗi giao dịch là duy nhất — sản phẩm sau khi bán sẽ không xuất hiện lại trên sàn.</p>
+
+                <h5 class="mt-3">💳 Nạp tiền & thanh toán tự động</h5>
+                <p>Người dùng chỉ cần <strong>nạp đúng cú pháp</strong>, số dư sẽ <strong>tự động cập nhật sau 1–5 phút</strong>. Mọi quy trình thanh toán – nhận hàng đều <strong>diễn ra tức thì, hoàn toàn tự động</strong>.</p>
+
+                <h5 class="mt-3">⏳ Giữ tiền bảo vệ giao dịch trong 3 ngày</h5>
+                <p>Sau khi mua hàng, hệ thống <strong>tạm giữ tiền trong 3 ngày</strong> để bạn có thời gian kiểm tra, đổi mật khẩu, hoặc xác minh chất lượng sản phẩm. Nếu phát sinh sự cố, bạn có thể <strong>khiếu nại ngay trong giao diện tài khoản</strong> để được hỗ trợ nhanh nhất.</p>
+
+                <div class="my-4"><hr class="border-0" style="height:1px;background:#e5e7eb"></div>
+                <h3 class="mt-4">🛒 <strong>Các danh mục sản phẩm tại MMO Market</strong></h3>
+                <ul>
+                    <li><strong>Email & tài khoản số</strong>: Gmail, Outlook, domain, tài khoản mạng xã hội (Facebook, Twitter, Zalo, Instagram…)</li>
+                    <li><strong>Dịch vụ kỹ thuật số</strong>: Key Windows, key bản quyền, phần mềm bảo mật, key diệt virus.</li>
+                </ul>
+
+                <div class="my-4"><hr class="border-0" style="height:1px;background:#e5e7eb"></div>
+                <h3 class="mt-4">🔐 <strong>MMO Market – Giao dịch số, An tâm thật</strong></h3>
+                <p>Với <strong>chính sách bảo vệ người dùng rõ ràng</strong>, cơ chế <strong>giữ tiền – kiểm tra – xác thực minh bạch</strong>, MMO Market mong muốn trở thành <strong>nền tảng giao dịch sản phẩm số hàng đầu Việt Nam</strong>, nơi người mua <strong>an tâm giao dịch</strong>, người bán <strong>yên tâm phát triển thương hiệu cá nhân</strong>, và cả cộng đồng cùng nhau <strong>xây dựng một môi trường MMO an toàn, chuyên nghiệp và bền vững</strong>.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="border-top py-5 mt-4">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-12 col-lg-4">
+                <h4 class="fw-bold mb-3">Liên hệ</h4>
+                <p>Liên hệ ngay nếu bạn có khó khăn khi sử dụng dịch vụ hoặc cần hợp tác.</p>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-2"><i class="fa-regular fa-comment-dots me-2"></i> Chat với hỗ trợ viên</li>
+                    <li class="mb-2"><i class="fa-brands fa-facebook me-2"></i> MMO Market</li>
+                    <li class="mb-2"><i class="fa-regular fa-envelope me-2"></i> support@example.com</li>
+                    <li><i class="fa-regular fa-clock me-2"></i> Mon-Sat 08:00am - 10:00pm</li>
+                </ul>
+            </div>
+            <div class="col-12 col-lg-4">
+                <h4 class="fw-bold mb-3">Thông tin</h4>
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2">Một ứng dụng nhằm kết nối, trao đổi, mua bán trong cộng đồng kiếm tiền online.</li>
+                    <li class="mb-2">Thanh toán tự động, nhận hàng ngay tức thì.</li>
+                    <li class="mb-2"><a class="link-secondary" th:href="@{/faqs}" target="_blank" rel="noopener noreferrer">Câu hỏi thường gặp</a></li>
+                    <li><a class="link-secondary" th:href="@{/terms}" target="_blank" rel="noopener noreferrer">Điều khoản sử dụng</a></li>
+                </ul>
+            </div>
+            <div class="col-12 col-lg-4">
+                <h4 class="fw-bold mb-3">Đăng ký bán hàng</h4>
+                <p>Tạo một gian hàng của bạn trên trang của chúng tôi. Đội ngũ hỗ trợ sẽ liên lạc để giúp bạn tối ưu khả năng bán hàng.</p>
+                <a class="btn btn-success" th:href="@{/seller/register}" href="/seller/register">Tham gia</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="border-top py-3">
+    <div class="container d-flex justify-content-between align-items-center small">
+        <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div class="text-muted">Liên hệ: support@example.com</div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var collapseEl = document.getElementById('introCollapse');
+        var toggleBtn = document.getElementById('introToggleBtn');
+        if (!collapseEl || !toggleBtn) return;
+        var collapse = new bootstrap.Collapse(collapseEl, { toggle: false });
+        collapseEl.addEventListener('show.bs.collapse', function () {
+            toggleBtn.textContent = 'Thu gọn';
+        });
+        collapseEl.addEventListener('hide.bs.collapse', function () {
+            toggleBtn.textContent = 'Mở rộng';
+        });
+
+        var track = document.getElementById('previewTrack');
+        var prev = document.getElementById('prevPreview');
+        var next = document.getElementById('nextPreview');
+        if (track && prev && next) {
+            var step = 240; // width ~ card width + gap
+            prev.addEventListener('click', function () { track.scrollLeft -= step; });
+            next.addEventListener('click', function () { track.scrollLeft += step; });
+        }
+    });
+    </script>
+</body>
+</html>
+
+
