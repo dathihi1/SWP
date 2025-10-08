@@ -12,7 +12,7 @@ spring:
       port: 6379
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: true
   mail:
     host: smtp.gmail.com

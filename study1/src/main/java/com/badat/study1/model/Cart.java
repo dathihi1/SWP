@@ -4,45 +4,30 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 @Entity
-@Table(name = "Product")
+@Table(name = "Cart")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product {
+public class Cart {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shop_id", nullable = false)
-    private Shop shop;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(nullable = false, length = 50)
-    private String type;
-
-    @Column(nullable = false, length = 100)
-    private String name;
-
-    @Lob
-    private String description;
-
-    @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal price;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
 
     private int quantity = 1;
-
-    @Column(name = "unique_key", nullable = false, unique = true)
-    private String uniqueKey;
-
-    @Enumerated(EnumType.STRING)
-    private Status status = Status.ACTIVE;
 
     @Column(name = "isDelete")
     private boolean isDelete = false;
@@ -57,6 +42,4 @@ public class Product {
     private Timestamp updatedAt;
 
     private String deletedBy;
-
-    public enum Status { ACTIVE, SOLD, BANNED }
 }

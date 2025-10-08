@@ -8,13 +8,13 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 @Entity
-@Table(name = "Product")
+@Table(name = "WithdrawRequest")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product {
+public class WithdrawRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,25 +24,11 @@ public class Product {
     @JoinColumn(name = "shop_id", nullable = false)
     private Shop shop;
 
-    @Column(nullable = false, length = 50)
-    private String type;
-
-    @Column(nullable = false, length = 100)
-    private String name;
-
-    @Lob
-    private String description;
-
     @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal price;
-
-    private int quantity = 1;
-
-    @Column(name = "unique_key", nullable = false, unique = true)
-    private String uniqueKey;
+    private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    private Status status = Status.ACTIVE;
+    private Status status = Status.PENDING;
 
     @Column(name = "isDelete")
     private boolean isDelete = false;
@@ -58,5 +44,5 @@ public class Product {
 
     private String deletedBy;
 
-    public enum Status { ACTIVE, SOLD, BANNED }
+    public enum Status { PENDING, APPROVED, REJECTED }
 }

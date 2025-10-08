@@ -8,41 +8,34 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 @Entity
-@Table(name = "Product")
+@Table(name = "PaymentLog")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product {
+public class PaymentLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shop_id", nullable = false)
-    private Shop shop;
-
-    @Column(nullable = false, length = 50)
-    private String type;
-
-    @Column(nullable = false, length = 100)
-    private String name;
-
-    @Lob
-    private String description;
-
-    @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal price;
-
-    private int quantity = 1;
-
-    @Column(name = "unique_key", nullable = false, unique = true)
-    private String uniqueKey;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Enumerated(EnumType.STRING)
-    private Status status = Status.ACTIVE;
+    @Column(nullable = false)
+    private Type type;
+
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal amount;
+
+    @Column(length = 50)
+    private String gateway = "VNPAY";
+
+    @Enumerated(EnumType.STRING)
+    private Status status = Status.PENDING;
 
     @Column(name = "isDelete")
     private boolean isDelete = false;
@@ -58,5 +51,6 @@ public class Product {
 
     private String deletedBy;
 
-    public enum Status { ACTIVE, SOLD, BANNED }
+    public enum Type { DEPOSIT, WITHDRAW }
+    public enum Status { PENDING, SUCCESS, FAILED }
 }

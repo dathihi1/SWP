@@ -13,18 +13,17 @@ public class ViewController {
     @GetMapping("/")
     public String homePage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         model.addAttribute("isAuthenticated", isAuthenticated);
         if (isAuthenticated) {
-            // Lấy User object từ authentication principal
             User user = (User) authentication.getPrincipal();
-            model.addAttribute("username", user.getUsername());
-            model.addAttribute("authorities", authentication.getAuthorities());
+            // Sử dụng getRealUsername() để hiển thị tên đăng nhập, không phải email
+            model.addAttribute("username", user.getRealUsername());
             model.addAttribute("userRole", user.getRole().name());
         }
-        
+
         return "home";
     }
 

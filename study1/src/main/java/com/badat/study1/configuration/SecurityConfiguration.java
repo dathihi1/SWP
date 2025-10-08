@@ -19,22 +19,28 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
-    private static final String[] AUTH_WHITELIST = {"/", "/index", "/home", "/templates/products", "/auth/login", "/users", "/login", "/register", "/seller/register", "/terms", "/faqs", "/css/**", "/js/**", "/images/**"};
+    private static final String[] AUTH_WHITELIST = {
+            "/", "/index", "/home", "/auth/login", "/users",
+            "/login", "/register", "/terms", "/faqs",
+            "/css/**", "/js/**", "/images/**"
+    };
 
     private final UserDetailServiceCustomizer userDetailsService;
-    private final JwtDecoderConfiguration jwtDecoderConfiguration;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(CsrfConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/seller/**").hasRole("SELLER") // Yêu cầu quyền SELLER
                         .requestMatchers(AUTH_WHITELIST).permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
+                        .loginProcessingUrl("/login") // Spring Security sẽ xử lý URL này
                         .defaultSuccessUrl("/", true)
+                        .failureUrl("/login?error=true")
                         .permitAll()
                 )
                 .logout(logout -> logout
@@ -43,18 +49,14 @@ public class SecurityConfiguration {
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()
-                )
-                .sessionManagement(session -> session
-                        .maximumSessions(1)
-                        .maxSessionsPreventsLogin(false)
                 );
         return http.build();
     }
 
-
     @Bean
     public AuthenticationManager authenticationManager() {
-        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
+        authenticationProvider.setUserDetailsService(userDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder());
         return new ProviderManager(authenticationProvider);
     }
