@@ -22,6 +22,7 @@ public class ViewController {
             User user = (User) authentication.getPrincipal();
             model.addAttribute("username", user.getUsername());
             model.addAttribute("authorities", authentication.getAuthorities());
+            model.addAttribute("userRole", user.getRole().name());
         }
         
         return "home";
@@ -81,6 +82,7 @@ public class ViewController {
         User user = (User) authentication.getPrincipal();
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
         
         return "customer/payment-history";
     }
@@ -98,6 +100,7 @@ public class ViewController {
         User user = (User) authentication.getPrincipal();
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
         
         return "customer/change-password";
     }
@@ -115,6 +118,7 @@ public class ViewController {
         User user = (User) authentication.getPrincipal();
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
         
         return "customer/orders";
     }
@@ -135,6 +139,54 @@ public class ViewController {
         model.addAttribute("userRole", user.getRole().name());
         
         return "customer/profile";
+    }
+
+    @GetMapping("/seller/store")
+    public String sellerStorePage(Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        return "seller/store";
+    }
+
+    @GetMapping("/seller/products")
+    public String sellerProductsPage(Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        return "seller/products";
     }
 }
 
