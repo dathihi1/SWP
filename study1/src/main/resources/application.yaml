@@ -17,21 +17,15 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: your-email@gmail.com
-    password: your-app-password
+    username: dat2801zz@gmail.com
+    # Dán mật khẩu ứng dụng 16 ký tự của bạn vào đây
+    password: yoxh secc lerq ykat
     properties:
-      mail:
-        host: smtp.gmail.com
-        port: 587
-        username: dat2801zz@gmail.com
-        # Dán mật khẩu 16 ký tự vào đây
-        password: yoxh secc lerq ykat
-        properties:
-          mail:
-            smtp:
-              auth: true
-              starttls:
-                enable: true
-jwt:
-  secret-key: "nVhBcHbv71BB6bdjaopOoa4LWx/tjz9c7wBREJdpLU7O+EQBGH3Np+PmgDpMziH4zLGbqtt9CWDPbVwToH/cGyDbZeIJ5rUsL1MAeVs0ER0="
+      # Các thuộc tính này phải được đặt trực tiếp dưới 'properties'
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
 
+jwt:
+  secret-key: NDJkNjM1NDY2YjY5NjM2ZDY0NjM2YjY5NjM2ZDY0NjM2YjY5NjM2ZDY0NjM2YjY5NjM2ZA==
+  expiration: 86400000 # Access token: 24 giờ
+  refresh-token-expiration: 604800000 # Refresh token: 7 ngày

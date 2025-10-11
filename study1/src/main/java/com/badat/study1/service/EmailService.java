@@ -1,7 +1,6 @@
 package com.badat.study1.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;

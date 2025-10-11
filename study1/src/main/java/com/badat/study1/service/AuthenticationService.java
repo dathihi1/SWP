@@ -28,7 +28,7 @@ public class AuthenticationService {
         Authentication authenticate = authenticationManager.authenticate(authenticationToken);
 
         User user = (User) authenticate.getPrincipal();
-        String accessToken = jwtService.generateAccessToken(user);
+        String accessToken = jwtService.generateToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
         //tra ve token
         return LoginResponse.builder()
@@ -43,9 +43,13 @@ public class AuthenticationService {
         Date issueTime = jwtInfo.getIssueTime();
         Date expireTime = jwtInfo.getExpireTime();
         if(expireTime.before(new Date())) return;
+
+        long remainingExpiration = expireTime.getTime() - System.currentTimeMillis();
+
         RedisToken redisToken = RedisToken.builder()
-                .jwtID(jwtId)
-                .expirationTime(expireTime.getTime() - issueTime.getTime())
+                .id(jwtId)
+                // Redis's TimeToLive tính bằng giây, nên chia cho 1000
+                .expiration(remainingExpiration / 1000)
                 .build();
         redisTokenRepository.save(redisToken);
     }

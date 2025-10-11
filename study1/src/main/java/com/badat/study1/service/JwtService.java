@@ -1,92 +1,95 @@
 package com.badat.study1.service;
 
 import com.badat.study1.dto.JwtInfo;
-import com.badat.study1.model.User;
-import com.badat.study1.repository.RedisTokenRepository;
-import com.nimbusds.jose.*;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jose.crypto.MACVerifier;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import lombok.RequiredArgsConstructor;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import java.text.ParseException;
-import java.time.temporal.ChronoUnit;
+import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 
 @Service
-@RequiredArgsConstructor
 public class JwtService {
+
     @Value("${jwt.secret-key}")
-    private String secret;
-    private final RedisTokenRepository redisTokenRepository;
+    private String SECRET_KEY;
 
-    public String generateAccessToken(User user) {
-        JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
+    @Value("${jwt.expiration}")
+    private long EXPIRATION_TIME;
 
-        Date issueTime = new Date();
-        Date expirationTime = Date.from(issueTime.toInstant().plusSeconds(30 * 60));
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getEmail())
-                .issueTime(issueTime)
-                .expirationTime(expirationTime)
-                .jwtID(UUID.randomUUID().toString())
-                .build();
+    @Value("${jwt.refresh-token-expiration}")
+    private long REFRESH_EXPIRATION_TIME;
 
-        Payload payload = new Payload(claimsSet.toJSONObject());
-        JWSObject jweObject = new JWSObject(header, payload);
-        try {
-            jweObject.sign(new MACSigner(secret));
-            return jweObject.serialize();
-        } catch (JOSEException e) {
-            throw new RuntimeException(e);
-        }
-
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
-    public String generateRefreshToken(User user) {
-        JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
-
-        Date issueTime = new Date();
-        Date expirationTime = Date.from(issueTime.toInstant().plus(30, ChronoUnit.DAYS));
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getEmail())
-                .issueTime(issueTime)
-                .expirationTime(expirationTime)
-                .build();
-
-        Payload payload = new Payload(claimsSet.toJSONObject());
-        JWSObject jweObject = new JWSObject(header, payload);
-        try {
-            jweObject.sign(new MACSigner(secret));
-            return jweObject.serialize();
-        } catch (JOSEException e) {
-            throw new RuntimeException(e);
-        }
-
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
     }
 
-    public boolean verifyToken(String token) throws ParseException, JOSEException {
-        SignedJWT signedJWT = SignedJWT.parse(token);
-        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
-        if (redisTokenRepository.existsById(jwtId)) throw new RuntimeException("Token has been used");
-        if (expirationTime.before(new Date())) return false;
-        return signedJWT.verify(new MACVerifier(secret));
+    public String generateToken(UserDetails userDetails) {
+        return buildToken(new HashMap<>(), userDetails, EXPIRATION_TIME);
     }
 
-    public JwtInfo parseToken(String token) throws ParseException {
-        SignedJWT signedJWT = SignedJWT.parse(token);
-        String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
-        Date issueTime = signedJWT.getJWTClaimsSet().getIssueTime();
-        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+    public String generateRefreshToken(UserDetails userDetails) {
+        return buildToken(new HashMap<>(), userDetails, REFRESH_EXPIRATION_TIME);
+    }
+
+    private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {
+        return Jwts.builder()
+                .setClaims(extraClaims)
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .setId(UUID.randomUUID().toString()) // Thêm JWT ID
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    // ✅ Phương thức mới để parse token cho việc logout
+    public JwtInfo parseToken(String token) {
+        Claims claims = extractAllClaims(token);
         return JwtInfo.builder()
-                .jwtId(jwtId)
-                .issueTime(issueTime)
-                .expireTime(expirationTime)
+                .jwtId(claims.getId())
+                .issueTime(claims.getIssuedAt())
+                .expireTime(claims.getExpiration())
                 .build();
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignInKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    private Key getSignInKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }

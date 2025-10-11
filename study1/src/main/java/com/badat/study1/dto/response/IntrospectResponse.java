@@ -7,6 +7,6 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class UserCreateResponse {
-    private String email;
+public class IntrospectResponse {
+    private boolean valid;
 }

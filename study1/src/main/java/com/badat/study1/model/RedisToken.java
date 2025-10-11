@@ -3,15 +3,19 @@ package com.badat.study1.model;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
+import org.springframework.data.redis.core.TimeToLive;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@RedisHash("redisHash")
 @Builder
+@RedisHash("invalidated_token")
 public class RedisToken {
     @Id
-    private String jwtID;
-    private long expirationTime;
+    private String id;
+    private String logoutTime;
+
+    @TimeToLive
+    private Long expiration;
 }
