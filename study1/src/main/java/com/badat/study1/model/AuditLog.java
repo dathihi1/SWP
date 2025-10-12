@@ -31,7 +31,7 @@ public class AuditLog {
     private String ipAddress;
 
     @Column(name = "isDelete")
-    private boolean isDelete = false;
+    private Boolean isDelete = false;
 
     private String createdBy;
 

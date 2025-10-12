@@ -18,13 +18,23 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
 
-    private final String [] WHILE_LIST = {"/auth/**",       // Cho phép tất cả các endpoint trong /auth (login, logout)
+    private final String [] WHILE_LIST = {
+            "/auth/**",         // Cho phép tất cả các endpoint trong /auth (login, logout)
             "/users/register",  // Cho phép đăng ký
             "/users/verify",    // Cho phép xác thực OTP
             "/",                // Trang chủ
-            "/login",           // Trang đăng nhập (view)
+            "/login",           // Trang đăng nhập (view và POST)
             "/register",        // Trang đăng ký (view)
-            "/verify"};           // Trang xác thực (view)}
+            "/verify",          // Trang xác thực (view)
+            "/error",           // Error pages
+            "/favicon.ico",     // Favicon
+            "/css/**",          // CSS files
+            "/js/**",           // JavaScript files
+            "/images/**",       // Images
+            "/webjars/**",      // WebJars resources
+            "/static/**",       // Static resources
+            "/public/**"        // Public resources
+    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -38,7 +48,10 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Cấu hình session stateless
                 )
                 .authenticationProvider(authenticationProvider) // Cung cấp provider xác thực
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // Thêm JWT filter
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class) // Thêm JWT filter
+                .exceptionHandling(ex -> ex
+                        .accessDeniedPage("/login") // Chuyển hướng đến trang login khi bị từ chối truy cập
+                );
 
         return http.build();
     }

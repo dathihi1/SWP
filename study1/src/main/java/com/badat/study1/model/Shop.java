@@ -34,7 +34,7 @@ public class Shop {
     private BankAccount bankAccount;
 
     @Column(name = "isDelete")
-    private boolean isDelete = false;
+    private Boolean isDelete = false;
 
     private String createdBy;
 

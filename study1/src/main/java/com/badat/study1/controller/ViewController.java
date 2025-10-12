@@ -1,15 +1,27 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
+import com.badat.study1.service.AuthenticationService;
+import com.badat.study1.service.JwtService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
+@RequiredArgsConstructor
 public class ViewController {
+
+    private final AuthenticationService authenticationService;
+    private final JwtService jwtService;
+    private final UserDetailsService userDetailsService;
 
     @GetMapping("/")
     public String homePage(Model model) {
@@ -37,6 +49,7 @@ public class ViewController {
     public String loginPage() {
         return "login";
     }
+
 
     @GetMapping("/register")
     public String registerPage() {

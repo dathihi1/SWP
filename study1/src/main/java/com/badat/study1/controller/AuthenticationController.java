@@ -7,6 +7,7 @@ import com.badat.study1.service.AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -39,5 +40,33 @@ public class AuthenticationController {
                     .build();
     }
 
+    @GetMapping("/auth/me")
+    public ApiResponse<Object> getCurrentUser() {
+        // Lấy thông tin user hiện tại từ SecurityContext
+        org.springframework.security.core.Authentication authentication = 
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication != null && authentication.isAuthenticated() && 
+            !authentication.getName().equals("anonymousUser")) {
+            
+            com.badat.study1.model.User user = (com.badat.study1.model.User) authentication.getPrincipal();
+            
+            // Tạo response object với thông tin user
+            java.util.Map<String, Object> userInfo = new java.util.HashMap<>();
+            userInfo.put("id", user.getId());
+            userInfo.put("username", user.getRealUsername());
+            userInfo.put("email", user.getEmail());
+            userInfo.put("role", user.getRole().name());
+            userInfo.put("fullName", user.getFullName());
+            
+            return ApiResponse.builder()
+                    .result(userInfo)
+                    .build();
+        }
+        
+        return ApiResponse.builder()
+                .message("User not authenticated")
+                .build();
+    }
 
 }

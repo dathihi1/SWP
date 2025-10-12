@@ -346,6 +346,95 @@
             next.addEventListener('click', function () { track.scrollLeft += step; });
         }
     });
+
+    // Kiểm tra authentication status khi trang load
+    async function checkAuthStatus() {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            try {
+                const response = await fetch('/auth/me', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                if (response.ok) {
+                    const apiResponse = await response.json();
+                    if (apiResponse.result) {
+                        // User đã đăng nhập, cập nhật UI
+                        updateUIForAuthenticatedUser(apiResponse.result);
+                    }
+                } else {
+                    // Token không hợp lệ, xóa khỏi localStorage
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                }
+            } catch (error) {
+                console.error('Error checking auth status:', error);
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+            }
+        }
+    }
+
+    function updateUIForAuthenticatedUser(userInfo) {
+        // Ẩn nút đăng nhập/đăng ký
+        const guestNav = document.querySelector('.d-flex.align-items-center.gap-2');
+        if (guestNav) {
+            guestNav.style.display = 'none';
+        }
+
+        // Hiển thị user menu
+        const userMenu = document.querySelector('.dropdown');
+        if (userMenu) {
+            userMenu.style.display = 'block';
+        }
+
+        // Cập nhật tên user
+        const usernameElement = document.querySelector('.dropdown-toggle');
+        if (usernameElement) {
+            usernameElement.textContent = userInfo.username || userInfo.email;
+        }
+
+        // Cập nhật các link trong dropdown
+        const profileLink = document.querySelector('a[href="/profile"]');
+        if (profileLink) {
+            profileLink.href = '/profile';
+        }
+
+        const logoutLink = document.querySelector('a[href="/logout"]');
+        if (logoutLink) {
+            logoutLink.onclick = handleLogout;
+        }
+    }
+
+    async function handleLogout(event) {
+        event.preventDefault();
+        
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            try {
+                await fetch('/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+        
+        // Xóa token khỏi localStorage
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        
+        // Reload trang để cập nhật UI
+        window.location.reload();
+    }
+
+    // Gọi checkAuthStatus khi trang load
+    document.addEventListener('DOMContentLoaded', checkAuthStatus);
     </script>
 </body>
 </html>

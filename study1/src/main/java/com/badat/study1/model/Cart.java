@@ -30,7 +30,7 @@ public class Cart {
     private int quantity = 1;
 
     @Column(name = "isDelete")
-    private boolean isDelete = false;
+    private Boolean isDelete = false;
 
     private String createdBy;
 

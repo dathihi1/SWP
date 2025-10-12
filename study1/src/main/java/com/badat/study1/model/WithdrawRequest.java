@@ -31,7 +31,7 @@ public class WithdrawRequest {
     private Status status = Status.PENDING;
 
     @Column(name = "isDelete")
-    private boolean isDelete = false;
+    private Boolean isDelete = false;
 
     private String createdBy;
 

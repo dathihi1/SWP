@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,12 +20,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
-    private final RedisTokenRepository redisTokenRepository; // Inject Redis repository
+    
+    @Autowired(required = false)
+    private RedisTokenRepository redisTokenRepository; // Optional Redis repository
+
+    public JwtAuthenticationFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -32,21 +39,45 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+        String jwt = null;
+        
+        // Thử lấy token từ Authorization header trước
         final String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+        } else {
+            // Nếu không có Authorization header, thử lấy từ cookie
+            jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (jakarta.servlet.http.Cookie cookie : cookies) {
+                    if ("accessToken".equals(cookie.getName())) {
+                        jwt = cookie.getValue();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (jwt == null) {
             filterChain.doFilter(request, response);
             return;
         }
-
-        final String jwt = authHeader.substring(7);
         final String username = jwtService.extractUsername(jwt);
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-            // ✅ Kiểm tra xem token có trong Redis không
-            String jwtId = jwtService.parseToken(jwt).getJwtId();
-            boolean isTokenInvalidated = redisTokenRepository.existsById(jwtId);
+            // ✅ Kiểm tra xem token có trong Redis không (nếu Redis có sẵn)
+            boolean isTokenInvalidated = false;
+            if (redisTokenRepository != null) {
+                try {
+                    String jwtId = jwtService.parseToken(jwt).getJwtId();
+                    isTokenInvalidated = redisTokenRepository.existsById(jwtId);
+                } catch (Exception e) {
+                    // Nếu Redis không khả dụng, bỏ qua kiểm tra
+                    isTokenInvalidated = false;
+                }
+            }
 
             // ✅ Chỉ xác thực nếu token hợp lệ VÀ không bị logout
             if (jwtService.isTokenValid(jwt, userDetails) && !isTokenInvalidated) {

@@ -45,7 +45,7 @@ public class Product {
     private Status status = Status.ACTIVE;
 
     @Column(name = "isDelete")
-    private boolean isDelete = false;
+    private Boolean isDelete = false;
 
     private String createdBy;
 

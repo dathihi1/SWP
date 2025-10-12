@@ -5,11 +5,17 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: root
+    password: sa123
   data:
     redis:
       host: localhost
       port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
   jpa:
     hibernate:
       ddl-auto: update
@@ -29,3 +35,8 @@ jwt:
   secret-key: NDJkNjM1NDY2YjY5NjM2ZDY0NjM2YjY5NjM2ZDY0NjM2YjY5NjM2ZDY0NjM2YjY5NjM2ZA==
   expiration: 86400000 # Access token: 24 giờ
   refresh-token-expiration: 604800000 # Refresh token: 7 ngày
+
+logging:
+  level:
+    org.springframework.data.redis: WARN
+    org.springframework.boot.autoconfigure.data.redis: WARN

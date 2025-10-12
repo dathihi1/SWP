@@ -46,7 +46,7 @@ public class User implements UserDetails {
     private Status status = Status.ACTIVE;
 
     @Column(name = "isDelete")
-    private boolean isDelete = false;
+    private Boolean isDelete = false;
 
     private String createdBy;
 
@@ -82,5 +82,5 @@ public class User implements UserDetails {
     public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() { return !this.isDelete; }
+    public boolean isEnabled() { return !Boolean.TRUE.equals(this.isDelete); }
 }

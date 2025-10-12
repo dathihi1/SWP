@@ -28,7 +28,7 @@ public class Wallet {
     private BigDecimal balance = BigDecimal.ZERO;
 
     @Column(name = "isDelete")
-    private boolean isDelete = false;
+    private Boolean isDelete = false;
 
     private String createdBy;
 

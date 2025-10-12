@@ -33,7 +33,7 @@ public class Review {
     private String comment;
 
     @Column(name = "isDelete")
-    private boolean isDelete = false;
+    private Boolean isDelete = false;
 
     private String createdBy;
 

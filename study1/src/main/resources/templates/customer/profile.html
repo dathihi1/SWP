@@ -91,7 +91,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/store}" href="/seller/store"><i class="fa-solid fa-store me-2"></i>Gian hàng của tôi</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" href="#"><i class="fa-solid fa-store me-2"></i>Gian hàng của tôi</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
                             <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
@@ -181,6 +181,138 @@
                         </div>
                         <h4 class="mb-1" th:text="${username}">Username</h4>
                         <p class="text-muted mb-0" th:text="${userRole}">USER</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Shop Section - Only for SELLER role -->
+    <div th:if="${userRole == 'SELLER'}" class="row mt-4">
+        <div class="col-12">
+            <div class="card profile-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fa-solid fa-store me-2"></i>Gian hàng của tôi
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <!-- Shop Statistics -->
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="stats-card success rounded p-3 mb-2">
+                                    <i class="fa-solid fa-boxes-stacked fa-2x mb-2"></i>
+                                    <h4 class="mb-1">15</h4>
+                                    <small>Sản phẩm</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="stats-card warning rounded p-3 mb-2">
+                                    <i class="fa-solid fa-shopping-cart fa-2x mb-2"></i>
+                                    <h4 class="mb-1">156</h4>
+                                    <small>Đơn hàng</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="stats-card info rounded p-3 mb-2">
+                                    <i class="fa-solid fa-star fa-2x mb-2"></i>
+                                    <h4 class="mb-1">4.8</h4>
+                                    <small>Đánh giá</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="stats-card rounded p-3 mb-2">
+                                    <i class="fa-solid fa-wallet fa-2x mb-2"></i>
+                                    <h4 class="mb-1">2.5M</h4>
+                                    <small>Doanh thu</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Shop Management Actions -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                <button class="btn btn-outline-primary">
+                                    <i class="fa-solid fa-plus me-2"></i>Thêm sản phẩm
+                                </button>
+                                <button class="btn btn-outline-success">
+                                    <i class="fa-solid fa-list me-2"></i>Quản lý sản phẩm
+                                </button>
+                                <button class="btn btn-outline-info">
+                                    <i class="fa-solid fa-chart-bar me-2"></i>Thống kê bán hàng
+                                </button>
+                                <button class="btn btn-outline-warning">
+                                    <i class="fa-solid fa-cog me-2"></i>Cài đặt gian hàng
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Orders -->
+                    <div class="mt-4">
+                        <h6 class="text-muted mb-3">
+                            <i class="fa-solid fa-clock me-2"></i>Đơn hàng gần đây
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Mã đơn</th>
+                                        <th>Sản phẩm</th>
+                                        <th>Khách hàng</th>
+                                        <th>Tổng tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>#DH001</td>
+                                        <td>Item Game ABC</td>
+                                        <td>Nguyễn Văn B</td>
+                                        <td>150,000 VNĐ</td>
+                                        <td><span class="badge bg-success">Đã giao</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary">Xem</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>#DH002</td>
+                                        <td>Gold Game XYZ</td>
+                                        <td>Trần Thị C</td>
+                                        <td>200,000 VNĐ</td>
+                                        <td><span class="badge bg-warning">Đang xử lý</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary">Xem</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>#DH003</td>
+                                        <td>Skin Game DEF</td>
+                                        <td>Lê Văn D</td>
+                                        <td>75,000 VNĐ</td>
+                                        <td><span class="badge bg-info">Chờ xác nhận</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary">Xem</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <button class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-eye me-2"></i>Xem tất cả đơn hàng
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
