@@ -25,48 +25,6 @@
             border-color: #20c997;
         }
     </style>
-    <meta name="csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
-    <meta name="csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
-    <meta name="base_url" th:content="@{/}">
-    <script>
-        async function submitRegister(event) {
-            event.preventDefault();
-            const username = document.getElementById('username').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const confirm = document.getElementById('confirm').value;
-            const alertBox = document.getElementById('alert');
-            alertBox.classList.add('d-none');
-            if (!username || !email || !password) {
-                alertBox.textContent = 'Vui lòng nhập đầy đủ thông tin';
-                alertBox.classList.remove('d-none');
-                return;
-            }
-            if (password !== confirm) {
-                alertBox.textContent = 'Mật khẩu xác nhận không khớp';
-                alertBox.classList.remove('d-none');
-                return;
-            }
-
-            const baseUrl = document.querySelector('meta[name="base_url"]').content;
-            const url = baseUrl.replace(/\/$/, '') + '/users';
-            const headers = { 'Content-Type': 'application/json' };
-
-            try {
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ username, email, password })
-                });
-                if (!res.ok) throw new Error('Đăng ký thất bại');
-                // Thành công -> chuyển sang trang đăng nhập
-                window.location.href = baseUrl + 'login';
-            } catch (e) {
-                alertBox.textContent = e.message || 'Có lỗi xảy ra. Thử lại sau.';
-                alertBox.classList.remove('d-none');
-            }
-        }
-    </script>
 </head>
 <body class="d-flex align-items-center justify-content-center py-5">
 <div class="container" style="max-width: 560px;">
@@ -78,14 +36,7 @@
 
     <div class="card p-4">
         <div id="alert" class="alert alert-danger d-none" role="alert"></div>
-        <form onsubmit="submitRegister(event)">
-            <div class="mb-3">
-                <label for="username" class="form-label">Tên đăng nhập</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                    <input type="text" class="form-control" id="username" placeholder="Tên đăng nhập" required>
-                </div>
-            </div>
+        <form id="registerForm">
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
                 <div class="input-group">
@@ -116,6 +67,21 @@
                 </button>
             </div>
         </form>
+
+        <form id="otpForm" class="d-none">
+            <div class="mb-3">
+                <label for="otp" class="form-label">Mã OTP</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-key"></i></span>
+                    <input type="text" class="form-control" id="otp" placeholder="Nhập mã OTP" required>
+                </div>
+                <div class="form-text">Mã OTP đã được gửi đến email của bạn.</div>
+            </div>
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">Xác nhận</button>
+            </div>
+        </form>
+
         <div class="text-center mt-3">
             <span class="text-muted">Đã có tài khoản?</span>
             <a th:href="@{/login}" href="/login">Đăng nhập</a>
@@ -127,7 +93,68 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.getElementById('registerForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm').value;
+        const alertBox = document.getElementById('alert');
+        alertBox.classList.add('d-none');
+
+        if (password !== confirmPassword) {
+            alertBox.textContent = 'Mật khẩu không khớp.';
+            alertBox.classList.remove('d-none');
+            return;
+        }
+
+        try {
+            const response = await fetch('/users/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (response.ok) {
+                document.getElementById('registerForm').classList.add('d-none');
+                document.getElementById('otpForm').classList.remove('d-none');
+            } else {
+                const error = await response.json();
+                alertBox.textContent = error.message;
+                alertBox.classList.remove('d-none');
+            }
+        } catch (error) {
+            alertBox.textContent = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+            alertBox.classList.remove('d-none');
+        }
+    });
+
+    document.getElementById('otpForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const otp = document.getElementById('otp').value.trim();
+        const alertBox = document.getElementById('alert');
+        alertBox.classList.add('d-none');
+
+        try {
+            const response = await fetch('/users/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, otp })
+            });
+
+            if (response.ok) {
+                window.location.href = '/login';
+            } else {
+                const error = await response.json();
+                alertBox.textContent = error.message;
+                alertBox.classList.remove('d-none');
+            }
+        } catch (error) {
+            alertBox.textContent = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+            alertBox.classList.remove('d-none');
+        }
+    });
+</script>
 </body>
 </html>
-
-

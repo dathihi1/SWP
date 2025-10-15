@@ -5,7 +5,11 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
+<<<<<<< HEAD
     password: sa123
+=======
+    password: root
+>>>>>>> origin/branch
   data:
     redis:
       host: localhost
@@ -14,7 +18,24 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: true
-
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: your-app-password
+    properties:
+      mail:
+        host: smtp.gmail.com
+        port: 587
+        username: dat2801zz@gmail.com
+        # Dán mật khẩu 16 ký tự vào đây
+        password: yoxh secc lerq ykat
+        properties:
+          mail:
+            smtp:
+              auth: true
+              starttls:
+                enable: true
 jwt:
   secret-key: "nVhBcHbv71BB6bdjaopOoa4LWx/tjz9c7wBREJdpLU7O+EQBGH3Np+PmgDpMziH4zLGbqtt9CWDPbVwToH/cGyDbZeIJ5rUsL1MAeVs0ER0="
 
