@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -18,47 +19,82 @@ import java.util.Random;
 public class UserService {
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
+    
+    // Temporary storage for OTP and registration data
+    private final Map<String, String> otpStorage = new HashMap<>();
+    private final Map<String, UserCreateRequest> pendingRegistrations = new HashMap<>();
 
-    public UserService(UserRepository userRepository, WalletRepository walletRepository) {
+    public UserService(UserRepository userRepository, WalletRepository walletRepository, EmailService emailService) {
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
+        this.emailService = emailService;
+        this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
-    @Transactional
-    public UserCreateResponse createUser(UserCreateRequest request){
-        if(userRepository.existsByEmail(request.getEmail())){
-            throw new RuntimeException("Email already in use");
+    public void register(UserCreateRequest request) {
+        // Check if user already exists
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("User with this email already exists");
         }
-
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new RuntimeException("Username already taken");
+        }
+        
+        // Generate OTP
+        String otp = generateOTP();
+        
+        // Store OTP and registration data temporarily
+        otpStorage.put(request.getEmail(), otp);
+        pendingRegistrations.put(request.getEmail(), request);
+        
+        // Send OTP via email
+        String subject = "Verify your account";
+        String body = "Your OTP is: " + otp + "\nThis OTP will expire in 10 minutes.";
+        emailService.sendEmail(request.getEmail(), subject, body);
+    }
+    
+    public void verify(String email, String otp) {
+        // Check if OTP exists and matches
+        String storedOtp = otpStorage.get(email);
+        if (storedOtp == null || !storedOtp.equals(otp)) {
+            throw new RuntimeException("Invalid or expired OTP");
+        }
+        
+        // Get pending registration data
+        UserCreateRequest request = pendingRegistrations.get(email);
+        if (request == null) {
+            throw new RuntimeException("Registration data not found");
+        }
+        
+        // Create user
         User user = User.builder()
                 .email(request.getEmail())
+                .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .role(User.Role.USER)
                 .build();
-
-        String otp = generateOtp();
-        unverifiedUsers.put(request.getEmail(), user);
-        otpMap.put(request.getEmail(), otp);
-
-        emailService.sendEmail(request.getEmail(), "Your OTP Code", "Your OTP code is: " + otp);
-    }
-
-    public void verify(String email, String otp) {
-        if (!otpMap.containsKey(email) || !otpMap.get(email).equals(otp)) {
-            throw new RuntimeException("Invalid OTP");
-        }
-
-        User user = unverifiedUsers.get(email);
+        
         userRepository.save(user);
-
-        // Tạo ví cho user sau khi đăng ký thành công
+        
+        // Create wallet for user
         Wallet wallet = Wallet.builder()
                 .userId(user.getId())
+                .balance(BigDecimal.ZERO)
                 .build();
         walletRepository.save(wallet);
-
-        return UserCreateResponse.builder().
-                email(user.getEmail()).
-                build();
+        
+        // Clean up temporary data
+        otpStorage.remove(email);
+        pendingRegistrations.remove(email);
     }
+    
+    private String generateOTP() {
+        Random random = new Random();
+        int otp = 100000 + random.nextInt(900000); // 6-digit OTP
+        return String.valueOf(otp);
+    }
+
 }

@@ -5,11 +5,7 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-<<<<<<< HEAD
     password: sa123
-=======
-    password: root
->>>>>>> origin/branch
   data:
     redis:
       host: localhost
