@@ -2,10 +2,13 @@ package com.badat.study1.service;
 
 import com.badat.study1.dto.request.UserCreateRequest;
 import com.badat.study1.model.User;
+import com.badat.study1.model.Wallet;
 import com.badat.study1.repository.UserRepository;
+import com.badat.study1.repository.WalletRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,18 +17,16 @@ import java.util.Random;
 @Service
 public class UserService {
     private final UserRepository userRepository;
-    private final EmailService emailService;
+    private final WalletRepository walletRepository;
 
-    private final Map<String, User> unverifiedUsers = new HashMap<>();
-    private final Map<String, String> otpMap = new HashMap<>();
-
-    public UserService(UserRepository userRepository, EmailService emailService) {
+    public UserService(UserRepository userRepository, WalletRepository walletRepository) {
         this.userRepository = userRepository;
-        this.emailService = emailService;
+        this.walletRepository = walletRepository;
     }
 
-    public void register(UserCreateRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+    @Transactional
+    public UserCreateResponse createUser(UserCreateRequest request){
+        if(userRepository.existsByEmail(request.getEmail())){
             throw new RuntimeException("Email already in use");
         }
 
@@ -50,11 +51,14 @@ public class UserService {
         User user = unverifiedUsers.get(email);
         userRepository.save(user);
 
-        unverifiedUsers.remove(email);
-        otpMap.remove(email);
-    }
+        // Tạo ví cho user sau khi đăng ký thành công
+        Wallet wallet = Wallet.builder()
+                .userId(user.getId())
+                .build();
+        walletRepository.save(wallet);
 
-    private String generateOtp() {
-        return String.format("%06d", new Random().nextInt(999999));
+        return UserCreateResponse.builder().
+                email(user.getEmail()).
+                build();
     }
 }

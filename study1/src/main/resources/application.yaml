@@ -35,3 +35,13 @@ spring:
 jwt:
   secret-key: "nVhBcHbv71BB6bdjaopOoa4LWx/tjz9c7wBREJdpLU7O+EQBGH3Np+PmgDpMziH4zLGbqtt9CWDPbVwToH/cGyDbZeIJ5rUsL1MAeVs0ER0="
 
+vnpay:
+  url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+  return-url: "http://localhost:8080/payment/return"
+  tmn-code: "WFNMT41C"
+  secret-key: "GEGAKB9OUVUZFVVMOB5YNTSVBY1IWKTC"
+  version: "2.1.0"
+  command: "pay"
+  order-type: "other"
+  locale: "vn"
+  currency-code: "VND"

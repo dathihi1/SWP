@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nạp tiền vào ví - MMO Market</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .payment-card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+        }
+        .amount-btn {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .amount-btn:hover {
+            border-color: #0d6efd;
+            background-color: #f8f9fa;
+        }
+        .amount-btn.selected {
+            border-color: #0d6efd;
+            background-color: #e7f3ff;
+        }
+        .custom-amount {
+            border-radius: 10px;
+        }
+        .vnpay-btn {
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
+            border: none;
+            border-radius: 10px;
+            padding: 15px 30px;
+            font-weight: bold;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .vnpay-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">
+                <i class="fa-solid fa-gamepad me-2"></i>MMO Market
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fa-solid fa-home me-1"></i>Trang chủ
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card payment-card">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h4 class="mb-0">
+                            <i class="fa-solid fa-wallet me-2"></i>Nạp tiền vào ví
+                        </h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Current Balance -->
+                        <div class="text-center mb-4">
+                            <h6 class="text-muted">Số dư hiện tại</h6>
+                            <h3 class="text-success fw-bold" th:text="${walletBalance}">0</h3>
+                        </div>
+
+                        <!-- Amount Selection -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">Chọn số tiền nạp</h6>
+                            <div class="row g-3">
+                                <div class="col-6 col-md-4">
+                                    <div class="amount-btn" data-amount="50000">
+                                        <div class="fw-bold">50,000</div>
+                                        <small class="text-muted">VNĐ</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="amount-btn" data-amount="100000">
+                                        <div class="fw-bold">100,000</div>
+                                        <small class="text-muted">VNĐ</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="amount-btn" data-amount="200000">
+                                        <div class="fw-bold">200,000</div>
+                                        <small class="text-muted">VNĐ</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="amount-btn" data-amount="500000">
+                                        <div class="fw-bold">500,000</div>
+                                        <small class="text-muted">VNĐ</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="amount-btn" data-amount="1000000">
+                                        <div class="fw-bold">1,000,000</div>
+                                        <small class="text-muted">VNĐ</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="amount-btn" data-amount="2000000">
+                                        <div class="fw-bold">2,000,000</div>
+                                        <small class="text-muted">VNĐ</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Amount -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">Hoặc nhập số tiền tùy chỉnh</h6>
+                            <div class="input-group">
+                                <input type="number" id="customAmount" class="form-control custom-amount" 
+                                       placeholder="Nhập số tiền" min="10000" max="10000000">
+                                <span class="input-group-text">VNĐ</span>
+                            </div>
+                            <small class="text-muted">Tối thiểu: 10,000 VNĐ - Tối đa: 10,000,000 VNĐ</small>
+                        </div>
+
+                        <!-- Payment Button -->
+                        <div class="d-grid">
+                            <button id="paymentBtn" class="btn vnpay-btn" disabled>
+                                <i class="fa-solid fa-credit-card me-2"></i>
+                                Thanh toán qua VNPay
+                            </button>
+                        </div>
+
+                        <!-- Payment Info -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h6 class="text-primary mb-2">
+                                <i class="fa-solid fa-info-circle me-1"></i>Thông tin thanh toán
+                            </h6>
+                            <ul class="mb-0 small text-muted">
+                                <li>Hỗ trợ thanh toán qua QR Code và Internet Banking</li>
+                                <li>Giao dịch được bảo mật bởi VNPay</li>
+                                <li>Tiền sẽ được cộng vào ví ngay sau khi thanh toán thành công</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5>Đang tạo giao dịch...</h5>
+                    <p class="text-muted mb-0">Vui lòng chờ trong giây lát</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedAmount = 0;
+        const amountButtons = document.querySelectorAll('.amount-btn');
+        const customAmountInput = document.getElementById('customAmount');
+        const paymentBtn = document.getElementById('paymentBtn');
+        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+
+        // Amount button selection
+        amountButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove selected class from all buttons
+                amountButtons.forEach(b => b.classList.remove('selected'));
+                
+                // Add selected class to clicked button
+                this.classList.add('selected');
+                
+                // Get amount from data attribute
+                selectedAmount = parseInt(this.dataset.amount);
+                
+                // Clear custom amount input
+                customAmountInput.value = '';
+                
+                // Enable payment button
+                paymentBtn.disabled = false;
+            });
+        });
+
+        // Custom amount input
+        customAmountInput.addEventListener('input', function() {
+            const value = parseInt(this.value);
+            
+            if (value >= 10000 && value <= 10000000) {
+                // Remove selected class from amount buttons
+                amountButtons.forEach(b => b.classList.remove('selected'));
+                
+                selectedAmount = value;
+                paymentBtn.disabled = false;
+            } else {
+                selectedAmount = 0;
+                paymentBtn.disabled = true;
+            }
+        });
+
+        // Payment button click
+        paymentBtn.addEventListener('click', function() {
+            if (selectedAmount > 0) {
+                loadingModal.show();
+                
+                // Create payment request
+                const paymentData = {
+                    amount: selectedAmount,
+                    orderInfo: 'Nạp tiền vào ví MMO Market'
+                };
+                
+                fetch('/payment/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(paymentData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    loadingModal.hide();
+                    
+                    if (data.success) {
+                        // Redirect to VNPay
+                        window.location.href = data.paymentUrl;
+                    } else {
+                        alert('Có lỗi xảy ra: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    loadingModal.hide();
+                    alert('Có lỗi xảy ra khi tạo giao dịch');
+                    console.error('Error:', error);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
