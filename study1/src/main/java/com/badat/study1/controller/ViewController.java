@@ -1,14 +1,23 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
+import com.badat.study1.model.Wallet;
+import com.badat.study1.repository.WalletRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import java.math.BigDecimal;
+
 @Controller
 public class ViewController {
+    private final WalletRepository walletRepository;
+
+    public ViewController(WalletRepository walletRepository) {
+        this.walletRepository = walletRepository;
+    }
 
     @GetMapping("/")
     public String homePage(Model model) {
@@ -17,12 +26,20 @@ public class ViewController {
                                 !authentication.getName().equals("anonymousUser");
         
         model.addAttribute("isAuthenticated", isAuthenticated);
+        model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
+        
         if (isAuthenticated) {
             // Lấy User object từ authentication principal
             User user = (User) authentication.getPrincipal();
             model.addAttribute("username", user.getUsername());
             model.addAttribute("authorities", authentication.getAuthorities());
             model.addAttribute("userRole", user.getRole().name());
+            
+            // Lấy số dư ví
+            BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                    .map(Wallet::getBalance)
+                    .orElse(BigDecimal.ZERO);
+            model.addAttribute("walletBalance", walletBalance);
         }
         
         return "home";

@@ -61,6 +61,7 @@ public class User implements UserDetails {
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     Role role = Role.USER;
     
     String password;
