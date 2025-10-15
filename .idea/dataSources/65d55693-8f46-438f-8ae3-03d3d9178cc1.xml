@@ -1072,1068 +1072,1059 @@ sys|schema||mysql.sys|localhost|TRIGGER|G</Grants>
     <collation id="287" parent="1" name="utf8mb4_zh_0900_as_cs">
       <Charset>utf8mb4</Charset>
     </collation>
-    <schema id="288" parent="1" name="Student">
-      <CollationName>utf8mb4_0900_ai_ci</CollationName>
-    </schema>
-    <schema id="289" parent="1" name="information_schema">
+    <schema id="288" parent="1" name="information_schema">
       <CollationName>utf8mb3_general_ci</CollationName>
     </schema>
-    <schema id="290" parent="1" name="mmo_markat_duong">
-      <CollationName>utf8mb4_0900_ai_ci</CollationName>
-    </schema>
-    <schema id="291" parent="1" name="mmo_market">
+    <schema id="289" parent="1" name="mmo_market">
       <AutoIntrospectionLevel>3</AutoIntrospectionLevel>
       <Current>1</Current>
       <LastIntrospectionLevel>3</LastIntrospectionLevel>
-      <LastIntrospectionLocalTimestamp>2025-10-10.04:43:34</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2025-10-15.03:30:03</LastIntrospectionLocalTimestamp>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </schema>
-    <schema id="292" parent="1" name="mysql">
+    <schema id="290" parent="1" name="mysql">
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </schema>
-    <schema id="293" parent="1" name="performance_schema">
+    <schema id="291" parent="1" name="performance_schema">
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </schema>
-    <schema id="294" parent="1" name="studentdb">
+    <schema id="292" parent="1" name="sys">
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </schema>
-    <schema id="295" parent="1" name="sys">
-      <CollationName>utf8mb4_0900_ai_ci</CollationName>
-    </schema>
-    <user id="296" parent="1" name="mysql.infoschema">
+    <user id="293" parent="1" name="mysql.infoschema">
       <CanLogin>0</CanLogin>
       <Host>localhost</Host>
     </user>
-    <user id="297" parent="1" name="mysql.session">
+    <user id="294" parent="1" name="mysql.session">
       <CanLogin>0</CanLogin>
       <Host>localhost</Host>
     </user>
-    <user id="298" parent="1" name="mysql.sys">
+    <user id="295" parent="1" name="mysql.sys">
       <CanLogin>0</CanLogin>
       <Host>localhost</Host>
     </user>
-    <user id="299" parent="1" name="root"/>
-    <user id="300" parent="1" name="root">
+    <user id="296" parent="1" name="root"/>
+    <user id="297" parent="1" name="root">
       <Host>localhost</Host>
     </user>
-    <table id="301" parent="291" name="AuditLog">
+    <table id="298" parent="289" name="auditlog">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="302" parent="291" name="BankAccount">
+    <table id="299" parent="289" name="bankaccount">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="303" parent="291" name="Cart">
+    <table id="300" parent="289" name="cart">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="304" parent="291" name="Complaint">
+    <table id="301" parent="289" name="complaint">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="305" parent="291" name="PaymentLog">
+    <table id="302" parent="289" name="paymentlog">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="306" parent="291" name="Product">
+    <table id="303" parent="289" name="product">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="307" parent="291" name="Review">
+    <table id="304" parent="289" name="review">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="308" parent="291" name="Shop">
+    <table id="305" parent="289" name="shop">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="309" parent="291" name="Transaction">
+    <table id="306" parent="289" name="transaction">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="310" parent="291" name="Wallet">
+    <table id="307" parent="289" name="user">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="311" parent="291" name="WalletHistory">
+    <table id="308" parent="289" name="wallet">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="312" parent="291" name="WithdrawRequest">
+    <table id="309" parent="289" name="wallethistory">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <table id="313" parent="291" name="user">
+    <table id="310" parent="289" name="withdrawrequest">
       <DetailsLevel>3</DetailsLevel>
       <Engine>InnoDB</Engine>
       <CollationName>utf8mb4_0900_ai_ci</CollationName>
     </table>
-    <column id="314" parent="301" name="id">
+    <column id="311" parent="298" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="315" parent="301" name="user_id">
+    <column id="312" parent="298" name="user_id">
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="316" parent="301" name="action">
+    <column id="313" parent="298" name="action">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>varchar(255)|0s</StoredType>
     </column>
-    <column id="317" parent="301" name="details">
+    <column id="314" parent="298" name="details">
       <Position>4</Position>
       <StoredType>text|0s</StoredType>
     </column>
-    <column id="318" parent="301" name="ip_address">
+    <column id="315" parent="298" name="ip_address">
       <Position>5</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="319" parent="301" name="isDelete">
+    <column id="316" parent="298" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>6</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="320" parent="301" name="createdBy">
+    <column id="317" parent="298" name="createdBy">
       <Position>7</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="321" parent="301" name="createdAt">
+    <column id="318" parent="298" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>8</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="322" parent="301" name="updatedAt">
+    <column id="319" parent="298" name="updatedAt">
       <Position>9</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="323" parent="301" name="deletedBy">
+    <column id="320" parent="298" name="deletedBy">
       <Position>10</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <index id="324" parent="301" name="PRIMARY">
+    <index id="321" parent="298" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <key id="325" parent="301" name="PRIMARY">
+    <key id="322" parent="298" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <column id="326" parent="302" name="id">
+    <column id="323" parent="299" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="327" parent="302" name="user_id">
+    <column id="324" parent="299" name="user_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="328" parent="302" name="bank_name">
+    <column id="325" parent="299" name="bank_name">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>varchar(100)|0s</StoredType>
     </column>
-    <column id="329" parent="302" name="account_number">
+    <column id="326" parent="299" name="account_number">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="330" parent="302" name="verified_at">
+    <column id="327" parent="299" name="verified_at">
       <Position>5</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="331" parent="302" name="isDelete">
+    <column id="328" parent="299" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>6</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="332" parent="302" name="createdBy">
+    <column id="329" parent="299" name="createdBy">
       <Position>7</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="333" parent="302" name="createdAt">
+    <column id="330" parent="299" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>8</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="334" parent="302" name="updatedAt">
+    <column id="331" parent="299" name="updatedAt">
       <Position>9</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="335" parent="302" name="deletedBy">
+    <column id="332" parent="299" name="deletedBy">
       <Position>10</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <foreign-key id="336" parent="302" name="fk_bank_user">
+    <foreign-key id="333" parent="299" name="fk_bank_user">
       <ColNames>user_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>User</RefTableName>
+      <RefTableName>user</RefTableName>
     </foreign-key>
-    <index id="337" parent="302" name="PRIMARY">
+    <index id="334" parent="299" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="338" parent="302" name="account_number">
+    <index id="335" parent="299" name="account_number">
       <ColNames>account_number</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="339" parent="302" name="fk_bank_user">
+    <index id="336" parent="299" name="fk_bank_user">
       <ColNames>user_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="340" parent="302" name="PRIMARY">
+    <key id="337" parent="299" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <key id="341" parent="302" name="account_number">
+    <key id="338" parent="299" name="account_number">
       <UnderlyingIndexName>account_number</UnderlyingIndexName>
     </key>
-    <column id="342" parent="303" name="id">
+    <column id="339" parent="300" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="343" parent="303" name="user_id">
+    <column id="340" parent="300" name="user_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="344" parent="303" name="product_id">
+    <column id="341" parent="300" name="product_id">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="345" parent="303" name="quantity">
+    <column id="342" parent="300" name="quantity">
       <DefaultExpression>1</DefaultExpression>
       <Position>4</Position>
       <StoredType>int|0s</StoredType>
     </column>
-    <column id="346" parent="303" name="isDelete">
+    <column id="343" parent="300" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>5</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="347" parent="303" name="createdBy">
+    <column id="344" parent="300" name="createdBy">
       <Position>6</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="348" parent="303" name="createdAt">
+    <column id="345" parent="300" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>7</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="349" parent="303" name="updatedAt">
+    <column id="346" parent="300" name="updatedAt">
       <Position>8</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="350" parent="303" name="deletedBy">
+    <column id="347" parent="300" name="deletedBy">
       <Position>9</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <foreign-key id="351" parent="303" name="fk_cart_user">
+    <foreign-key id="348" parent="300" name="fk_cart_user">
       <ColNames>user_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>User</RefTableName>
+      <RefTableName>user</RefTableName>
     </foreign-key>
-    <foreign-key id="352" parent="303" name="fk_cart_product">
+    <foreign-key id="349" parent="300" name="fk_cart_product">
       <ColNames>product_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>Product</RefTableName>
+      <RefTableName>product</RefTableName>
     </foreign-key>
-    <index id="353" parent="303" name="PRIMARY">
+    <index id="350" parent="300" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="354" parent="303" name="fk_cart_user">
+    <index id="351" parent="300" name="fk_cart_user">
       <ColNames>user_id</ColNames>
       <Type>btree</Type>
     </index>
-    <index id="355" parent="303" name="fk_cart_product">
+    <index id="352" parent="300" name="fk_cart_product">
       <ColNames>product_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="356" parent="303" name="PRIMARY">
+    <key id="353" parent="300" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <column id="357" parent="304" name="id">
+    <column id="354" parent="301" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="358" parent="304" name="transaction_id">
+    <column id="355" parent="301" name="transaction_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="359" parent="304" name="buyer_id">
+    <column id="356" parent="301" name="buyer_id">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="360" parent="304" name="description">
+    <column id="357" parent="301" name="description">
       <Position>4</Position>
       <StoredType>text|0s</StoredType>
     </column>
-    <column id="361" parent="304" name="status">
+    <column id="358" parent="301" name="status">
       <DefaultExpression>&apos;PENDING&apos;</DefaultExpression>
       <Position>5</Position>
       <StoredType>enum(&apos;PENDING&apos;, &apos;APPROVED&apos;, &apos;REJECTED&apos;)|0e</StoredType>
     </column>
-    <column id="362" parent="304" name="isDelete">
+    <column id="359" parent="301" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>6</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="363" parent="304" name="createdBy">
+    <column id="360" parent="301" name="createdBy">
       <Position>7</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="364" parent="304" name="createdAt">
+    <column id="361" parent="301" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>8</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="365" parent="304" name="updatedAt">
+    <column id="362" parent="301" name="updatedAt">
       <Position>9</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="366" parent="304" name="deletedBy">
+    <column id="363" parent="301" name="deletedBy">
       <Position>10</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <foreign-key id="367" parent="304" name="fk_complaint_trans">
+    <foreign-key id="364" parent="301" name="fk_complaint_trans">
       <ColNames>transaction_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>Transaction</RefTableName>
+      <RefTableName>transaction</RefTableName>
     </foreign-key>
-    <foreign-key id="368" parent="304" name="fk_complaint_buyer">
+    <foreign-key id="365" parent="301" name="fk_complaint_buyer">
       <ColNames>buyer_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>User</RefTableName>
+      <RefTableName>user</RefTableName>
     </foreign-key>
-    <index id="369" parent="304" name="PRIMARY">
+    <index id="366" parent="301" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="370" parent="304" name="fk_complaint_trans">
+    <index id="367" parent="301" name="fk_complaint_trans">
       <ColNames>transaction_id</ColNames>
       <Type>btree</Type>
     </index>
-    <index id="371" parent="304" name="fk_complaint_buyer">
+    <index id="368" parent="301" name="fk_complaint_buyer">
       <ColNames>buyer_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="372" parent="304" name="PRIMARY">
+    <key id="369" parent="301" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <column id="373" parent="305" name="id">
+    <column id="370" parent="302" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="374" parent="305" name="user_id">
+    <column id="371" parent="302" name="user_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="375" parent="305" name="type">
+    <column id="372" parent="302" name="type">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>enum(&apos;DEPOSIT&apos;, &apos;WITHDRAW&apos;)|0e</StoredType>
     </column>
-    <column id="376" parent="305" name="amount">
+    <column id="373" parent="302" name="amount">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StoredType>decimal(15,2 digit)|0s</StoredType>
     </column>
-    <column id="377" parent="305" name="gateway">
+    <column id="374" parent="302" name="gateway">
       <DefaultExpression>&apos;VNPAY&apos;</DefaultExpression>
       <Position>5</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="378" parent="305" name="status">
+    <column id="375" parent="302" name="status">
       <DefaultExpression>&apos;PENDING&apos;</DefaultExpression>
       <Position>6</Position>
       <StoredType>enum(&apos;PENDING&apos;, &apos;SUCCESS&apos;, &apos;FAILED&apos;)|0e</StoredType>
     </column>
-    <column id="379" parent="305" name="isDelete">
+    <column id="376" parent="302" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>7</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="380" parent="305" name="createdBy">
+    <column id="377" parent="302" name="createdBy">
       <Position>8</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="381" parent="305" name="createdAt">
+    <column id="378" parent="302" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>9</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="382" parent="305" name="updatedAt">
+    <column id="379" parent="302" name="updatedAt">
       <Position>10</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="383" parent="305" name="deletedBy">
+    <column id="380" parent="302" name="deletedBy">
       <Position>11</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <foreign-key id="384" parent="305" name="fk_payment_user">
+    <foreign-key id="381" parent="302" name="fk_payment_user">
       <ColNames>user_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>User</RefTableName>
+      <RefTableName>user</RefTableName>
     </foreign-key>
-    <index id="385" parent="305" name="PRIMARY">
+    <index id="382" parent="302" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="386" parent="305" name="fk_payment_user">
+    <index id="383" parent="302" name="fk_payment_user">
       <ColNames>user_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="387" parent="305" name="PRIMARY">
+    <key id="384" parent="302" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <column id="388" parent="306" name="id">
+    <column id="385" parent="303" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="389" parent="306" name="shop_id">
+    <column id="386" parent="303" name="shop_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="390" parent="306" name="type">
+    <column id="387" parent="303" name="type">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="391" parent="306" name="name">
+    <column id="388" parent="303" name="name">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StoredType>varchar(100)|0s</StoredType>
     </column>
-    <column id="392" parent="306" name="description">
+    <column id="389" parent="303" name="description">
       <Position>5</Position>
       <StoredType>text|0s</StoredType>
     </column>
-    <column id="393" parent="306" name="price">
+    <column id="390" parent="303" name="price">
       <NotNull>1</NotNull>
       <Position>6</Position>
       <StoredType>decimal(15,2 digit)|0s</StoredType>
     </column>
-    <column id="394" parent="306" name="quantity">
+    <column id="391" parent="303" name="quantity">
       <DefaultExpression>1</DefaultExpression>
       <Position>7</Position>
       <StoredType>int|0s</StoredType>
     </column>
-    <column id="395" parent="306" name="unique_key">
+    <column id="392" parent="303" name="unique_key">
       <NotNull>1</NotNull>
       <Position>8</Position>
       <StoredType>varchar(255)|0s</StoredType>
     </column>
-    <column id="396" parent="306" name="status">
+    <column id="393" parent="303" name="status">
       <DefaultExpression>&apos;ACTIVE&apos;</DefaultExpression>
       <Position>9</Position>
       <StoredType>enum(&apos;ACTIVE&apos;, &apos;SOLD&apos;, &apos;BANNED&apos;)|0e</StoredType>
     </column>
-    <column id="397" parent="306" name="isDelete">
+    <column id="394" parent="303" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>10</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="398" parent="306" name="createdBy">
+    <column id="395" parent="303" name="createdBy">
       <Position>11</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="399" parent="306" name="createdAt">
+    <column id="396" parent="303" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>12</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="400" parent="306" name="updatedAt">
+    <column id="397" parent="303" name="updatedAt">
       <Position>13</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="401" parent="306" name="deletedBy">
+    <column id="398" parent="303" name="deletedBy">
       <Position>14</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <foreign-key id="402" parent="306" name="fk_product_shop">
+    <foreign-key id="399" parent="303" name="fk_product_shop">
       <ColNames>shop_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>Shop</RefTableName>
+      <RefTableName>shop</RefTableName>
     </foreign-key>
-    <index id="403" parent="306" name="PRIMARY">
+    <index id="400" parent="303" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="404" parent="306" name="uq_unique_product">
+    <index id="401" parent="303" name="uq_unique_product">
       <ColNames>unique_key</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="405" parent="306" name="fk_product_shop">
+    <index id="402" parent="303" name="fk_product_shop">
       <ColNames>shop_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="406" parent="306" name="PRIMARY">
+    <key id="403" parent="303" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <key id="407" parent="306" name="uq_unique_product">
+    <key id="404" parent="303" name="uq_unique_product">
       <UnderlyingIndexName>uq_unique_product</UnderlyingIndexName>
     </key>
-    <check id="408" parent="307" name="Review_chk_1">
+    <check id="405" parent="304" name="review_chk_1">
       <NameSurrogate>1</NameSurrogate>
       <Predicate>`rating` between 1 and 5</Predicate>
     </check>
-    <column id="409" parent="307" name="id">
+    <column id="406" parent="304" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="410" parent="307" name="user_id">
+    <column id="407" parent="304" name="user_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="411" parent="307" name="product_id">
+    <column id="408" parent="304" name="product_id">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="412" parent="307" name="rating">
+    <column id="409" parent="304" name="rating">
       <Position>4</Position>
       <StoredType>int|0s</StoredType>
     </column>
-    <column id="413" parent="307" name="comment">
+    <column id="410" parent="304" name="comment">
       <Position>5</Position>
       <StoredType>text|0s</StoredType>
     </column>
-    <column id="414" parent="307" name="isDelete">
+    <column id="411" parent="304" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>6</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="415" parent="307" name="createdBy">
+    <column id="412" parent="304" name="createdBy">
       <Position>7</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="416" parent="307" name="createdAt">
+    <column id="413" parent="304" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>8</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="417" parent="307" name="updatedAt">
+    <column id="414" parent="304" name="updatedAt">
       <Position>9</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="418" parent="307" name="deletedBy">
+    <column id="415" parent="304" name="deletedBy">
       <Position>10</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <foreign-key id="419" parent="307" name="fk_review_user">
+    <foreign-key id="416" parent="304" name="fk_review_user">
       <ColNames>user_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>User</RefTableName>
+      <RefTableName>user</RefTableName>
     </foreign-key>
-    <foreign-key id="420" parent="307" name="fk_review_product">
+    <foreign-key id="417" parent="304" name="fk_review_product">
       <ColNames>product_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>Product</RefTableName>
+      <RefTableName>product</RefTableName>
     </foreign-key>
-    <index id="421" parent="307" name="PRIMARY">
+    <index id="418" parent="304" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="422" parent="307" name="fk_review_user">
+    <index id="419" parent="304" name="fk_review_user">
       <ColNames>user_id</ColNames>
       <Type>btree</Type>
     </index>
-    <index id="423" parent="307" name="fk_review_product">
+    <index id="420" parent="304" name="fk_review_product">
       <ColNames>product_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="424" parent="307" name="PRIMARY">
+    <key id="421" parent="304" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <column id="425" parent="308" name="id">
+    <column id="422" parent="305" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="426" parent="308" name="user_id">
+    <column id="423" parent="305" name="user_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="427" parent="308" name="shop_name">
+    <column id="424" parent="305" name="shop_name">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>varchar(100)|0s</StoredType>
     </column>
-    <column id="428" parent="308" name="description">
+    <column id="425" parent="305" name="description">
       <Position>4</Position>
       <StoredType>text|0s</StoredType>
     </column>
-    <column id="429" parent="308" name="bank_account_id">
+    <column id="426" parent="305" name="bank_account_id">
       <NotNull>1</NotNull>
       <Position>5</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="430" parent="308" name="isDelete">
+    <column id="427" parent="305" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>6</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="431" parent="308" name="createdBy">
+    <column id="428" parent="305" name="createdBy">
       <Position>7</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="432" parent="308" name="createdAt">
+    <column id="429" parent="305" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>8</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="433" parent="308" name="updatedAt">
+    <column id="430" parent="305" name="updatedAt">
       <Position>9</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="434" parent="308" name="deletedBy">
+    <column id="431" parent="305" name="deletedBy">
       <Position>10</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <foreign-key id="435" parent="308" name="fk_shop_user">
+    <foreign-key id="432" parent="305" name="fk_shop_user">
       <ColNames>user_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>User</RefTableName>
+      <RefTableName>user</RefTableName>
     </foreign-key>
-    <foreign-key id="436" parent="308" name="fk_shop_bank">
+    <foreign-key id="433" parent="305" name="fk_shop_bank">
       <ColNames>bank_account_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>BankAccount</RefTableName>
+      <RefTableName>bankaccount</RefTableName>
     </foreign-key>
-    <index id="437" parent="308" name="PRIMARY">
+    <index id="434" parent="305" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="438" parent="308" name="user_id">
+    <index id="435" parent="305" name="user_id">
       <ColNames>user_id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="439" parent="308" name="fk_shop_bank">
+    <index id="436" parent="305" name="fk_shop_bank">
       <ColNames>bank_account_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="440" parent="308" name="PRIMARY">
+    <key id="437" parent="305" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <key id="441" parent="308" name="user_id">
+    <key id="438" parent="305" name="user_id">
       <UnderlyingIndexName>user_id</UnderlyingIndexName>
     </key>
-    <column id="442" parent="309" name="id">
+    <column id="439" parent="306" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="443" parent="309" name="buyer_id">
+    <column id="440" parent="306" name="buyer_id">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="444" parent="309" name="product_id">
+    <column id="441" parent="306" name="product_id">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="445" parent="309" name="amount">
+    <column id="442" parent="306" name="amount">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StoredType>decimal(15,2 digit)|0s</StoredType>
     </column>
-    <column id="446" parent="309" name="status">
+    <column id="443" parent="306" name="status">
       <DefaultExpression>&apos;PENDING&apos;</DefaultExpression>
       <Position>5</Position>
       <StoredType>enum(&apos;PENDING&apos;, &apos;HOLD&apos;, &apos;RELEASED&apos;, &apos;REFUND&apos;)|0e</StoredType>
     </column>
-    <column id="447" parent="309" name="isDelete">
+    <column id="444" parent="306" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>6</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="448" parent="309" name="createdBy">
+    <column id="445" parent="306" name="createdBy">
       <Position>7</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="449" parent="309" name="createdAt">
+    <column id="446" parent="306" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>8</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="450" parent="309" name="updatedAt">
+    <column id="447" parent="306" name="updatedAt">
       <Position>9</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="451" parent="309" name="deletedBy">
+    <column id="448" parent="306" name="deletedBy">
       <Position>10</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <foreign-key id="452" parent="309" name="fk_trans_buyer">
+    <foreign-key id="449" parent="306" name="fk_trans_buyer">
       <ColNames>buyer_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>User</RefTableName>
+      <RefTableName>user</RefTableName>
     </foreign-key>
-    <foreign-key id="453" parent="309" name="fk_trans_product">
+    <foreign-key id="450" parent="306" name="fk_trans_product">
       <ColNames>product_id</ColNames>
       <RefColNames>id</RefColNames>
-      <RefTableName>Product</RefTableName>
+      <RefTableName>product</RefTableName>
     </foreign-key>
-    <index id="454" parent="309" name="PRIMARY">
+    <index id="451" parent="306" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="455" parent="309" name="fk_trans_buyer">
+    <index id="452" parent="306" name="fk_trans_buyer">
       <ColNames>buyer_id</ColNames>
       <Type>btree</Type>
     </index>
-    <index id="456" parent="309" name="fk_trans_product">
+    <index id="453" parent="306" name="fk_trans_product">
       <ColNames>product_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="457" parent="309" name="PRIMARY">
+    <key id="454" parent="306" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <column id="458" parent="310" name="id">
+    <column id="455" parent="307" name="id">
       <AutoIncrement>1</AutoIncrement>
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>bigint|0s</StoredType>
     </column>
-    <column id="459" parent="310" name="user_id">
-      <NotNull>1</NotNull>
-      <Position>2</Position>
-      <StoredType>bigint|0s</StoredType>
-    </column>
-    <column id="460" parent="310" name="balance">
-      <DefaultExpression>0.00</DefaultExpression>
-      <Position>3</Position>
-      <StoredType>decimal(15,2 digit)|0s</StoredType>
-    </column>
-    <column id="461" parent="310" name="isDelete">
-      <DefaultExpression>0</DefaultExpression>
-      <Position>4</Position>
-      <StoredType>tinyint(1)|0s</StoredType>
-    </column>
-    <column id="462" parent="310" name="createdBy">
-      <Position>5</Position>
-      <StoredType>varchar(50)|0s</StoredType>
-    </column>
-    <column id="463" parent="310" name="createdAt">
-      <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
-      <Position>6</Position>
-      <StoredType>timestamp|0s</StoredType>
-    </column>
-    <column id="464" parent="310" name="updatedAt">
-      <Position>7</Position>
-      <StoredType>timestamp|0s</StoredType>
-    </column>
-    <column id="465" parent="310" name="deletedBy">
-      <Position>8</Position>
-      <StoredType>varchar(50)|0s</StoredType>
-    </column>
-    <foreign-key id="466" parent="310" name="fk_wallet_user">
-      <ColNames>user_id</ColNames>
-      <RefColNames>id</RefColNames>
-      <RefTableName>User</RefTableName>
-    </foreign-key>
-    <index id="467" parent="310" name="PRIMARY">
-      <ColNames>id</ColNames>
-      <Type>btree</Type>
-      <Unique>1</Unique>
-    </index>
-    <index id="468" parent="310" name="user_id">
-      <ColNames>user_id</ColNames>
-      <Type>btree</Type>
-      <Unique>1</Unique>
-    </index>
-    <key id="469" parent="310" name="PRIMARY">
-      <NameSurrogate>1</NameSurrogate>
-      <Primary>1</Primary>
-      <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
-    </key>
-    <key id="470" parent="310" name="user_id">
-      <UnderlyingIndexName>user_id</UnderlyingIndexName>
-    </key>
-    <column id="471" parent="311" name="id">
-      <AutoIncrement>1</AutoIncrement>
-      <NotNull>1</NotNull>
-      <Position>1</Position>
-      <StoredType>bigint|0s</StoredType>
-    </column>
-    <column id="472" parent="311" name="wallet_id">
-      <NotNull>1</NotNull>
-      <Position>2</Position>
-      <StoredType>bigint|0s</StoredType>
-    </column>
-    <column id="473" parent="311" name="type">
-      <NotNull>1</NotNull>
-      <Position>3</Position>
-      <StoredType>enum(&apos;DEPOSIT&apos;, &apos;WITHDRAW&apos;, &apos;PURCHASE&apos;, &apos;REFUND&apos;)|0e</StoredType>
-    </column>
-    <column id="474" parent="311" name="amount">
-      <NotNull>1</NotNull>
-      <Position>4</Position>
-      <StoredType>decimal(15,2 digit)|0s</StoredType>
-    </column>
-    <column id="475" parent="311" name="reference_id">
-      <Position>5</Position>
-      <StoredType>bigint|0s</StoredType>
-    </column>
-    <column id="476" parent="311" name="description">
-      <Position>6</Position>
-      <StoredType>text|0s</StoredType>
-    </column>
-    <column id="477" parent="311" name="isDelete">
-      <DefaultExpression>0</DefaultExpression>
-      <Position>7</Position>
-      <StoredType>tinyint(1)|0s</StoredType>
-    </column>
-    <column id="478" parent="311" name="createdBy">
-      <Position>8</Position>
-      <StoredType>varchar(50)|0s</StoredType>
-    </column>
-    <column id="479" parent="311" name="createdAt">
-      <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
-      <Position>9</Position>
-      <StoredType>timestamp|0s</StoredType>
-    </column>
-    <column id="480" parent="311" name="updatedAt">
-      <Position>10</Position>
-      <StoredType>timestamp|0s</StoredType>
-    </column>
-    <column id="481" parent="311" name="deletedBy">
-      <Position>11</Position>
-      <StoredType>varchar(50)|0s</StoredType>
-    </column>
-    <foreign-key id="482" parent="311" name="fk_wallet_history">
-      <ColNames>wallet_id</ColNames>
-      <RefColNames>id</RefColNames>
-      <RefTableName>Wallet</RefTableName>
-    </foreign-key>
-    <index id="483" parent="311" name="PRIMARY">
-      <ColNames>id</ColNames>
-      <Type>btree</Type>
-      <Unique>1</Unique>
-    </index>
-    <index id="484" parent="311" name="fk_wallet_history">
-      <ColNames>wallet_id</ColNames>
-      <Type>btree</Type>
-    </index>
-    <key id="485" parent="311" name="PRIMARY">
-      <NameSurrogate>1</NameSurrogate>
-      <Primary>1</Primary>
-      <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
-    </key>
-    <column id="486" parent="312" name="id">
-      <AutoIncrement>1</AutoIncrement>
-      <NotNull>1</NotNull>
-      <Position>1</Position>
-      <StoredType>bigint|0s</StoredType>
-    </column>
-    <column id="487" parent="312" name="shop_id">
-      <NotNull>1</NotNull>
-      <Position>2</Position>
-      <StoredType>bigint|0s</StoredType>
-    </column>
-    <column id="488" parent="312" name="amount">
-      <NotNull>1</NotNull>
-      <Position>3</Position>
-      <StoredType>decimal(15,2 digit)|0s</StoredType>
-    </column>
-    <column id="489" parent="312" name="status">
-      <DefaultExpression>&apos;PENDING&apos;</DefaultExpression>
-      <Position>4</Position>
-      <StoredType>enum(&apos;PENDING&apos;, &apos;APPROVED&apos;, &apos;REJECTED&apos;)|0e</StoredType>
-    </column>
-    <column id="490" parent="312" name="isDelete">
-      <DefaultExpression>0</DefaultExpression>
-      <Position>5</Position>
-      <StoredType>tinyint(1)|0s</StoredType>
-    </column>
-    <column id="491" parent="312" name="createdBy">
-      <Position>6</Position>
-      <StoredType>varchar(50)|0s</StoredType>
-    </column>
-    <column id="492" parent="312" name="createdAt">
-      <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
-      <Position>7</Position>
-      <StoredType>timestamp|0s</StoredType>
-    </column>
-    <column id="493" parent="312" name="updatedAt">
-      <Position>8</Position>
-      <StoredType>timestamp|0s</StoredType>
-    </column>
-    <column id="494" parent="312" name="deletedBy">
-      <Position>9</Position>
-      <StoredType>varchar(50)|0s</StoredType>
-    </column>
-    <foreign-key id="495" parent="312" name="fk_withdraw_shop">
-      <ColNames>shop_id</ColNames>
-      <RefColNames>id</RefColNames>
-      <RefTableName>Shop</RefTableName>
-    </foreign-key>
-    <index id="496" parent="312" name="PRIMARY">
-      <ColNames>id</ColNames>
-      <Type>btree</Type>
-      <Unique>1</Unique>
-    </index>
-    <index id="497" parent="312" name="fk_withdraw_shop">
-      <ColNames>shop_id</ColNames>
-      <Type>btree</Type>
-    </index>
-    <key id="498" parent="312" name="PRIMARY">
-      <NameSurrogate>1</NameSurrogate>
-      <Primary>1</Primary>
-      <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
-    </key>
-    <column id="499" parent="313" name="id">
-      <AutoIncrement>1</AutoIncrement>
-      <NotNull>1</NotNull>
-      <Position>1</Position>
-      <StoredType>bigint|0s</StoredType>
-    </column>
-    <column id="500" parent="313" name="username">
+    <column id="456" parent="307" name="username">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="501" parent="313" name="password">
+    <column id="457" parent="307" name="password">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>varchar(255)|0s</StoredType>
     </column>
-    <column id="502" parent="313" name="email">
+    <column id="458" parent="307" name="email">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StoredType>varchar(100)|0s</StoredType>
     </column>
-    <column id="503" parent="313" name="phone">
+    <column id="459" parent="307" name="phone">
       <Position>5</Position>
       <StoredType>varchar(20)|0s</StoredType>
     </column>
-    <column id="504" parent="313" name="full_name">
+    <column id="460" parent="307" name="full_name">
       <Position>6</Position>
       <StoredType>varchar(100)|0s</StoredType>
     </column>
-    <column id="505" parent="313" name="role">
+    <column id="461" parent="307" name="role">
       <DefaultExpression>&apos;USER&apos;</DefaultExpression>
       <Position>7</Position>
-      <StoredType>enum(&apos;USER&apos;, &apos;ADMIN&apos;)|0e</StoredType>
+      <StoredType>enum(&apos;USER&apos;, &apos;ADMIN&apos;, &apos;SELLER&apos;)|0e</StoredType>
     </column>
-    <column id="506" parent="313" name="status">
+    <column id="462" parent="307" name="status">
       <DefaultExpression>&apos;ACTIVE&apos;</DefaultExpression>
       <Position>8</Position>
       <StoredType>enum(&apos;ACTIVE&apos;, &apos;LOCKED&apos;)|0e</StoredType>
     </column>
-    <column id="507" parent="313" name="isDelete">
+    <column id="463" parent="307" name="isDelete">
       <DefaultExpression>0</DefaultExpression>
       <Position>9</Position>
       <StoredType>tinyint(1)|0s</StoredType>
     </column>
-    <column id="508" parent="313" name="createdBy">
+    <column id="464" parent="307" name="createdBy">
       <Position>10</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <column id="509" parent="313" name="createdAt">
+    <column id="465" parent="307" name="createdAt">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>11</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="510" parent="313" name="updatedAt">
+    <column id="466" parent="307" name="updatedAt">
       <Position>12</Position>
       <StoredType>timestamp|0s</StoredType>
     </column>
-    <column id="511" parent="313" name="deletedBy">
+    <column id="467" parent="307" name="deletedBy">
       <Position>13</Position>
       <StoredType>varchar(50)|0s</StoredType>
     </column>
-    <index id="512" parent="313" name="PRIMARY">
+    <index id="468" parent="307" name="PRIMARY">
       <ColNames>id</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="513" parent="313" name="username">
+    <index id="469" parent="307" name="username">
       <ColNames>username</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <index id="514" parent="313" name="email">
+    <index id="470" parent="307" name="email">
       <ColNames>email</ColNames>
       <Type>btree</Type>
       <Unique>1</Unique>
     </index>
-    <key id="515" parent="313" name="PRIMARY">
+    <key id="471" parent="307" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <Primary>1</Primary>
       <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
-    <key id="516" parent="313" name="username">
+    <key id="472" parent="307" name="username">
       <UnderlyingIndexName>username</UnderlyingIndexName>
     </key>
-    <key id="517" parent="313" name="email">
+    <key id="473" parent="307" name="email">
       <UnderlyingIndexName>email</UnderlyingIndexName>
+    </key>
+    <column id="474" parent="308" name="id">
+      <AutoIncrement>1</AutoIncrement>
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>bigint|0s</StoredType>
+    </column>
+    <column id="475" parent="308" name="user_id">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>bigint|0s</StoredType>
+    </column>
+    <column id="476" parent="308" name="balance">
+      <DefaultExpression>0.00</DefaultExpression>
+      <Position>3</Position>
+      <StoredType>decimal(15,2 digit)|0s</StoredType>
+    </column>
+    <column id="477" parent="308" name="isDelete">
+      <DefaultExpression>0</DefaultExpression>
+      <Position>4</Position>
+      <StoredType>tinyint(1)|0s</StoredType>
+    </column>
+    <column id="478" parent="308" name="createdBy">
+      <Position>5</Position>
+      <StoredType>varchar(50)|0s</StoredType>
+    </column>
+    <column id="479" parent="308" name="createdAt">
+      <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
+      <Position>6</Position>
+      <StoredType>timestamp|0s</StoredType>
+    </column>
+    <column id="480" parent="308" name="updatedAt">
+      <Position>7</Position>
+      <StoredType>timestamp|0s</StoredType>
+    </column>
+    <column id="481" parent="308" name="deletedBy">
+      <Position>8</Position>
+      <StoredType>varchar(50)|0s</StoredType>
+    </column>
+    <foreign-key id="482" parent="308" name="fk_wallet_user">
+      <ColNames>user_id</ColNames>
+      <RefColNames>id</RefColNames>
+      <RefTableName>user</RefTableName>
+    </foreign-key>
+    <index id="483" parent="308" name="PRIMARY">
+      <ColNames>id</ColNames>
+      <Type>btree</Type>
+      <Unique>1</Unique>
+    </index>
+    <index id="484" parent="308" name="user_id">
+      <ColNames>user_id</ColNames>
+      <Type>btree</Type>
+      <Unique>1</Unique>
+    </index>
+    <key id="485" parent="308" name="PRIMARY">
+      <NameSurrogate>1</NameSurrogate>
+      <Primary>1</Primary>
+      <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
+    </key>
+    <key id="486" parent="308" name="user_id">
+      <UnderlyingIndexName>user_id</UnderlyingIndexName>
+    </key>
+    <column id="487" parent="309" name="id">
+      <AutoIncrement>1</AutoIncrement>
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>bigint|0s</StoredType>
+    </column>
+    <column id="488" parent="309" name="wallet_id">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>bigint|0s</StoredType>
+    </column>
+    <column id="489" parent="309" name="type">
+      <NotNull>1</NotNull>
+      <Position>3</Position>
+      <StoredType>enum(&apos;DEPOSIT&apos;, &apos;WITHDRAW&apos;, &apos;PURCHASE&apos;, &apos;REFUND&apos;)|0e</StoredType>
+    </column>
+    <column id="490" parent="309" name="amount">
+      <NotNull>1</NotNull>
+      <Position>4</Position>
+      <StoredType>decimal(15,2 digit)|0s</StoredType>
+    </column>
+    <column id="491" parent="309" name="reference_id">
+      <Position>5</Position>
+      <StoredType>bigint|0s</StoredType>
+    </column>
+    <column id="492" parent="309" name="description">
+      <Position>6</Position>
+      <StoredType>text|0s</StoredType>
+    </column>
+    <column id="493" parent="309" name="isDelete">
+      <DefaultExpression>0</DefaultExpression>
+      <Position>7</Position>
+      <StoredType>tinyint(1)|0s</StoredType>
+    </column>
+    <column id="494" parent="309" name="createdBy">
+      <Position>8</Position>
+      <StoredType>varchar(50)|0s</StoredType>
+    </column>
+    <column id="495" parent="309" name="createdAt">
+      <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
+      <Position>9</Position>
+      <StoredType>timestamp|0s</StoredType>
+    </column>
+    <column id="496" parent="309" name="updatedAt">
+      <Position>10</Position>
+      <StoredType>timestamp|0s</StoredType>
+    </column>
+    <column id="497" parent="309" name="deletedBy">
+      <Position>11</Position>
+      <StoredType>varchar(50)|0s</StoredType>
+    </column>
+    <foreign-key id="498" parent="309" name="fk_wallet_history">
+      <ColNames>wallet_id</ColNames>
+      <RefColNames>id</RefColNames>
+      <RefTableName>wallet</RefTableName>
+    </foreign-key>
+    <index id="499" parent="309" name="PRIMARY">
+      <ColNames>id</ColNames>
+      <Type>btree</Type>
+      <Unique>1</Unique>
+    </index>
+    <index id="500" parent="309" name="fk_wallet_history">
+      <ColNames>wallet_id</ColNames>
+      <Type>btree</Type>
+    </index>
+    <key id="501" parent="309" name="PRIMARY">
+      <NameSurrogate>1</NameSurrogate>
+      <Primary>1</Primary>
+      <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
+    </key>
+    <column id="502" parent="310" name="id">
+      <AutoIncrement>1</AutoIncrement>
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StoredType>bigint|0s</StoredType>
+    </column>
+    <column id="503" parent="310" name="shop_id">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>bigint|0s</StoredType>
+    </column>
+    <column id="504" parent="310" name="amount">
+      <NotNull>1</NotNull>
+      <Position>3</Position>
+      <StoredType>decimal(15,2 digit)|0s</StoredType>
+    </column>
+    <column id="505" parent="310" name="status">
+      <DefaultExpression>&apos;PENDING&apos;</DefaultExpression>
+      <Position>4</Position>
+      <StoredType>enum(&apos;PENDING&apos;, &apos;APPROVED&apos;, &apos;REJECTED&apos;)|0e</StoredType>
+    </column>
+    <column id="506" parent="310" name="isDelete">
+      <DefaultExpression>0</DefaultExpression>
+      <Position>5</Position>
+      <StoredType>tinyint(1)|0s</StoredType>
+    </column>
+    <column id="507" parent="310" name="createdBy">
+      <Position>6</Position>
+      <StoredType>varchar(50)|0s</StoredType>
+    </column>
+    <column id="508" parent="310" name="createdAt">
+      <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
+      <Position>7</Position>
+      <StoredType>timestamp|0s</StoredType>
+    </column>
+    <column id="509" parent="310" name="updatedAt">
+      <Position>8</Position>
+      <StoredType>timestamp|0s</StoredType>
+    </column>
+    <column id="510" parent="310" name="deletedBy">
+      <Position>9</Position>
+      <StoredType>varchar(50)|0s</StoredType>
+    </column>
+    <foreign-key id="511" parent="310" name="fk_withdraw_shop">
+      <ColNames>shop_id</ColNames>
+      <RefColNames>id</RefColNames>
+      <RefTableName>shop</RefTableName>
+    </foreign-key>
+    <index id="512" parent="310" name="PRIMARY">
+      <ColNames>id</ColNames>
+      <Type>btree</Type>
+      <Unique>1</Unique>
+    </index>
+    <index id="513" parent="310" name="fk_withdraw_shop">
+      <ColNames>shop_id</ColNames>
+      <Type>btree</Type>
+    </index>
+    <key id="514" parent="310" name="PRIMARY">
+      <NameSurrogate>1</NameSurrogate>
+      <Primary>1</Primary>
+      <UnderlyingIndexName>PRIMARY</UnderlyingIndexName>
     </key>
   </database-model>
 </dataSource>
