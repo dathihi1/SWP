@@ -1,6 +1,7 @@
 package com.badat.study1.service;
 
 import com.badat.study1.dto.request.ProfileUpdateRequest;
+import com.badat.study1.dto.request.ChangePasswordRequest;
 import com.badat.study1.dto.request.UserCreateRequest;
 import com.badat.study1.dto.response.ProfileResponse;
 import com.badat.study1.model.User;
@@ -207,6 +208,27 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
     
+    // Change password
+    public void changePassword(String username, String currentPassword, String newPassword) {
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User not found");
+        }
+        User user = userOpt.get();
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Mật khẩu không đúng");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("Mật khẩu mới phải có ít nhất 6 ký tự");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new RuntimeException("Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password changed successfully for user: {}", username);
+    }
+
     // Forgot password methods
     public void sendForgotPasswordOtp(String email) {
         // Check if user exists
