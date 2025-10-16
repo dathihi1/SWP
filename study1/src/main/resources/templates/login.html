@@ -48,6 +48,7 @@
 
     <div class="card p-4">
         <div id="alert" class="alert alert-danger d-none" role="alert"></div>
+        <div th:if="${param.required}" class="alert alert-warning" role="alert">Vui lòng đăng nhập!</div>
         <form th:action="@{/login}" method="post">
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>

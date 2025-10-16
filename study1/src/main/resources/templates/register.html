@@ -45,6 +45,13 @@
                 </div>
             </div>
             <div class="row g-3">
+                <div class="col-12">
+                    <label for="username" class="form-label">Tên đăng nhập</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" class="form-control" id="username" placeholder="username" required>
+                    </div>
+                </div>
                 <div class="col-12 col-md-6">
                     <label for="password" class="form-label">Mật khẩu</label>
                     <div class="input-group">
@@ -68,19 +75,7 @@
             </div>
         </form>
 
-        <form id="otpForm" class="d-none">
-            <div class="mb-3">
-                <label for="otp" class="form-label">Mã OTP</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-key"></i></span>
-                    <input type="text" class="form-control" id="otp" placeholder="Nhập mã OTP" required>
-                </div>
-                <div class="form-text">Mã OTP đã được gửi đến email của bạn.</div>
-            </div>
-            <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary">Xác nhận</button>
-            </div>
-        </form>
+        <!-- OTP disabled -->
 
         <div class="text-center mt-3">
             <span class="text-muted">Đã có tài khoản?</span>
@@ -112,35 +107,7 @@
             const response = await fetch('/users/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-
-            if (response.ok) {
-                document.getElementById('registerForm').classList.add('d-none');
-                document.getElementById('otpForm').classList.remove('d-none');
-            } else {
-                const error = await response.json();
-                alertBox.textContent = error.message;
-                alertBox.classList.remove('d-none');
-            }
-        } catch (error) {
-            alertBox.textContent = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
-            alertBox.classList.remove('d-none');
-        }
-    });
-
-    document.getElementById('otpForm').addEventListener('submit', async function (event) {
-        event.preventDefault();
-        const email = document.getElementById('email').value.trim();
-        const otp = document.getElementById('otp').value.trim();
-        const alertBox = document.getElementById('alert');
-        alertBox.classList.add('d-none');
-
-        try {
-            const response = await fetch('/users/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, otp })
+                body: JSON.stringify({ email, username: document.getElementById('username').value.trim(), password })
             });
 
             if (response.ok) {
