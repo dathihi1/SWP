@@ -3,6 +3,7 @@ package com.badat.study1.service;
 import com.badat.study1.dto.JwtInfo;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.RedisTokenRepository;
+import org.springframework.security.core.userdetails.UserDetails;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -30,7 +31,7 @@ public class JwtService {
         Date issueTime = new Date();
         Date expirationTime = Date.from(issueTime.toInstant().plusSeconds(30 * 60));
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getEmail())
+                .subject(user.getUsername())
                 .issueTime(issueTime)
                 .expirationTime(expirationTime)
                 .jwtID(UUID.randomUUID().toString())
@@ -53,7 +54,7 @@ public class JwtService {
         Date issueTime = new Date();
         Date expirationTime = Date.from(issueTime.toInstant().plus(30, ChronoUnit.DAYS));
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getEmail())
+                .subject(user.getUsername())
                 .issueTime(issueTime)
                 .expirationTime(expirationTime)
                 .build();
@@ -76,6 +77,20 @@ public class JwtService {
         if (redisTokenRepository.existsById(jwtId)) throw new RuntimeException("Token has been used");
         if (expirationTime.before(new Date())) return false;
         return signedJWT.verify(new MACVerifier(secret));
+    }
+
+    public String extractUsername(String token) throws ParseException {
+        SignedJWT signedJWT = SignedJWT.parse(token);
+        return signedJWT.getJWTClaimsSet().getSubject();
+    }
+
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        try {
+            String username = extractUsername(token);
+            return username.equals(userDetails.getUsername()) && verifyToken(token);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public JwtInfo parseToken(String token) throws ParseException {
