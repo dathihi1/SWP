@@ -116,10 +116,13 @@
         .stat-card {
             background: white;
             border-radius: 12px;
-            padding: 25px;
+            padding: 16px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             border-left: 4px solid #0d6efd;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .stat-card.success {
+            border-left-color: #198754; /* green for revenue */
         }
         
         .stat-card:hover {
@@ -128,7 +131,7 @@
         }
         
         .stat-number {
-            font-size: 2rem;
+            font-size: 1.25rem;
             font-weight: bold;
             color: #0d6efd;
         }
@@ -154,6 +157,12 @@
             border-radius: 12px;
             padding: 25px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Force stacked layout for stats within left half */
+        .stats-stack { display: flex; flex-direction: column; }
+        @media (min-width: 768px) {
+            .stats-stack { display: flex; flex-direction: column; }
         }
         
         .chart-header {
@@ -192,9 +201,7 @@
                     <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
                     MMO Market
                 </a>
-                <button class="btn btn-outline-secondary btn-sm" id="sidebarToggle">
-                    <i class="fas fa-times"></i>
-                </button>
+                
             </div>
         </div>
         
@@ -236,16 +243,13 @@
         <!-- Top Navbar -->
         <div class="top-navbar">
             <div class="d-flex align-items-center">
+                <button class="btn btn-outline-secondary me-3" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <h4 class="mb-0">Dashboard</h4>
             </div>
             
             <div class="d-flex align-items-center gap-3">
-                <!-- Messages -->
-                <a class="btn btn-outline-warning d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
-                    <i class="fa-solid fa-message"></i>
-                    <span>Tin nhắn</span>
-                </a>
-                
                 <!-- Profile Dropdown -->
                 <div class="dropdown">
                     <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
@@ -269,8 +273,9 @@
         <div class="content-area">
             <!-- Sales Overview -->
             <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="stat-card">
+                <!-- Each card 25% (col-md-3), remaining 50% empty (col-md-6) -->
+                <div class="col-12 col-md-3">
+                    <div class="stat-card w-100 h-100">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon me-3">
                                 <i class="fas fa-shopping-cart fa-2x text-primary"></i>
@@ -282,25 +287,30 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="stat-card">
+                <div class="col-12 col-md-3 mt-3 mt-md-0">
+                    <div class="stat-card success w-100 h-100">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon me-3">
-                                <i class="fas fa-dollar-sign fa-2x text-success"></i>
+                                <i class="fas fa-dollar-sign fa-2x" style="color:#198754;"></i>
                             </div>
                             <div>
-                                <div class="stat-number">0 VNĐ</div>
+                                <div class="stat-number" style="color:#198754;">0 VNĐ</div>
                                 <div class="stat-label">Doanh số</div>
                             </div>
                         </div>
                     </div>
                 </div>
+                <div class="d-none d-md-block col-md-6"></div>
             </div>
             
             <!-- Sales Chart -->
             <div class="chart-container">
-                <div class="chart-header">
-                    <h5 class="mb-0">Thống kê doanh số 30 ngày gần nhất</h5>
+                <div class="chart-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-primary"></i>
+                        <span>30 ngày gần nhất</span>
+                    </h6>
+                    <input type="month" id="monthPicker" class="form-control form-control-sm" style="width: 150px;" aria-label="Chọn tháng/năm">
                 </div>
                 <div class="chart-body">
                     <canvas id="salesChart" width="400" height="200"></canvas>
@@ -318,7 +328,7 @@
             const sidebar = document.querySelector('.sidebar');
             const mainContent = document.querySelector('.main-content');
             
-            sidebarToggle.addEventListener('click', function() {
+             sidebarToggle.addEventListener('click', function() {
                 sidebar.classList.toggle('collapsed');
                 
                 // Update main content margin
@@ -327,74 +337,77 @@
                 } else {
                     mainContent.style.marginLeft = '280px';
                 }
-                
-                // Update toggle button icon
-                const icon = sidebarToggle.querySelector('i');
-                if (sidebar.classList.contains('collapsed')) {
-                    icon.className = 'fas fa-bars';
-                } else {
-                    icon.className = 'fas fa-times';
-                }
+                 // Keep hamburger icon for both states
             });
         });
         
-        // Sample data for sales chart (30 days)
-        const salesData = {
-            labels: [],
-            datasets: [{
-                label: 'Doanh số (VNĐ)',
-                data: [],
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4
-            }]
-        };
-        
-        // Generate last 30 days labels
-        for (let i = 29; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            salesData.labels.push(date.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }));
-        }
-        
-        // Generate sample sales data
-        for (let i = 0; i < 30; i++) {
-            salesData.datasets[0].data.push(Math.floor(Math.random() * 1000000) + 500000);
-        }
-        
-        // Create chart
-        const ctx = document.getElementById('salesChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: salesData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return value.toLocaleString('vi-VN') + ' VNĐ';
-                            }
-                        }
-                    }
-                },
-                elements: {
-                    point: {
-                        radius: 4,
-                        hoverRadius: 6
-                    }
-                }
-            }
-        });
+         // Load real data for last 30 days
+         (function() {
+             const ctx = document.getElementById('salesChart').getContext('2d');
+             let chart;
+
+             async function loadAndRender(monthParam) {
+                 const url = monthParam ? (`/api/seller/sales?month=${monthParam}`) : '/api/seller/sales';
+                 const res = await fetch(url);
+                 const json = await res.json();
+                 const labels = json.labels.map(d => new Date(d).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }));
+                 const data = json.totals;
+                 // Update small cards with sums
+                 const ordersEl = document.querySelector('.stat-card .stat-number');
+                 if (ordersEl) ordersEl.textContent = (json.ordersSum || 0).toLocaleString('vi-VN');
+                 const revenueEl = document.querySelector('.stat-card.success .stat-number');
+                 if (revenueEl) revenueEl.textContent = ((json.revenueSum || 0).toLocaleString('vi-VN')) + ' VNĐ';
+                 const salesData = {
+                     labels: labels,
+                     datasets: [{
+                         label: 'Doanh số (VNĐ)',
+                         data: data,
+                         borderColor: '#0d6efd',
+                         backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                         borderWidth: 2,
+                         fill: true,
+                         tension: 0.4
+                     }]
+                 };
+                 if (chart) chart.destroy();
+                 chart = new Chart(ctx, {
+                     type: 'line',
+                     data: salesData,
+                     options: {
+                         responsive: true,
+                         maintainAspectRatio: false,
+                         plugins: { legend: { display: false } },
+                         scales: {
+                             y: {
+                                 beginAtZero: true,
+                                 ticks: { callback: v => v.toLocaleString('vi-VN') + ' VNĐ' }
+                             }
+                         },
+                         elements: { point: { radius: 4, hoverRadius: 6 } }
+                     }
+                 });
+             }
+
+             // initial
+             loadAndRender();
+
+             // filter by month/year: when changed, refetch (server currently returns last 30 days; extend later)
+             const monthPicker = document.getElementById('monthPicker');
+             monthPicker.addEventListener('change', function() {
+                 loadAndRender(this.value);
+                 // Update small cards (orders & revenue) with sums from API
+                 // Fetch again to get sums matching the selected month
+                 fetch(this.value ? (`/api/seller/sales?month=${this.value}`) : '/api/seller/sales')
+                     .then(r => r.json())
+                     .then(j => {
+                         const ordersEl = document.querySelector('.stat-card .stat-number');
+                         if (ordersEl) ordersEl.textContent = (j.ordersSum || 0).toLocaleString('vi-VN');
+                         const revenueEl = document.querySelector('.stat-card.success .stat-number');
+                         if (revenueEl) revenueEl.textContent = ((j.revenueSum || 0).toLocaleString('vi-VN')) + ' VNĐ';
+                     })
+                     .catch(() => {});
+             });
+         })();
     </script>
 </body>
 </html>
