@@ -277,6 +277,24 @@ public class ViewController {
         return "customer/profile";
     }
 
+    @GetMapping("/cart")
+    public String cartPage(Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        return "customer/cart";
+    }
+
     @GetMapping("/seller/store")
     public String sellerStorePage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

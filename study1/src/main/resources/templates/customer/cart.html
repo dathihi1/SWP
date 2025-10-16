@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Giỏ hàng</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; }
+        .container { max-width: 960px; margin: 0 auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f7f7f7; }
+        .actions { display: flex; gap: 8px; }
+        .total { text-align: right; margin-top: 12px; font-weight: bold; }
+        button { padding: 6px 10px; cursor: pointer; }
+    </style>
+    <script>
+        async function loadCart() {
+            const res = await fetch('/api/cart');
+            const cart = await res.json();
+            const tbody = document.getElementById('cart-body');
+            tbody.innerHTML = '';
+            let total = 0;
+            (cart.items || []).forEach(item => {
+                const tr = document.createElement('tr');
+                const price = item.product.price || 0;
+                const subtotal = price * item.quantity;
+                total += subtotal;
+                tr.innerHTML = `
+                    <td>${item.product.id}</td>
+                    <td>${item.product.name}</td>
+                    <td>${price.toFixed(2)}</td>
+                    <td>
+                        <input type="number" min="1" value="${item.quantity}" style="width:70px" onchange="updateQty(${item.product.id}, this.value)" />
+                    </td>
+                    <td>${subtotal.toFixed(2)}</td>
+                    <td class="actions">
+                        <button onclick="removeItem(${item.product.id})">Xóa</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('total').innerText = total.toFixed(2);
+        }
+
+        async function addItem(productId, quantity = 1) {
+            await fetch(`/api/cart/add/${productId}?quantity=${quantity}`, { method: 'POST' });
+            await loadCart();
+        }
+
+        async function updateQty(productId, quantity) {
+            await fetch(`/api/cart/update/${productId}?quantity=${quantity}`, { method: 'PUT' });
+            await loadCart();
+        }
+
+        async function removeItem(productId) {
+            await fetch(`/api/cart/remove/${productId}`, { method: 'DELETE' });
+            await loadCart();
+        }
+
+        async function clearCart() {
+            await fetch(`/api/cart/clear`, { method: 'DELETE' });
+            await loadCart();
+        }
+
+        document.addEventListener('DOMContentLoaded', loadCart);
+    </script>
+</head>
+<body>
+<div class="container">
+    <h1>Giỏ hàng</h1>
+
+    <div style="margin: 8px 0;">
+        <button onclick="clearCart()">Xóa toàn bộ</button>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Tên sản phẩm</th>
+            <th>Giá</th>
+            <th>Số lượng</th>
+            <th>Tạm tính</th>
+            <th>Hành động</th>
+        </tr>
+        </thead>
+        <tbody id="cart-body"></tbody>
+    </table>
+
+    <div class="total">Tổng cộng: <span id="total">0.00</span></div>
+</div>
+</body>
+</html>
+
+
+
