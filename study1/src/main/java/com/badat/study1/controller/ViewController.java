@@ -3,6 +3,7 @@ package com.badat.study1.controller;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.repository.WalletRepository;
+import com.badat.study1.repository.ShopRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -14,9 +15,11 @@ import java.math.BigDecimal;
 @Controller
 public class ViewController {
     private final WalletRepository walletRepository;
+    private final ShopRepository shopRepository;
 
-    public ViewController(WalletRepository walletRepository) {
+    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository) {
         this.walletRepository = walletRepository;
+        this.shopRepository = shopRepository;
     }
 
     @GetMapping("/")
@@ -65,31 +68,30 @@ public class ViewController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
-        
+
+        if (!isAuthenticated) {
+            return "redirect:/login?required=1";
+        }
+
         model.addAttribute("isAuthenticated", isAuthenticated);
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
-        
-        if (isAuthenticated) {
-            User user = (User) authentication.getPrincipal();
-            model.addAttribute("username", user.getUsername());
-            model.addAttribute("authorities", authentication.getAuthorities());
-            model.addAttribute("userRole", user.getRole().name());
-            
-            // Lấy số dư ví
-            BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                    .map(Wallet::getBalance)
-                    .orElse(BigDecimal.ZERO);
-            model.addAttribute("walletBalance", walletBalance);
-            
-            // Kiểm tra role của user
-            if (user.getRole() == User.Role.SELLER) {
-                model.addAttribute("alreadySeller", true);
-            } else {
-                model.addAttribute("alreadySeller", false);
-            }
-        } else {
-            model.addAttribute("alreadySeller", false);
-        }
+
+        User user = (User) authentication.getPrincipal();
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("authorities", authentication.getAuthorities());
+        model.addAttribute("userRole", user.getRole().name());
+
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+
+        // Đã có shop => đang chờ duyệt nếu role chưa là SELLER
+        boolean hasShop = shopRepository.findByUserId(user.getId()).isPresent();
+        boolean isSeller = user.getRole() == User.Role.SELLER;
+        model.addAttribute("pendingReview", hasShop && !isSeller);
+        model.addAttribute("alreadySeller", isSeller);
         
         return "seller/register";
     }
