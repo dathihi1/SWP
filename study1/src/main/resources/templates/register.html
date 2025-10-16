@@ -38,7 +38,14 @@
         <div id="alert" class="alert alert-danger d-none" role="alert"></div>
         <form id="registerForm">
             <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
+                <label for="username" class="form-label">Tên đăng nhập</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                    <input type="text" class="form-control" id="username" placeholder="username" minlength="3" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Gmail</label>
                 <div class="input-group">
                     <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
                     <input type="email" class="form-control" id="email" placeholder="you@example.com" required>
@@ -96,6 +103,7 @@
 <script>
     document.getElementById('registerForm').addEventListener('submit', async function (event) {
         event.preventDefault();
+        const username = document.getElementById('username').value.trim();
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm').value;
@@ -112,15 +120,15 @@
             const response = await fetch('/users/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ username, email, password })
             });
 
             if (response.ok) {
-                document.getElementById('registerForm').classList.add('d-none');
-                document.getElementById('otpForm').classList.remove('d-none');
+                // chuyển sang trang verify-otp, truyền email qua query hoặc model
+                window.location.href = '/verify-otp?email=' + encodeURIComponent(email);
             } else {
-                const error = await response.json();
-                alertBox.textContent = error.message;
+                const errorText = await response.text();
+                alertBox.textContent = errorText || 'Đăng ký thất bại';
                 alertBox.classList.remove('d-none');
             }
         } catch (error) {

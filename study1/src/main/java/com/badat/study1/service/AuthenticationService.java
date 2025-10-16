@@ -24,7 +24,7 @@ public class AuthenticationService {
     private final RedisTokenRepository redisTokenRepository;
 
     public LoginResponse login(LoginRequest request){
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword());
         Authentication authenticate = authenticationManager.authenticate(authenticationToken);
 
         User user = (User) authenticate.getPrincipal();

@@ -3,14 +3,17 @@ package com.badat.study1.controller;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.repository.WalletRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
 
+@Slf4j
 @Controller
 public class ViewController {
     private final WalletRepository walletRepository;
@@ -22,8 +25,13 @@ public class ViewController {
     @GetMapping("/")
     public String homePage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        log.debug("Home page - Authentication: {}, Name: {}", authentication, 
+                 authentication != null ? authentication.getName() : "null");
+        
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
+        
+        log.debug("Is authenticated: {}", isAuthenticated);
         
         model.addAttribute("isAuthenticated", isAuthenticated);
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
@@ -31,6 +39,8 @@ public class ViewController {
         if (isAuthenticated) {
             // Lấy User object từ authentication principal
             User user = (User) authentication.getPrincipal();
+            log.debug("User: {}, Role: {}", user.getUsername(), user.getRole());
+            
             model.addAttribute("username", user.getUsername());
             model.addAttribute("authorities", authentication.getAuthorities());
             model.addAttribute("userRole", user.getRole().name());
@@ -58,6 +68,14 @@ public class ViewController {
     @GetMapping("/register")
     public String registerPage() {
         return "register";
+    }
+
+    @GetMapping("/verify-otp")
+    public String verifyOtpPage(@RequestParam(value = "email", required = false) String email, Model model) {
+        if (email != null) {
+            model.addAttribute("email", email);
+        }
+        return "verify-otp";
     }
 
     @GetMapping("/seller/register")
