@@ -85,8 +85,15 @@
             </a>
         </div>
         <div class="text-center mt-3">
-            <span class="text-muted">Chưa có tài khoản?</span>
-            <a th:href="@{/register}" href="/register">Đăng ký</a>
+            <div class="mb-2">
+                <a th:href="@{/forgot-password}" href="/forgot-password" class="text-decoration-none">
+                    <i class="fa-solid fa-key me-1"></i>Quên mật khẩu?
+                </a>
+            </div>
+            <div>
+                <span class="text-muted">Chưa có tài khoản?</span>
+                <a th:href="@{/register}" href="/register">Đăng ký</a>
+            </div>
         </div>
     </div>
     <div class="text-center mt-4 text-white-50 small">

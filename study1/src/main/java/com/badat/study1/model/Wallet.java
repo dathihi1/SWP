@@ -14,16 +14,20 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Wallet {
+public class Wallet extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", unique = true, nullable = false)
     Long userId;
 
-    @Column(precision = 15, scale = 2)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    User user;
+
+    @Column(name = "balance", precision = 15, scale = 2)
     @Builder.Default
     BigDecimal balance = BigDecimal.ZERO;
 }
