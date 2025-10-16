@@ -25,14 +25,30 @@ class AuthManager {
     }
 
     clearTokens() {
+        // Clear localStorage
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        // Clear cookie with multiple attempts
-        document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        document.cookie = 'accessToken=; path=/; max-age=0';
-        document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-        console.log('Tokens cleared from localStorage and cookie');
+        
+        // Clear all possible cookie variations
+        const cookieNames = ['accessToken', 'refreshToken'];
+        const paths = ['/', '/auth/', '/api/'];
+        const domains = [window.location.hostname, '.' + window.location.hostname];
+        
+        cookieNames.forEach(cookieName => {
+            paths.forEach(path => {
+                domains.forEach(domain => {
+                    // Clear with different expiration formats
+                    document.cookie = `${cookieName}=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                    document.cookie = `${cookieName}=; path=${path}; max-age=0`;
+                    document.cookie = `${cookieName}=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+                    document.cookie = `${cookieName}=; path=${path}; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                });
+            });
+        });
+        
+        console.log('Tokens cleared from localStorage and cookies');
         console.log('Remaining cookies:', document.cookie);
+        console.log('localStorage accessToken:', localStorage.getItem('accessToken'));
     }
 
     isAuthenticated() {
@@ -68,19 +84,37 @@ class AuthManager {
     }
 
     async logout() {
+        console.log('AuthManager logout initiated...');
         const token = this.getAccessToken();
+        
         if (token) {
             try {
-                await this.fetchWithAuth('/auth/logout', {
-                    method: 'POST'
+                console.log('Calling logout API...');
+                // Call logout API directly without fetchWithAuth to avoid 401 redirect
+                const response = await fetch('/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
+                console.log('Logout API response:', response.status);
             } catch (error) {
-                console.error('Logout error:', error);
+                console.error('Logout API error:', error);
             }
+        } else {
+            console.log('No token found, skipping API call');
         }
         
+        // Always clear tokens and redirect, regardless of API response
+        console.log('Clearing tokens...');
         this.clearTokens();
-        window.location.href = '/';
+        
+        // Force redirect after a small delay to ensure tokens are cleared
+        setTimeout(() => {
+            console.log('Redirecting to home...');
+            window.location.href = '/';
+        }, 100);
     }
 
     getCurrentUser() {

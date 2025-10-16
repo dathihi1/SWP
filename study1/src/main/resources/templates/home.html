@@ -72,7 +72,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/store}" href="/seller/store"><i class="fa-solid fa-store me-2"></i>Gian hàng của tôi</a></li>
+                            <li th:if="${userRole == 'ADMIN'}"><a class="dropdown-item" th:href="@{/seller/store}" href="/seller/store"><i class="fa-solid fa-store me-2"></i>Gian hàng của tôi</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
                             <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
@@ -356,16 +356,38 @@
 
     // Logout function
     async function handleLogout() {
+        console.log('Logout initiated...');
+        
         if (window.authManager) {
+            console.log('Using authManager logout');
             await window.authManager.logout();
         } else {
-            // Fallback logout
+            console.log('Using fallback logout');
+            // Fallback logout - comprehensive token clearing
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
-            document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-            document.cookie = 'accessToken=; path=/; max-age=0';
-            document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+            
+            // Clear all possible cookie variations
+            const cookieNames = ['accessToken', 'refreshToken'];
+            const paths = ['/', '/auth/', '/api/'];
+            const domains = [window.location.hostname, '.' + window.location.hostname];
+            
+            cookieNames.forEach(cookieName => {
+                paths.forEach(path => {
+                    domains.forEach(domain => {
+                        document.cookie = `${cookieName}=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                        document.cookie = `${cookieName}=; path=${path}; max-age=0`;
+                        document.cookie = `${cookieName}=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+                        document.cookie = `${cookieName}=; path=${path}; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                    });
+                });
+            });
+            
             console.log('Fallback logout - tokens cleared');
+            console.log('Remaining cookies:', document.cookie);
+            console.log('localStorage accessToken:', localStorage.getItem('accessToken'));
+            
+            // Force redirect
             window.location.href = '/';
         }
     }

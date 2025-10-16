@@ -70,6 +70,11 @@ public class ViewController {
         return "register";
     }
 
+    @GetMapping("/forgot-password")
+    public String forgotPasswordPage() {
+        return "forgot-password";
+    }
+
     @GetMapping("/verify-otp")
     public String verifyOtpPage(@RequestParam(value = "email", required = false) String email, Model model) {
         if (email != null) {
@@ -188,8 +193,8 @@ public class ViewController {
         
         User user = (User) authentication.getPrincipal();
         
-        // Check if user has SELLER role
-        if (!user.getRole().equals(User.Role.SELLER)) {
+        // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
+        if (!user.getRole().equals(User.Role.ADMIN)) {
             return "redirect:/profile";
         }
         
@@ -212,8 +217,8 @@ public class ViewController {
         
         User user = (User) authentication.getPrincipal();
         
-        // Check if user has SELLER role
-        if (!user.getRole().equals(User.Role.SELLER)) {
+        // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
+        if (!user.getRole().equals(User.Role.ADMIN)) {
             return "redirect:/profile";
         }
         
