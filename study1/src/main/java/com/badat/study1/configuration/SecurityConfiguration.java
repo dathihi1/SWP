@@ -22,7 +22,9 @@ import org.springframework.security.web.SecurityFilterChain;
 @Slf4j
 public class SecurityConfiguration {
 
-    private static final String[] AUTH_WHITELIST = {"/", "/index", "/home", "/templates/products", "/auth/**", "/users/**", "/login", "/register", "/verify-otp", "/seller/register", "/terms", "/faqs", "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico"};
+    private static final String[] AUTH_WHITELIST = {"/", "/index", "/home", "/templates/products", "/auth/**", "/api/auth/**", "/users/**", "/login", "/register", "/verify-otp", "/forgot-password", "/seller/register", "/terms", "/faqs", "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico"};
+    
+    private static final String[] API_PROTECTED_PATHS = {"/api/profile/**"};
 
     private final UserDetailServiceCustomizer userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -33,6 +35,7 @@ public class SecurityConfiguration {
                 .csrf(CsrfConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(AUTH_WHITELIST).permitAll()
+                        .requestMatchers(API_PROTECTED_PATHS).authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

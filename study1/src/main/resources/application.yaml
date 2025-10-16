@@ -12,7 +12,7 @@ spring:
       port: 6379
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: true
   mail:
     host: smtp.gmail.com
@@ -48,3 +48,5 @@ logging:
   level:
     com.badat.study1.configuration.JwtAuthenticationFilter: DEBUG
     com.badat.study1.controller.ViewController: DEBUG
+    com.badat.study1.service.JwtService: DEBUG
+    com.badat.study1.service.AuthenticationService: DEBUG

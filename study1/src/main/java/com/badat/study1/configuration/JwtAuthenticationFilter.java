@@ -1,7 +1,6 @@
 package com.badat.study1.configuration;
 
 import com.badat.study1.service.JwtService;
-import com.nimbusds.jwt.SignedJWT;
 import lombok.extern.slf4j.Slf4j;
 
 import jakarta.servlet.FilterChain;
@@ -103,21 +102,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
         
-        // Skip JWT filter for static resources and public endpoints only
+        // Skip JWT filter for static resources and public endpoints
         return path.startsWith("/static/") ||
                path.startsWith("/css/") ||
                path.startsWith("/js/") ||
                path.startsWith("/images/") ||
-               path.equals("/auth/login") ||
-               path.equals("/auth/register") ||
+               path.startsWith("/auth/") ||           // Allow all /auth/* endpoints
+               path.startsWith("/api/auth/") ||       // Allow all /api/auth/* endpoints (forgot password)
                path.startsWith("/users/") ||
                path.equals("/favicon.ico") ||
                path.equals("/login") ||
                path.equals("/register") ||
-               path.equals("/verify-otp");
+               path.equals("/verify-otp") ||
+               path.equals("/forgot-password");
     }
 }
 

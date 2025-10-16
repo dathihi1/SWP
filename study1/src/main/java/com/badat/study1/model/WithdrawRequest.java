@@ -7,14 +7,14 @@ import lombok.experimental.FieldDefaults;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "product")
+@Table(name = "withdrawrequest")
 @Getter
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product extends BaseEntity {
+public class WithdrawRequest extends BaseEntity {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,31 +27,15 @@ public class Product extends BaseEntity {
     @JoinColumn(name = "shop_id", insertable = false, updatable = false)
     Shop shop;
     
-    @Column(name = "type", nullable = false, length = 50)
-    String type;
-    
-    @Column(name = "name", nullable = false, length = 100)
-    String name;
-    
-    @Column(name = "description", columnDefinition = "TEXT")
-    String description;
-    
-    @Column(name = "price", nullable = false, precision = 15, scale = 2)
-    BigDecimal price;
-    
-    @Column(name = "quantity")
-    @Builder.Default
-    Integer quantity = 1;
-    
-    @Column(name = "unique_key", unique = true, nullable = false)
-    String uniqueKey;
+    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
+    BigDecimal amount;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     @Builder.Default
-    Status status = Status.ACTIVE;
+    Status status = Status.PENDING;
     
     public enum Status {
-        ACTIVE, SOLD, BANNED
+        PENDING, APPROVED, REJECTED
     }
 }
