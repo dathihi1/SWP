@@ -35,4 +35,7 @@ public class Cart extends BaseEntity {
     @Column(name = "quantity")
     @Builder.Default
     Integer quantity = 1;
+
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    java.util.List<CartItem> items;
 }
