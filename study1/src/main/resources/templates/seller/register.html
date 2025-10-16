@@ -158,6 +158,11 @@
                 <p class="mb-1">Hệ thống đang chuyển yêu cầu của bạn đến quản trị viên để duyệt.</p>
                 <p class="mb-0">Dự kiến thời gian xử lý: 12–24 giờ làm việc.</p>
             </div>
+            <div th:if="${submitSuccess == false}" class="d-flex justify-content-center mt-2">
+                <a class="btn btn-outline-primary keep-outline" th:href="@{/seller/shop}" href="/seller/shop">
+                    <i class="fa-solid fa-store me-2"></i>Quản lí gian hàng
+                </a>
+            </div>
         </div>
         
         <div th:if="${pendingReview}" class="alert alert-warning text-center" role="alert">

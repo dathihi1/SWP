@@ -80,6 +80,8 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("authorities", authentication.getAuthorities());
         model.addAttribute("userRole", user.getRole().name());
+        // Default submitSuccess to false to avoid null in template conditions
+        model.addAttribute("submitSuccess", false);
 
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
