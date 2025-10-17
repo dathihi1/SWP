@@ -52,13 +52,6 @@
                 </div>
             </div>
             <div class="row g-3">
-                <div class="col-12">
-                    <label for="username" class="form-label">Tên đăng nhập</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                        <input type="text" class="form-control" id="username" placeholder="username" required>
-                    </div>
-                </div>
                 <div class="col-12 col-md-6">
                     <label for="password" class="form-label">Mật khẩu</label>
                     <div class="input-group">
@@ -119,8 +112,16 @@
             });
 
             if (response.ok) {
-                // chuyển sang trang verify-otp, truyền email qua query hoặc model
-                window.location.href = '/verify-otp?email=' + encodeURIComponent(email);
+                // Hiển thị thông báo thành công
+                alertBox.textContent = 'Đã gửi email xác thực thành công! Vui lòng kiểm tra hộp thư của bạn.';
+                alertBox.classList.remove('d-none');
+                alertBox.classList.remove('alert-danger');
+                alertBox.classList.add('alert-success');
+                
+                // Chuyển sang trang verify-otp sau 2 giây
+                setTimeout(() => {
+                    window.location.href = '/verify-otp?email=' + encodeURIComponent(email);
+                }, 2000);
             } else {
                 const errorText = await response.text();
                 alertBox.textContent = errorText || 'Đăng ký thất bại';

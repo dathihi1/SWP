@@ -53,7 +53,37 @@ public class UserService {
             throw new RuntimeException("Username already taken");
         }
 
-        // Directly create user (OTP disabled)
+        // Generate OTP
+        String otp = generateOTP();
+        
+        // Store OTP and registration data temporarily
+        otpStorage.put(request.getEmail(), otp);
+        pendingRegistrations.put(request.getEmail(), request);
+        
+        // Send OTP via email
+        String subject = "Mã OTP kích hoạt tài khoản";
+        String body = "Mã OTP để kích hoạt tài khoản của bạn là: " + otp + 
+                     "\nMã này sẽ hết hạn sau 10 phút." +
+                     "\nVui lòng nhập mã này để hoàn tất đăng ký.";
+        emailService.sendEmail(request.getEmail(), subject, body);
+        
+        log.info("Registration OTP sent to email: {}", request.getEmail());
+    }
+    
+    public void verify(String email, String otp) {
+        // Check if OTP exists and matches
+        String storedOtp = otpStorage.get(email);
+        if (storedOtp == null || !storedOtp.equals(otp)) {
+            throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn");
+        }
+        
+        // Get pending registration data
+        UserCreateRequest request = pendingRegistrations.get(email);
+        if (request == null) {
+            throw new RuntimeException("Không tìm thấy thông tin đăng ký");
+        }
+        
+        // Create user with ACTIVE status
         User user = User.builder()
                 .email(request.getEmail())
                 .username(request.getUsername())
@@ -71,7 +101,7 @@ public class UserService {
         // - updatedAt: current timestamp
         userRepository.save(user);
         
-        log.info("User created successfully: {} with audit fields - createdBy: {}, createdAt: {}", 
+        log.info("User created and activated successfully: {} with audit fields - createdBy: {}, createdAt: {}", 
                 user.getUsername(), user.getCreatedBy(), user.getCreatedAt());
         
         // Create wallet for user
@@ -80,10 +110,12 @@ public class UserService {
                 .balance(BigDecimal.ZERO)
                 .build();
         walletRepository.save(wallet);
-    }
-    
-    public void verify(String email, String otp) {
-        // OTP disabled: no-op
+        
+        // Clean up OTP and pending registration
+        otpStorage.remove(email);
+        pendingRegistrations.remove(email);
+        
+        log.info("User account activated for email: {}", email);
     }
     
     private String generateOTP() {

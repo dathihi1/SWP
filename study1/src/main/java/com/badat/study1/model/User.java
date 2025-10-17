@@ -83,6 +83,6 @@ public class User extends BaseEntity implements UserDetails {
     }
     
     public enum Status {
-        ACTIVE, LOCKED
+         ACTIVE, LOCKED
     }
 }

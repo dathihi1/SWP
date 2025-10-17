@@ -90,13 +90,8 @@ public class ViewController {
     @GetMapping("/")
     public String homePage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.debug("Home page - Authentication: {}, Name: {}", authentication, 
-                 authentication != null ? authentication.getName() : "null");
-        
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
-        
-        log.debug("Is authenticated: {}", isAuthenticated);
         
         model.addAttribute("isAuthenticated", isAuthenticated);
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
@@ -106,7 +101,6 @@ public class ViewController {
             Object principal = authentication.getPrincipal();
             if (principal instanceof User) {
                 User user = (User) principal;
-                log.debug("User: {}, Role: {}", user.getUsername(), user.getRole());
                 
                 model.addAttribute("username", user.getUsername());
                 model.addAttribute("authorities", authentication.getAuthorities());
@@ -403,6 +397,12 @@ public class ViewController {
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
+        
+        // Thêm thông tin ngày đăng ký
+        model.addAttribute("userCreatedAt", user.getCreatedAt());
+        
+        // Thêm thông tin đơn hàng (tạm thời set 0, có thể cập nhật sau)
+        model.addAttribute("totalOrders", 0);
         
         return "customer/profile";
     }
