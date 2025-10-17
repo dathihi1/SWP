@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head><meta charset="UTF-8"/><title>Withdraws</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/></head>
+<body>
+<div th:replace="~{admin/fragments/_admin-topbar}"></div>
+<div class="container my-4">
+  <div class="row">
+    <aside class="col-md-3"><div class="card"><div th:replace="~{admin/fragments/_admin-sidebar}"></div></div></aside>
+    <main class="col-md-9">
+      <div class="card p-3">
+        <h5>Withdraw Requests</h5>
+        <table class="table table-striped">
+          <thead><tr><th>ID</th><th>User</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+          <tr th:each="w: ${withdraws}">
+            <td th:text="${w.id}">1</td>
+            <td th:text="${w.user != null ? w.user.email : '-'}">user</td>
+            <td th:text="${#numbers.formatDecimal(w.amount, 0, 'COMMA', 0, 'POINT')}">0</td>
+            <td th:text="${w.status}">PENDING</td>
+            <td>
+              <form th:action="@{|/admin/withdraws/${w.id}/status|}" method="post" class="d-inline">
+                <select class="form-control form-control-sm d-inline w-auto" name="status">
+                  <option>APPROVED</option><option>REJECTED</option><option>PAID</option>
+                </select>
+                <input class="form-control form-control-sm d-inline w-auto" name="note" placeholder="Ghi chú"/>
+                <button class="btn btn-sm btn-primary">Cập nhật</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>
