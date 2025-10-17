@@ -26,14 +26,14 @@ public class SecurityConfiguration {
             "/products/**", 
             "/cart", 
             "/auth/**", 
-            "/api/auth/**", 
+            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp",
             "/users/**", 
             "/login", "/register", "/verify-otp", "/forgot-password", 
             "/seller/register", 
             "/terms", "/faqs", 
             "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico"};
 
-    private static final String[] API_PROTECTED_PATHS = {"/api/profile/**"};
+    private static final String[] API_PROTECTED_PATHS = {"/api/profile/**", "/api/auth/me", "/api/auth/logout", "/api/auth/refresh"};
 
     private final UserDetailServiceCustomizer userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -47,23 +47,8 @@ public class SecurityConfiguration {
                         .requestMatchers(API_PROTECTED_PATHS).authenticated()
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form
-                        .loginPage("/login")
-                        .defaultSuccessUrl("/", true)
-                        .failureUrl("/login?error=true")
-                        .permitAll()
-                )
-                .logout(logout -> logout
-                        .logoutUrl("/logout")
-                        .logoutSuccessUrl("/")
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID")
-                        .permitAll()
-                )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                        .maximumSessions(1)
-                        .maxSessionsPreventsLogin(false)
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
         // Add JWT filter before default authentication
         http.addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);

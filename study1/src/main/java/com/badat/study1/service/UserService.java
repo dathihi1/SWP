@@ -1,7 +1,6 @@
 package com.badat.study1.service;
 
 import com.badat.study1.dto.request.ProfileUpdateRequest;
-import com.badat.study1.dto.request.ChangePasswordRequest;
 import com.badat.study1.dto.request.UserCreateRequest;
 import com.badat.study1.dto.response.ProfileResponse;
 import com.badat.study1.model.User;

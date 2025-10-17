@@ -6,36 +6,92 @@ import com.badat.study1.dto.response.LoginResponse;
 import com.badat.study1.model.RedisToken;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.RedisTokenRepository;
+import com.badat.study1.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
 import java.util.Date;
+import java.util.Optional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
 
-    private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final RedisTokenRepository redisTokenRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public LoginResponse login(LoginRequest request){
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword());
-        Authentication authenticate = authenticationManager.authenticate(authenticationToken);
-
-        User user = (User) authenticate.getPrincipal();
+        // Find user by username
+        Optional<User> userOpt = userRepository.findByUsername(request.getUsername());
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
+        }
+        
+        User user = userOpt.get();
+        
+        // Check if user is active
+        if (user.getStatus() != User.Status.ACTIVE) {
+            throw new RuntimeException("Tài khoản đã bị khóa");
+        }
+        
+        // Verify password
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
+        }
+        
+        // Generate tokens
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
-        //tra ve token
+        
+        log.info("Login successful for user: {}", user.getUsername());
+        
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .build();
+    }
+
+    public LoginResponse refreshToken(String refreshToken) throws ParseException {
+        // Verify refresh token
+        try {
+            if (!jwtService.verifyToken(refreshToken)) {
+                throw new RuntimeException("Refresh token không hợp lệ hoặc đã hết hạn");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Refresh token không hợp lệ hoặc đã hết hạn");
+        }
+        
+        // Extract username from refresh token
+        String username = jwtService.extractUsername(refreshToken);
+        
+        // Find user by username
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User không tồn tại");
+        }
+        
+        User user = userOpt.get();
+        
+        // Check if user is still active
+        if (user.getStatus() != User.Status.ACTIVE) {
+            throw new RuntimeException("Tài khoản đã bị khóa");
+        }
+        
+        // Generate new tokens
+        String newAccessToken = jwtService.generateAccessToken(user);
+        String newRefreshToken = jwtService.generateRefreshToken(user);
+        
+        log.info("Token refreshed for user: {}", username);
+        
+        return LoginResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .build();
     }
 
