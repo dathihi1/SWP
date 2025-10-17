@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head><meta charset="UTF-8"/><title>Disputes</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/></head>
+<body>
+<div th:replace="~{admin/fragments/_admin-topbar}"></div>
+<div class="container my-4">
+  <div class="row">
+    <aside class="col-md-3"><div class="card"><div th:replace="~{admin/fragments/_admin-sidebar}"></div></div></aside>
+    <main class="col-md-9">
+      <div class="card p-3">
+        <h5>Disputes</h5>
+        <table class="table table-striped">
+          <thead><tr><th>ID</th><th>Order</th><th>User</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+          <tr th:each="d: ${disputes}">
+            <td th:text="${d.id}">1</td>
+            <td th:text="${d.order != null ? d.order.id : '-'}">order</td>
+            <td th:text="${d.user != null ? d.user.email : '-'}">user</td>
+            <td th:text="${d.status}">OPEN</td>
+            <td>
+              <form th:action="@{|/admin/disputes/${d.id}/resolve|}" method="post" class="d-inline">
+                <select class="form-control form-control-sm d-inline w-auto" name="resolution">
+                  <option>RESOLVED</option>
+                  <option>REJECTED</option>
+                  <option>REFUND</option>
+                </select>
+                <input class="form-control form-control-sm d-inline w-auto" name="note" placeholder="Ghi chú"/>
+                <button class="btn btn-sm btn-primary">Xử lý</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>
