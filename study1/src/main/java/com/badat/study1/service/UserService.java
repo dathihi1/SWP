@@ -43,43 +43,17 @@ public class UserService {
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
+    @Transactional
     public void register(UserCreateRequest request) {
         // Check if user already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("User with this email already exists");
         }
-        
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already taken");
         }
-        
-        // Generate OTP
-        String otp = generateOTP();
-        
-        // Store OTP and registration data temporarily
-        otpStorage.put(request.getEmail(), otp);
-        pendingRegistrations.put(request.getEmail(), request);
-        
-        // Send OTP via email
-        String subject = "Verify your account";
-        String body = "Your OTP is: " + otp + "\nThis OTP will expire in 10 minutes.";
-        emailService.sendEmail(request.getEmail(), subject, body);
-    }
-    
-    public void verify(String email, String otp) {
-        // Check if OTP exists and matches
-        String storedOtp = otpStorage.get(email);
-        if (storedOtp == null || !storedOtp.equals(otp)) {
-            throw new RuntimeException("Invalid or expired OTP");
-        }
-        
-        // Get pending registration data
-        UserCreateRequest request = pendingRegistrations.get(email);
-        if (request == null) {
-            throw new RuntimeException("Registration data not found");
-        }
-        
-        // Create user
+
+        // Directly create user (OTP disabled)
         User user = User.builder()
                 .email(request.getEmail())
                 .username(request.getUsername())
@@ -106,10 +80,10 @@ public class UserService {
                 .balance(BigDecimal.ZERO)
                 .build();
         walletRepository.save(wallet);
-        
-        // Clean up temporary data
-        otpStorage.remove(email);
-        pendingRegistrations.remove(email);
+    }
+    
+    public void verify(String email, String otp) {
+        // OTP disabled: no-op
     }
     
     private String generateOTP() {

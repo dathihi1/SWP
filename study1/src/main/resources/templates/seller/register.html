@@ -69,6 +69,12 @@
             background-color: #dc3545 !important;
             color: #fff !important;
         }
+        /* Ensure outlined buttons inside form container stay white background with blue text when needed */
+        .form-container .btn.keep-outline {
+            background-color: #ffffff !important;
+            color: #0d6efd !important;
+            border-color: #0d6efd !important;
+        }
     </style>
 </head>
 <body>
@@ -114,7 +120,6 @@
                         <i class="fa-solid fa-wallet"></i>
                         <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
                     </div>
-                    
                     <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
                             <i class="fa-solid fa-user"></i>
@@ -123,6 +128,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
                             <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
@@ -130,7 +136,6 @@
                             <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
-                    
                     <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span>Giỏ hàng</span>
@@ -143,57 +148,48 @@
  <div class="form-container">
     <div class="header">
         <h1>Đăng ký bán hàng</h1>
-        <a class="btn primary" th:href="@{/}">Quay lại</a>
     </div>
     <div class="content">
-        <form method="post" th:action="@{/seller/register}" enctype="multipart/form-data" id="sellerRegisterForm">
+        <!-- Thông báo cho user đã có role SELLER -->
+        <div th:if="${alreadySeller}" class="alert alert-info text-center" role="alert">
+            <i class="fa-solid fa-handshake fa-3x text-primary mb-3"></i>
+            <h5 class="alert-heading mb-3 text-primary" th:text="${submitSuccess} ? 'Yêu cầu đăng ký bán hàng của bạn đã được gửi thành công!' : 'Bạn đã đăng ký shop rồi!'">Bạn đã đăng ký shop rồi!</h5>
+            <div th:if="${submitSuccess}">
+                <p class="mb-1">Hệ thống đang chuyển yêu cầu của bạn đến quản trị viên để duyệt.</p>
+                <p class="mb-0">Dự kiến thời gian xử lý: 12–24 giờ làm việc.</p>
+            </div>
+            <div th:if="${submitSuccess == false}" class="d-flex justify-content-center mt-2">
+                <a class="btn btn-outline-primary keep-outline" th:href="@{/seller/shop}" href="/seller/shop">
+                    <i class="fa-solid fa-store me-2"></i>Quản lí gian hàng
+                </a>
+            </div>
+        </div>
+        
+        <div th:if="${pendingReview}" class="alert alert-warning text-center" role="alert">
+            <i class="fa-solid fa-hourglass-half fa-2x text-warning mb-2"></i>
+            <div class="fw-semibold">Yêu cầu đăng ký bán hàng của bạn đang được xét duyệt</div>
+            <div class="small">Dự kiến thời gian xử lý: 12–24 giờ làm việc.</div>
+        </div>
+        
+        <!-- Form đăng ký chỉ hiển thị cho user chưa có role SELLER -->
+        <form th:if="${!alreadySeller and !pendingReview}" method="post" th:action="@{/seller/register}" enctype="multipart/form-data" id="sellerRegisterForm">
             <h2 class="section-title">Thông tin tài khoản người bán</h2>
             <div class="grid">
                 <div class="field">
                     <label for="ownerName">Họ và tên</label>
-                    <input id="ownerName" name="ownerName" type="text" placeholder="VD: Nguyễn Văn A" required>
+                    <input id="ownerName" name="ownerName" type="text" placeholder="Nguyễn Văn A" required>
                 </div>
                 <div class="field">
                     <label for="identity">Số CCCD</label>
                     <input id="identity" name="identity" type="text" placeholder="XXXXXXXXXXXX" required>
                 </div>
                 <div class="field">
-                    <label for="bankAccount">Số tài khoản ngân hàng</label>
-                    <input id="bankAccount" name="bankAccount" type="text" placeholder="Nhập số tài khoản ngân hàng" required>
+                    <label for="bankAccountNumber">Số tài khoản ngân hàng</label>
+                    <input id="bankAccountNumber" name="bankAccountNumber" type="text" placeholder="123456789" required>
                 </div>
                 <div class="field">
                     <label for="bankName">Tên ngân hàng</label>
-                    <input id="bankName" name="bankName" type="text" placeholder="VD: Vietcombank" required>
-                </div>
-            </div>
-            <br>
-            <h2 class="section-title">Thông tin cửa hàng của bạn</h2>
-            <div class="grid">
-                <div class="field">
-                    <label for="shopName">Tên cửa hàng</label>
-                    <input id="shopName" name="shopName" type="text" placeholder="VD: Cửa hàng ABC" required>
-                </div>
-                <div class="field">
-                    <label for="category">Sản phẩm chính</label>
-                    <select id="category" name="category" required>
-                        <option value="">-- Chọn danh mục --</option>
-                        <option value="game-items">Vật phẩm game</option>
-                        <option value="accounts">Tài khoản</option>
-                        <option value="topup">Nạp game</option>
-                        <option value="services">Dịch vụ</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <label for="logo">Ảnh đại diện cửa hàng (logo)</label>
-                    <input id="logo" name="logo" type="file" accept="image/*">
-                </div>
-                <div class="field">
-                    <label for="phone">Số điện thoại liên hệ</label>
-                    <input id="phone" name="phone" type="tel" placeholder="0xxxxxxxxx" required>
-                </div>
-                <div class="field" style="grid-column: 1 / -1;">
-                    <label for="description">Mô tả ngắn về cửa hàng</label>
-                    <textarea id="description" name="description" placeholder="Giới thiệu về sản phẩm/dịch vụ bạn cung cấp..."></textarea>
+                    <input id="bankName" name="bankName" type="text" placeholder="MB" required>
                 </div>
             </div>
 
@@ -204,7 +200,9 @@
                     <button class="btn primary" type="submit">Gửi đăng ký</button>
                 </div>
             </div>
+            <div th:if="${submitError}" class="alert alert-danger mt-3" th:text="${submitError}"></div>
         </form>
+        </div>
     </div>
  </div>
 
@@ -269,17 +267,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 <script>
-  document.addEventListener('DOMContentLoaded', function(){
-    var form = document.getElementById('sellerRegisterForm');
-    var modalEl = document.getElementById('successModal');
-    if(form && modalEl){
-      form.addEventListener('submit', function(e){
-        e.preventDefault();
-        var modal = new bootstrap.Modal(modalEl);
-        modal.show();
-      });
-    }
-  });
+  // No JS interception: server will process the form and re-render with success
 </script>
 </html>
 

@@ -27,14 +27,46 @@
                 </form>
             </div>
             <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
-                <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
-                    <i class="fa-regular fa-user"></i>
-                    <span>Đăng nhập</span>
-                </a>
-                <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
-                    <i class="fa-solid fa-cart-shopping"></i>
-                    <span>Giỏ hàng</span>
-                </a>
+                <!-- Guest user navigation -->
+                <div th:if="${!isAuthenticated}" class="d-flex align-items-center gap-2">
+                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
+                        <i class="fa-regular fa-user"></i>
+                        <span>Đăng nhập</span>
+                    </a>
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>Giỏ hàng</span>
+                    </a>
+                </div>
+
+                <!-- Authenticated user navigation -->
+                <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
+                    <!-- Current Balance -->
+                    <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
+                        <i class="fa-solid fa-wallet"></i>
+                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-user"></i>
+                            <span th:text="${username}">User</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
+                            <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
+                            <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>Giỏ hàng</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>

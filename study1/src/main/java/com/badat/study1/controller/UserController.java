@@ -18,7 +18,7 @@ public class UserController {
     public ResponseEntity<String> registerUser(@RequestBody UserCreateRequest request) {
         try {
             userService.register(request);
-            return ResponseEntity.ok("OTP sent to your email.");
+            return ResponseEntity.ok("Registered successfully.");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

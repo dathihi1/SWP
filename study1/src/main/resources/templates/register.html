@@ -52,6 +52,13 @@
                 </div>
             </div>
             <div class="row g-3">
+                <div class="col-12">
+                    <label for="username" class="form-label">Tên đăng nhập</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" class="form-control" id="username" placeholder="username" required>
+                    </div>
+                </div>
                 <div class="col-12 col-md-6">
                     <label for="password" class="form-label">Mật khẩu</label>
                     <div class="input-group">
@@ -75,19 +82,7 @@
             </div>
         </form>
 
-        <form id="otpForm" class="d-none">
-            <div class="mb-3">
-                <label for="otp" class="form-label">Mã OTP</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-key"></i></span>
-                    <input type="text" class="form-control" id="otp" placeholder="Nhập mã OTP" required>
-                </div>
-                <div class="form-text">Mã OTP đã được gửi đến email của bạn.</div>
-            </div>
-            <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary">Xác nhận</button>
-            </div>
-        </form>
+        <!-- OTP disabled -->
 
         <div class="text-center mt-3">
             <span class="text-muted">Đã có tài khoản?</span>
