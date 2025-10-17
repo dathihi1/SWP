@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thêm gian hàng - MMO Market</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #333;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            border-right: 1px solid rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header .navbar-brand {
+            color: #0d6efd;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        
+        .sidebar-header .navbar-brand:hover {
+            color: #0b5ed7;
+        }
+        
+        .menu-section {
+            padding: 20px 0;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 20px 10px;
+            margin-bottom: 10px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #0d6efd;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            margin: 2px 0;
+            font-weight: 500;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+            color: #0b5ed7;
+            border-left-color: #0d6efd;
+            transform: translateX(5px);
+        }
+        
+        .menu-item.active {
+            background-color: rgba(13, 110, 253, 0.15);
+            color: #0b5ed7;
+            border-left-color: #0d6efd;
+            font-weight: 600;
+        }
+        
+        .menu-item i {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        .top-navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .content-area {
+            padding: 30px;
+        }
+        
+        .page-header {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .page-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0;
+        }
+        
+        .btn-back {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn-back:hover {
+            background: linear-gradient(135deg, #0b5ed7, #0a58ca);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+            color: white;
+        }
+        
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title i {
+            margin-right: 10px;
+            color: #0d6efd;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        
+        .form-label {
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+        
+        .form-control, .form-select {
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .btn-submit {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #0b5ed7, #0a58ca);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+            color: white;
+        }
+        
+        .btn-cancel {
+            background: #6c757d;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-cancel:hover {
+            background: #5a6268;
+            color: white;
+        }
+        
+        .required {
+            color: #dc3545;
+        }
+        
+        .form-text {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <a class="navbar-brand d-flex align-items-center" th:href="@{/}" href="/">
+                    <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+                    MMO Market
+                </a>
+            </div>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">SALE</div>
+            <a href="/seller/shop" class="menu-item">
+                <i class="fas fa-shopping-cart"></i>
+                Sales
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">SHOP</div>
+            <a href="/seller/shop-management" class="menu-item">
+                <i class="fas fa-clipboard-list"></i>
+                Quản lý gian hàng
+            </a>
+            <a href="/seller/add-stall" class="menu-item active">
+                <i class="fas fa-plus"></i>
+                Thêm gian hàng
+            </a>
+            <a href="#" class="menu-item">
+                <i class="fas fa-file-invoice-dollar"></i>
+                Đơn hàng sản phẩm
+            </a>
+            <a href="#" class="menu-item">
+                <i class="fas fa-comment"></i>
+                Đánh giá
+            </a>
+            <a href="#" class="menu-item">
+                <i class="fas fa-arrow-up"></i>
+                Gian hàng Top 1
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-secondary me-3" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <!-- Profile Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                        <i class="fa-solid fa-user"></i>
+                        <span th:text="${username}">User</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
+                        <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                        <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
+                        <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Success/Error Messages -->
+            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                <span th:text="${successMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <span th:text="${errorMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="page-title">Thêm gian hàng mới</h1>
+                        <small class="text-muted">Giới hạn tối đa: 5 gian hàng</small>
+                    </div>
+                    <a href="/seller/shop-management" class="btn-back">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Quay lại
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Form Container -->
+            <div class="form-container">
+                <form th:action="@{/seller/add-stall}" method="post" id="addStallForm">
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <h5 class="section-title">
+                            <i class="fas fa-info-circle"></i>
+                            Thông tin cơ bản
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="stallName" class="form-label">Tên gian hàng <span class="required">*</span></label>
+                                <input type="text" class="form-control" id="stallName" name="stallName" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="businessType" class="form-label">Loại hình kinh doanh <span class="required">*</span></label>
+                                <select class="form-select" id="businessType" name="businessType" required>
+                                    <option value="">Chọn loại hình kinh doanh</option>
+                                    <option value="Bán sản phẩm">Bán sản phẩm</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="stallCategory" class="form-label">Loại gian hàng <span class="required">*</span></label>
+                                <select class="form-select" id="stallCategory" name="stallCategory" required>
+                                    <option value="">Chọn loại gian hàng</option>
+                                    <option value="Thẻ Zing">Thẻ Zing</option>
+                                    <option value="Tài Khoản">Tài Khoản</option>
+                                    <option value="Key Game">Key Game</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="discount" class="form-label">Chiết khấu cho sàn <span class="required">*</span></label>
+                                <select class="form-select" id="discount" name="discount" required>
+                                    <option value="">Chọn chiết khấu</option>
+                                    <option value="5">5%</option>
+                                </select>
+                                <div class="form-text">Phần trăm chiết khấu mà gian hàng sẽ trả cho sàn</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="form-section">
+                        <h5 class="section-title">
+                            <i class="fas fa-align-left"></i>
+                            Mô tả gian hàng
+                        </h5>
+                        <div class="mb-3">
+                            <label for="shortDescription" class="form-label">Mô tả ngắn <span class="required">*</span></label>
+                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" required placeholder="Nhập mô tả ngắn về gian hàng (tối đa 200 ký tự)"></textarea>
+                            <div class="form-text">Mô tả ngắn gọn về gian hàng, sản phẩm chính</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="detailedDescription" class="form-label">Mô tả chi tiết <span class="required">*</span></label>
+                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" required placeholder="Nhập mô tả chi tiết về gian hàng, dịch vụ, chính sách..."></textarea>
+                            <div class="form-text">Mô tả chi tiết về gian hàng, dịch vụ, chính sách bán hàng</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stall Image -->
+                    <div class="form-section">
+                        <h5 class="section-title">
+                            <i class="fas fa-image"></i>
+                            Hình ảnh gian hàng
+                        </h5>
+                        <div class="mb-3">
+                            <label for="stallImageUrl" class="form-label">Link ảnh gian hàng</label>
+                            <input type="url" class="form-control" id="stallImageUrl" name="stallImageUrl" placeholder="https://example.com/stall-image.jpg">
+                            <div class="form-text">Nhập link ảnh đại diện cho gian hàng</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Terms and Conditions -->
+                    <div class="form-section">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="uniqueProducts" name="uniqueProducts" required>
+                                <label class="form-check-label" for="uniqueProducts">
+                                    <strong>Sản phẩm không trùng lặp:</strong> <span class="required"></span> (Cam kết sản phẩm chỉ được bán ra 1 lần và duy nhất trên hệ thống)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Submit Buttons -->
+                    <div class="d-flex justify-content-end gap-3">
+                        <a href="/seller/shop-management" class="btn btn-cancel">Hủy</a>
+                        <button type="submit" class="btn btn-submit">
+                            <i class="fas fa-save me-2"></i>
+                            Tạo gian hàng
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+                
+                // Update main content margin
+                if (sidebar.classList.contains('collapsed')) {
+                    mainContent.style.marginLeft = '0';
+                } else {
+                    mainContent.style.marginLeft = '280px';
+                }
+            });
+        });
+        
+        // Form validation
+        document.getElementById('addStallForm').addEventListener('submit', function(e) {
+            const shortDesc = document.getElementById('shortDescription').value.trim();
+            const detailedDesc = document.getElementById('detailedDescription').value.trim();
+            const uniqueProducts = document.getElementById('uniqueProducts').checked;
+            
+            if (shortDesc.length === 0) {
+                e.preventDefault();
+                alert('Vui lòng nhập mô tả ngắn');
+                document.getElementById('shortDescription').focus();
+                return;
+            }
+            
+            if (detailedDesc.length === 0) {
+                e.preventDefault();
+                alert('Vui lòng nhập mô tả chi tiết');
+                document.getElementById('detailedDescription').focus();
+                return;
+            }
+            
+            if (shortDesc.length > 200) {
+                e.preventDefault();
+                alert('Mô tả ngắn không được vượt quá 200 ký tự');
+                document.getElementById('shortDescription').focus();
+                return;
+            }
+            
+            if (!uniqueProducts) {
+                e.preventDefault();
+                alert('Bạn phải đồng ý với cam kết "Sản phẩm không trùng lặp" để tạo gian hàng');
+                document.getElementById('uniqueProducts').focus();
+                return;
+            }
+        });
+    </script>
+</body>
+</html>
