@@ -25,6 +25,12 @@ class AuthManager {
     clearTokens() {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        // Clear saved credentials when logging out
+        localStorage.removeItem('savedUsername');
+        localStorage.removeItem('savedPassword');
+        localStorage.removeItem('rememberMe');
+        // Clear cookie
+        document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
 
     isAuthenticated() {
@@ -60,18 +66,29 @@ class AuthManager {
     }
 
     async logout() {
+        console.log('AuthManager logout initiated...');
         const token = this.getAccessToken();
         if (token) {
             try {
-                await this.fetchWithAuth('/auth/logout', {
-                    method: 'POST'
+                console.log('Calling logout API...');
+                // Call logout API directly without fetchWithAuth to avoid 401 redirect
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
+                
+                console.log('Logout API response:', response.status);
             } catch (error) {
-                console.error('Logout error:', error);
+                console.error('Logout API error:', error);
             }
         }
         
+        // Always clear tokens and redirect, even if API call fails
         this.clearTokens();
+        console.log('Tokens cleared, redirecting to home...');
         window.location.href = '/';
     }
 

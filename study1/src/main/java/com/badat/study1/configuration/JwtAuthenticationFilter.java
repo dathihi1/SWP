@@ -111,7 +111,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.startsWith("/js/") ||
                path.startsWith("/images/") ||
                path.startsWith("/auth/") ||           // Allow all /auth/* endpoints
-               path.startsWith("/api/auth/") ||       // Allow all /api/auth/* endpoints (forgot password)
+               path.equals("/api/auth/login") ||      // Allow login endpoint
+               path.equals("/api/auth/register") ||   // Allow register endpoint
+               path.equals("/api/auth/forgot-password") || // Allow forgot password
+               path.equals("/api/auth/verify-otp") ||   // Allow verify OTP
                path.startsWith("/users/") ||
                path.equals("/favicon.ico") ||
                path.equals("/login") ||
