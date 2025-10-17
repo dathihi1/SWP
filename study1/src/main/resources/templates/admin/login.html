@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Admin Login</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/>
+</head>
+<body>
+<div class="container" style="max-width:420px;margin:6rem auto;">
+  <div class="card p-4 shadow-sm">
+    <h4 class="mb-3">Admin Sign In</h4>
+    <form th:action="@{/admin-login}" method="post">
+      <div class="mb-3">
+        <label class="form-label">Email/Username</label>
+        <input class="form-control" type="text" name="username" required/>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input class="form-control" type="password" name="password" required/>
+      </div>
+      <button class="btn btn-primary w-100" type="submit">Đăng nhập</button>
+      <div class="text-danger mt-2" th:if="${param.error}">Sai tài khoản hoặc mật khẩu</div>
+      <div class="text-success mt-2" th:if="${param.logout}">Đã đăng xuất</div>
+    </form>
+  </div>
+</div>
+</body>
+</html>
