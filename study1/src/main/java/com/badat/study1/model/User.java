@@ -18,7 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User implements UserDetails {
+public class User extends BaseEntity implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
@@ -53,20 +53,36 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(name = "username", unique = true, nullable = false, length = 50)
+    String username;
+
+    @Column(name = "password", nullable = false)
+    String password;
+
+    @Column(name = "email", unique = true, nullable = false, length = 100)
     String email;
 
-    @Column(unique = true, nullable = false)
-    String username;
+    @Column(name = "phone", length = 20)
+    String phone;
+
+    @Column(name = "full_name", length = 100)
+    String fullName;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false)
     @Builder.Default
     Role role = Role.USER;
     
-    String password;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    @Builder.Default
+    Status status = Status.ACTIVE;
     
     public enum Role {
-        USER, ADMIN, SELLER
+        USER, ADMIN
+    }
+    
+    public enum Status {
+        ACTIVE, LOCKED
     }
 }

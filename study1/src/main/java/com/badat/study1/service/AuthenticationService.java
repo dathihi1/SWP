@@ -7,6 +7,7 @@ import com.badat.study1.model.RedisToken;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.RedisTokenRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.text.ParseException;
 import java.util.Date;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -24,7 +26,7 @@ public class AuthenticationService {
     private final RedisTokenRepository redisTokenRepository;
 
     public LoginResponse login(LoginRequest request){
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword());
         Authentication authenticate = authenticationManager.authenticate(authenticationToken);
 
         User user = (User) authenticate.getPrincipal();
@@ -43,10 +45,18 @@ public class AuthenticationService {
         Date issueTime = jwtInfo.getIssueTime();
         Date expireTime = jwtInfo.getExpireTime();
         if(expireTime.before(new Date())) return;
+        
         RedisToken redisToken = RedisToken.builder()
                 .jwtID(jwtId)
                 .expirationTime(expireTime.getTime() - issueTime.getTime())
                 .build();
-        redisTokenRepository.save(redisToken);
+        
+        try {
+            redisTokenRepository.save(redisToken);
+            log.debug("Token blacklisted successfully: {}", jwtId);
+        } catch (Exception e) {
+            log.warn("Failed to blacklist token (Redis unavailable): {}", e.getMessage());
+            // Continue without throwing exception - logout should still work
+        }
     }
 }

@@ -46,21 +46,36 @@ public class PaymentController {
     
     @GetMapping("/payment/return")
     public String paymentReturn(@RequestParam Map<String, String> params, Model model) {
+        try {
         System.out.println("=== VNPay Callback Received ===");
         System.out.println("All parameters: " + params);
         
         // Verify VNPay signature first
-        boolean isValidSignature = vnPayUtil.verifyPayment(params);
+        boolean isValidSignature;
+        try {
+            isValidSignature = vnPayUtil.verifyPayment(params);
+        } catch (Exception ex) {
+            System.out.println("Error verifying signature: " + ex.getMessage());
+            ex.printStackTrace();
+            model.addAttribute("success", false);
+            model.addAttribute("message", "Không thể xác thực chữ ký thanh toán: " + ex.getMessage());
+            model.addAttribute("txnRef", params.get("vnp_TxnRef"));
+            model.addAttribute("transactionNo", params.get("vnp_TransactionNo"));
+            return "payment-result";
+        }
         System.out.println("Signature valid: " + isValidSignature);
         
         if (!isValidSignature) {
             System.out.println("Invalid payment signature!");
             model.addAttribute("success", false);
             model.addAttribute("message", "Chữ ký thanh toán không hợp lệ!");
+            model.addAttribute("txnRef", params.get("vnp_TxnRef"));
+            model.addAttribute("transactionNo", params.get("vnp_TransactionNo"));
             return "payment-result";
         }
         
         String orderId = params.get("vnp_TxnRef");
+        String vnpTransactionNo = params.get("vnp_TransactionNo");
         String amountStr = params.get("vnp_Amount");
         String responseCode = params.get("vnp_ResponseCode");
         
@@ -71,27 +86,55 @@ public class PaymentController {
         // Check if payment was successful (ResponseCode = "00")
         if (!"00".equals(responseCode)) {
             System.out.println("Payment failed with response code: " + responseCode);
+            try {
+                paymentService.handleFailedPayment(orderId, amountStr != null ? Long.parseLong(amountStr) / 100 : 0L, orderId, vnpTransactionNo, responseCode);
+            } catch (Exception logEx) {
+                System.out.println("Warn: could not save failed history: " + logEx.getMessage());
+            }
             model.addAttribute("success", false);
             model.addAttribute("message", "Thanh toán thất bại! Mã lỗi: " + responseCode);
+            model.addAttribute("txnRef", orderId);
+            model.addAttribute("transactionNo", vnpTransactionNo);
             return "payment-result";
         }
-        
-        Long amount = amountStr != null ? Long.parseLong(amountStr) / 100 : 0L;
-        System.out.println("Processing payment: " + amount + " VND for order: " + orderId);
-        
-        boolean success = paymentService.processPaymentCallback(orderId, amount);
-        String resultMessage = success ? "Nạp tiền thành công!" : "Xử lý thanh toán thất bại!";
-        
-        System.out.println("Payment processing result: " + success);
-        
-        // Set model attributes for template
-        model.addAttribute("success", success);
-        model.addAttribute("message", resultMessage);
-        if (success) {
-            model.addAttribute("amount", amount);
+
+        try {
+            Long amount = amountStr != null ? Long.parseLong(amountStr) / 100 : 0L;
+            System.out.println("Processing payment: " + amount + " VND for order: " + orderId);
+
+            boolean success = paymentService.processPaymentCallback(orderId, amount, orderId, vnpTransactionNo);
+            String resultMessage = success ? "Nạp tiền thành công!" : "Xử lý thanh toán thất bại!";
+
+            System.out.println("Payment processing result: " + success);
+
+            // Set model attributes for template
+            model.addAttribute("success", success);
+            model.addAttribute("message", resultMessage);
+            if (success) {
+                model.addAttribute("amount", amount);
+            }
+            model.addAttribute("txnRef", orderId);
+            model.addAttribute("transactionNo", vnpTransactionNo);
+
+            return "payment-result";
+        } catch (Exception ex) {
+            System.out.println("Error in paymentReturn: " + ex.getMessage());
+            ex.printStackTrace();
+            model.addAttribute("success", false);
+            model.addAttribute("message", "Đã xảy ra lỗi khi xử lý giao dịch: " + ex.getMessage());
+            model.addAttribute("txnRef", orderId);
+            model.addAttribute("transactionNo", vnpTransactionNo);
+            return "payment-result";
         }
-        
-        return "payment-result";
+        } catch (Exception fatalEx) {
+            System.out.println("Fatal error in paymentReturn: " + fatalEx.getMessage());
+            fatalEx.printStackTrace();
+            model.addAttribute("success", false);
+            model.addAttribute("message", "Lỗi không mong muốn: " + fatalEx.getMessage());
+            model.addAttribute("txnRef", params != null ? params.get("vnp_TxnRef") : null);
+            model.addAttribute("transactionNo", params != null ? params.get("vnp_TransactionNo") : null);
+            return "payment-result";
+        }
     }
     
     @GetMapping("/debug-hash")

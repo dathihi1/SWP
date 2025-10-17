@@ -50,7 +50,7 @@
                         <i class="fa-regular fa-user"></i>
                         <span>Đăng nhập</span>
                     </a>
-                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span>Giỏ hàng</span>
                     </a>
@@ -77,11 +77,11 @@
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
                             <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
                     
-                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span>Giỏ hàng</span>
                     </a>
@@ -324,8 +324,15 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Check authentication status
+        if (window.authManager && window.authManager.isAuthenticated()) {
+            console.log('User is authenticated:', window.authManager.getCurrentUser());
+        } else {
+            console.log('User is not authenticated');
+        }
         var collapseEl = document.getElementById('introCollapse');
         var toggleBtn = document.getElementById('introToggleBtn');
         if (!collapseEl || !toggleBtn) return;
@@ -346,6 +353,44 @@
             next.addEventListener('click', function () { track.scrollLeft += step; });
         }
     });
+
+    // Logout function
+    async function handleLogout() {
+        console.log('Logout initiated...');
+        
+        if (window.authManager) {
+            console.log('Using authManager logout');
+            await window.authManager.logout();
+        } else {
+            console.log('Using fallback logout');
+            // Fallback logout - comprehensive token clearing
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            
+            // Clear all possible cookie variations
+            const cookieNames = ['accessToken', 'refreshToken'];
+            const paths = ['/', '/auth/', '/api/'];
+            const domains = [window.location.hostname, '.' + window.location.hostname];
+            
+            cookieNames.forEach(cookieName => {
+                paths.forEach(path => {
+                    domains.forEach(domain => {
+                        document.cookie = `${cookieName}=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                        document.cookie = `${cookieName}=; path=${path}; max-age=0`;
+                        document.cookie = `${cookieName}=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+                        document.cookie = `${cookieName}=; path=${path}; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                    });
+                });
+            });
+            
+            console.log('Fallback logout - tokens cleared');
+            console.log('Remaining cookies:', document.cookie);
+            console.log('localStorage accessToken:', localStorage.getItem('accessToken'));
+            
+            // Force redirect
+            window.location.href = '/';
+        }
+    }
     </script>
 </body>
 </html>

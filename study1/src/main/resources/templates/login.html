@@ -25,17 +25,20 @@
             border-color: #0d6efd;
         }
     </style>
-    <meta name="csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
-    <meta name="csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
     <meta name="base_url" th:content="@{/}">
     <script>
-        // Check for login error parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const error = urlParams.get('error');
-        if (error) {
-            document.getElementById('alert').textContent = 'Email hoặc mật khẩu không đúng';
-            document.getElementById('alert').classList.remove('d-none');
-        }
+        // defer DOM-dependent actions until after DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function(){
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            if (error) {
+                const alertEl = document.getElementById('alert');
+                if (alertEl){
+                    alertEl.textContent = 'Tên đăng nhập hoặc mật khẩu không đúng';
+                    alertEl.classList.remove('d-none');
+                }
+            }
+        });
     </script>
 </head>
 <body class="d-flex align-items-center justify-content-center py-5">
@@ -51,17 +54,17 @@
         <div th:if="${param.required}" class="alert alert-warning" role="alert">Vui lòng đăng nhập!</div>
         <form th:action="@{/login}" method="post">
             <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
+                <label for="username" class="form-label">Tên đăng nhập</label>
                 <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
-                    <input type="email" class="form-control" id="email" name="username" placeholder="you@example.com" required>
+                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                    <input type="text" class="form-control" id="username" placeholder="username" required>
                 </div>
             </div>
             <div class="mb-3">
                 <label for="password" class="form-label">Mật khẩu</label>
                 <div class="input-group">
                     <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+                    <input type="password" class="form-control" id="password" placeholder="••••••••" required>
                 </div>
             </div>
             <div class="mb-3 text-end">
@@ -83,8 +86,15 @@
             </a>
         </div>
         <div class="text-center mt-3">
-            <span class="text-muted">Chưa có tài khoản?</span>
-            <a th:href="@{/register}" href="/register">Đăng ký</a>
+            <div class="mb-2">
+                <a th:href="@{/forgot-password}" href="/forgot-password" class="text-decoration-none">
+                    <i class="fa-solid fa-key me-1"></i>Quên mật khẩu?
+                </a>
+            </div>
+            <div>
+                <span class="text-muted">Chưa có tài khoản?</span>
+                <a th:href="@{/register}" href="/register">Đăng ký</a>
+            </div>
         </div>
     </div>
     <div class="text-center mt-4 text-white-50 small">
@@ -93,6 +103,57 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+ <script>
+     async function handleLogin(event){
+         event.preventDefault();
+         const username = document.getElementById('username').value.trim();
+         const password = document.getElementById('password').value;
+         const alertEl = document.getElementById('alert');
+         alertEl.classList.add('d-none');
+         if (!username || !password){
+             alertEl.textContent = 'Vui lòng nhập đầy đủ thông tin';
+             alertEl.classList.remove('d-none');
+             return;
+         }
+         const baseUrlMeta = document.querySelector('meta[name="base_url"]');
+         const baseUrl = baseUrlMeta ? baseUrlMeta.content : '/';
+         try{
+             const res = await fetch(baseUrl + 'auth/login', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ username, password })
+             });
+             const data = await res.json().catch(()=>({}));
+             if (!res.ok){
+                 throw new Error(data?.message || 'Đăng nhập thất bại');
+             }
+             // Expecting { accessToken, refreshToken }
+             const accessToken = data.accessToken || data.result?.accessToken;
+             const refreshToken = data.refreshToken || data.result?.refreshToken;
+             if (!accessToken || !refreshToken){
+                 throw new Error('Thiếu token phản hồi');
+             }
+             // Check if authManager is available, if not create it
+             if (window.authManager) {
+                 window.authManager.setTokens(accessToken, refreshToken);
+             } else {
+                 // Fallback to direct localStorage
+                 localStorage.setItem('accessToken', accessToken);
+                 localStorage.setItem('refreshToken', refreshToken);
+                 console.log('AuthManager not available, using direct localStorage');
+             }
+             
+             // Set token as cookie for server-side access
+             document.cookie = `accessToken=${accessToken}; path=/; max-age=1800; SameSite=Lax`;
+             
+             window.location.href = baseUrl;
+         } catch (e){
+             alertEl.textContent = e.message || 'Có lỗi xảy ra';
+             alertEl.classList.remove('d-none');
+         }
+     }
+ </script>
 </body>
 </html>
 

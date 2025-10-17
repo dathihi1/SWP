@@ -2,324 +2,495 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lịch sử thanh toán - MMO Market</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        .navbar-brand span { color: #0d6efd; font-weight: 700; }
-        .card { border: none; border-radius: 1rem; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
-        .payment-item { border-left: 4px solid #0d6efd; }
-        .payment-item.deposit { border-left-color: #198754; }
-        .payment-item.withdrawal { border-left-color: #dc3545; }
-        .amount-positive { color: #198754; }
-        .amount-negative { color: #dc3545; }
+        /* --- CSS MỚI CHO DIV BAO BỌC (WRAPPER) ĐỂ TẠO VIỀN --- */
+        .transaction-wrapper {
+            padding: 3px; /* Độ dày của viền */
+            border-radius: 15px; /* Bo góc lớn hơn card bên trong */
+            margin-bottom: 24px;
+            background-color: #e9ecef; /* Màu mặc định */
+            transition: all 0.3s ease;
+        }
+
+        /* Màu viền cho từng loại */
+         .transaction-wrapper.deposit {
+             background-color: #28a745; /* Xanh lá */
+         }
+         .transaction-wrapper.deposit-failed {
+             background-color: #ffc107; /* Vàng */
+         }
+         .transaction-wrapper.expense {
+             background-color: #dc3545; /* Đỏ */
+         }
+         .transaction-wrapper.refund {
+             background-color: #0d6efd; /* Xanh dương */
+         }
+
+        .transaction-wrapper:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        /* --- CSS ĐÃ SỬA cho transaction-card --- */
+        .transaction-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 16px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        /* Bỏ hover của card cũ để wrapper xử lý hiệu ứng */
+        .transaction-card:hover {
+           transform: none;
+        }
+        
+        .transaction-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        
+        .transaction-left {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            gap: 16px;
+        }
+        
+        /* --- CSS ĐÃ SỬA cho transaction-icon --- */
+        .transaction-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+         .transaction-icon.deposit { background: #28a745; }
+         .transaction-icon.deposit-failed { background: #ffc107; }
+         .transaction-icon.expense { background: #dc3545; }
+         .transaction-icon.refund { background: #0d6efd; }
+        
+        .transaction-date-time {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .transaction-date {
+            font-size: 14px;
+            color: #6c757d;
+            font-weight: 600;
+        }
+        
+        .transaction-time {
+            font-size: 12px;
+            color: #adb5bd;
+        }
+        
+        .transaction-details {
+            flex: 1;
+            margin-left: 12px;
+        }
+        
+        .transaction-type {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 6px;
+        }
+        
+        .transaction-description {
+            font-size: 14px;
+            color: #6c757d;
+            margin: 0;
+            line-height: 1.4;
+        }
+        
+        .transaction-right {
+            text-align: right;
+            flex-shrink: 0;
+            min-width: 140px;
+        }
+        
+        .transaction-amount {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .transaction-amount.positive { color: #28a745; }
+        .transaction-amount.negative { color: #dc3545; }
+        
+        /* Các class không thay đổi */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #6c757d;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px dashed #dee2e6;
+        }
+        .empty-state i { font-size: 64px; margin-bottom: 20px; opacity: 0.6; color: #adb5bd; }
+        .empty-state h3 { font-size: 24px; font-weight: 600; margin-bottom: 12px; color: #495057; }
+        .empty-state p { font-size: 16px; margin: 0; color: #6c757d; }
+         .transactions-container { margin-top: 24px; }
+         
+         /* Pagination styles */
+         .pagination {
+             margin: 0;
+         }
+         
+         .page-link {
+             color: #007bff;
+             border: 1px solid #dee2e6;
+             padding: 0.5rem 0.75rem;
+             margin: 0 2px;
+             border-radius: 0.375rem;
+             transition: all 0.2s ease;
+         }
+         
+         .page-link:hover {
+             color: #0056b3;
+             background-color: #e9ecef;
+             border-color: #adb5bd;
+         }
+         
+         .page-item.active .page-link {
+             background-color: #007bff;
+             border-color: #007bff;
+             color: white;
+         }
+         
+         .page-item.disabled .page-link {
+             color: #6c757d;
+             background-color: #fff;
+             border-color: #dee2e6;
+             cursor: not-allowed;
+         }
+         
+         /* Filter styles */
+         .card {
+             border: 1px solid #e9ecef;
+             border-radius: 12px;
+             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+         }
+         
+         .form-label {
+             color: #495057;
+             font-size: 14px;
+             margin-bottom: 8px;
+         }
+         
+         .form-control, .form-select {
+             border: 1px solid #ced4da;
+             border-radius: 8px;
+             padding: 10px 12px;
+             font-size: 14px;
+             transition: all 0.2s ease;
+         }
+         
+         .form-select {
+             -webkit-appearance: none;
+             -moz-appearance: none;
+             appearance: none;
+             background-image: none;
+             padding-right: 40px;
+         }
+         
+         .form-control:focus, .form-select:focus {
+             border-color: #007bff;
+             box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+         }
+         
+         .btn-primary {
+             background-color: #007bff;
+             border-color: #007bff;
+             border-radius: 8px;
+             padding: 10px 20px;
+             font-weight: 600;
+             transition: all 0.2s ease;
+         }
+         
+         .btn-primary:hover {
+             background-color: #0056b3;
+             border-color: #0056b3;
+             transform: translateY(-1px);
+         }
+         
+         .position-relative i {
+             pointer-events: none;
+             z-index: 10;
+         }
+         
+         .form-select + i {
+             right: 12px;
+             top: 50%;
+             transform: translateY(-50%);
+             color: #6c757d;
+             font-size: 12px;
+         }
+         
+         @media (max-width: 768px) {
+            .transaction-content { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .transaction-left { width: 100%; justify-content: flex-start; }
+            .transaction-details { width: 100%; margin-left: 0; }
+            .transaction-right { text-align: left; width: 100%; }
+            .transaction-card { padding: 16px; }
+            .transaction-wrapper { margin-bottom: 20px; }
+            
+            /* Filter responsive */
+            .row.g-3 > div {
+                margin-bottom: 1rem;
+            }
+            .btn-primary {
+                width: 100%;
+            }
+         }
     </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
-    <div class="container">
-        <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
-            <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
-            MMO Market
-        </a>
-        
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
-            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
-                <form role="search">
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
-                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
-                    </div>
-                </form>
-            </div>
+    <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
+                <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+                MMO Market
+            </a>
             
-            
-            <!-- Desktop navigation -->
-            <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
-                <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
-                    <!-- Current Balance -->
-                    <div class="btn btn-outline-success d-flex align-items-center gap-2">
-                        <i class="fa-solid fa-wallet"></i>
-                        <span class="fw-bold">1,250,000</span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
+                <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
+                    <form role="search">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Tìm kiếm...">
+                            <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
+                    <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
+                        <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
+                            <i class="fa-solid fa-wallet"></i>
+                            <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                                <i class="fa-solid fa-user"></i>
+                                <span th:text="${username}">User</span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
+                                <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                                <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/store}" href="/seller/store"><i class="fa-solid fa-store me-2"></i>Gian hàng của tôi</a></li>
+                                <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
+                                <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                            </ul>
+                        </div>
+                        <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span>Giỏ hàng</span>
+                        </a>
                     </div>
-                    
-                    <div class="dropdown">
-                        <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-user"></i>
-                            <span th:text="${username}">User</span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
-                            <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
-                            <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
-                            <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
-                        </ul>
-                    </div>
-                    
-                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
-                        <i class="fa-solid fa-cart-shopping"></i>
-                        <span>Giỏ hàng</span>
-                    </a>
                 </div>
             </div>
         </div>
-    </div>
-</nav>
-
-<main class="container py-4 py-md-5">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a th:href="@{/}" href="/">Trang chủ</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Lịch sử thanh toán</li>
-        </ol>
     </nav>
 
-    <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-1">Lịch sử thanh toán</h2>
-            <p class="text-muted mb-0">Theo dõi các giao dịch nạp tiền và thanh toán</p>
-        </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary">
-                <i class="fa-solid fa-download me-2"></i>Xuất Excel
-            </button>
-            <button class="btn btn-outline-primary">
-                <i class="fa-solid fa-filter me-2"></i>Lọc
-            </button>
-        </div>
-    </div>
+     <main class="container py-4 py-md-5">
+         <div class="d-flex justify-content-between align-items-center mb-4">
+             <div>
+                 <h1 class="h4 mb-1" style="font-size: 3rem;">Lịch sử thanh toán</h1>
+                 <p class="text-muted mb-0" style="font-size: 1rem;">Theo dõi các giao dịch nạp tiền và thanh toán</p>
+             </div>
+         </div>
 
-    <!-- Filter Section -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Từ ngày</label>
-                    <input type="date" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Đến ngày</label>
-                    <input type="date" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Loại giao dịch</label>
-                    <select class="form-select">
-                        <option value="">Tất cả</option>
-                        <option value="deposit">Nạp tiền</option>
-                        <option value="withdrawal">Thanh toán</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-primary w-100">
-                        <i class="fa-solid fa-search me-2"></i>Tìm kiếm
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+         <!-- Filter Section -->
+         <div class="card mb-4">
+             <div class="card-body">
+                 <form method="get" action="/payment-history" class="row g-3 align-items-end">
+                     <div class="col-md-3">
+                         <label for="fromDate" class="form-label fw-semibold text-dark">Từ ngày</label>
+                         <div class="position-relative">
+                             <input type="text" class="form-control" id="fromDate" name="fromDate" 
+                                    placeholder="dd/mm/yyyy" th:value="${fromDate}">
+                             <i class="fa-solid fa-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+                         </div>
+                     </div>
+                     <div class="col-md-3">
+                         <label for="toDate" class="form-label fw-semibold text-dark">Đến ngày</label>
+                         <div class="position-relative">
+                             <input type="text" class="form-control" id="toDate" name="toDate" 
+                                    placeholder="dd/mm/yyyy" th:value="${toDate}">
+                             <i class="fa-solid fa-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+                         </div>
+                     </div>
+                     <div class="col-md-2">
+                         <label for="transactionType" class="form-label fw-semibold text-dark">Loại giao dịch</label>
+                         <div class="position-relative">
+                             <select class="form-select" id="transactionType" name="transactionType">
+                                 <option value="ALL" th:selected="${transactionType == null or transactionType == 'ALL'}">Tất cả</option>
+                                 <option value="DEPOSIT" th:selected="${transactionType == 'DEPOSIT'}">Nạp tiền</option>
+                                 <option value="WITHDRAW" th:selected="${transactionType == 'WITHDRAW'}">Rút tiền</option>
+                                 <option value="PURCHASE" th:selected="${transactionType == 'PURCHASE'}">Thanh toán</option>
+                                 <option value="REFUND" th:selected="${transactionType == 'REFUND'}">Hoàn tiền</option>
+                             </select>
+                             <i class="fa-solid fa-chevron-down position-absolute"></i>
+                         </div>
+                     </div>
+                     <div class="col-md-2">
+                         <label for="transactionStatus" class="form-label fw-semibold text-dark">Trạng thái</label>
+                         <div class="position-relative">
+                             <select class="form-select" id="transactionStatus" name="transactionStatus">
+                                 <option value="ALL" th:selected="${transactionStatus == null or transactionStatus == 'ALL'}">Tất cả</option>
+                                 <option value="SUCCESS" th:selected="${transactionStatus == 'SUCCESS'}">Thành công</option>
+                                 <option value="FAILED" th:selected="${transactionStatus == 'FAILED'}">Thất bại</option>
+                                 <option value="PENDING" th:selected="${transactionStatus == 'PENDING'}">Đang xử lý</option>
+                                 <option value="CANCELED" th:selected="${transactionStatus == 'CANCELED'}">Đã hủy</option>
+                             </select>
+                             <i class="fa-solid fa-chevron-down position-absolute"></i>
+                         </div>
+                     </div>
+                     <div class="col-md-2">
+                         <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
+                             <i class="fa-solid fa-magnifying-glass"></i>
+                             <span>Tìm kiếm</span>
+                         </button>
+                     </div>
+                 </form>
+             </div>
+         </div>
 
-    <!-- Payment History List -->
-    <div class="row">
-        <div class="col-12">
-            <!-- Sample Payment Items -->
-            <div class="card payment-item deposit mb-3">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-2">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                    <i class="fa-solid fa-plus text-success"></i>
+        <div th:if="${walletHistory != null and !walletHistory.isEmpty()}" class="transactions-container">
+            <div th:each="history : ${walletHistory}">
+                <div th:with="
+                    typeClass=${(history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') ? 'deposit' : 
+                              (history.type.name() == 'DEPOSIT' && (history.status.name() == 'FAILED' || history.status.name() == 'PENDING') ? 'deposit-failed' :
+                              (history.type.name() == 'REFUND' ? 'refund' : 
+                              (history.type.name() == 'WITHDRAW' || history.type.name() == 'PURCHASE' ? 'expense' : '')))}">
+                    
+                    <div class="transaction-wrapper" th:classappend="${typeClass}">
+                        
+                        <div class="transaction-card">
+                            <div class="transaction-content">
+                                <div class="transaction-left">
+                                    <div class="transaction-icon" th:classappend="${typeClass}">
+                                        <i th:if="${(history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') || history.type.name() == 'REFUND'}" 
+                                           class="fa-solid fa-plus"></i>
+                                        <i th:if="${history.type.name() == 'DEPOSIT' && (history.status.name() == 'FAILED' || history.status.name() == 'PENDING')}" 
+                                           class="fa-solid fa-exclamation"></i>
+                                        <i th:if="${history.type.name() == 'WITHDRAW' || history.type.name() == 'PURCHASE'}" 
+                                           class="fa-solid fa-minus"></i>
+                                    </div>
+                                    <div class="transaction-date-time">
+                                        <div class="transaction-date" th:text="${#dates.format(history.createdAt, 'dd/MM/yyyy')}">15/01/2025</div>
+                                        <div class="transaction-time" th:text="${#dates.format(history.createdAt, 'HH:mm')}">14:30</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div class="fw-semibold">15/01/2025</div>
-                                    <small class="text-muted">14:30</small>
+                                <div class="transaction-details">
+                                    <div class="transaction-type">
+                                        <span th:if="${history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS'}">Nạp tiền thành công</span>
+                                        <span th:if="${history.type.name() == 'DEPOSIT' && history.status.name() == 'FAILED'}">Nạp tiền thất bại</span>
+                                        <span th:if="${history.type.name() == 'DEPOSIT' && history.status.name() == 'PENDING'}">Nạp tiền đang xử lý</span>
+                                        <span th:if="${history.type.name() == 'WITHDRAW'}">Rút tiền</span>
+                                        <span th:if="${history.type.name() == 'PURCHASE'}">Thanh toán</span>
+                                        <span th:if="${history.type.name() == 'REFUND'}">Hoàn tiền</span>
+                                    </div>
+                                    <p class="transaction-description" th:text="${history.description}">Chuyển khoản ngân hàng</p>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div>
-                                <div class="fw-semibold">Nạp tiền</div>
-                                <small class="text-muted">Chuyển khoản ngân hàng</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-end">
-                                <div class="fw-bold amount-positive fs-5">+500,000 VNĐ</div>
-                                <small class="text-muted">Số dư: 1,250,000 VNĐ</small>
+                                <div class="transaction-right">
+                                    <div class="transaction-amount">
+                                        <span th:if="${(history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') || history.type.name() == 'REFUND'}" 
+                                              class="positive" 
+                                              th:text="'+' + ${#numbers.formatDecimal(history.amount, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">+500,000 VNĐ</span>
+                                        <span th:if="${history.type.name() == 'WITHDRAW' || history.type.name() == 'PURCHASE' || (history.type.name() == 'DEPOSIT' && (history.status.name() == 'FAILED' || history.status.name() == 'PENDING'))}" 
+                                              class="negative" 
+                                              th:text="'-' + ${#numbers.formatDecimal(history.amount, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">-500,000 VNĐ</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="card payment-item withdrawal mb-3">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-2">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                    <i class="fa-solid fa-minus text-danger"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-semibold">14/01/2025</div>
-                                    <small class="text-muted">16:45</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div>
-                                <div class="fw-semibold">Thanh toán</div>
-                                <small class="text-muted">Mua sản phẩm #PROD001</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-end">
-                                <div class="fw-bold amount-negative fs-5">-300,000 VNĐ</div>
-                                <small class="text-muted">Số dư: 750,000 VNĐ</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card payment-item deposit mb-3">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-2">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                    <i class="fa-solid fa-plus text-success"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-semibold">13/01/2025</div>
-                                    <small class="text-muted">09:15</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div>
-                                <div class="fw-semibold">Nạp tiền</div>
-                                <small class="text-muted">Thẻ cào điện thoại</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-end">
-                                <div class="fw-bold amount-positive fs-5">+200,000 VNĐ</div>
-                                <small class="text-muted">Số dư: 1,050,000 VNĐ</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card payment-item withdrawal mb-3">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-2">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                    <i class="fa-solid fa-minus text-danger"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-semibold">12/01/2025</div>
-                                    <small class="text-muted">20:30</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div>
-                                <div class="fw-semibold">Thanh toán</div>
-                                <small class="text-muted">Mua sản phẩm #PROD002</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-end">
-                                <div class="fw-bold amount-negative fs-5">-150,000 VNĐ</div>
-                                <small class="text-muted">Số dư: 850,000 VNĐ</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card payment-item deposit mb-3">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-2">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                    <i class="fa-solid fa-plus text-success"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-semibold">10/01/2025</div>
-                                    <small class="text-muted">11:20</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div>
-                                <div class="fw-semibold">Nạp tiền</div>
-                                <small class="text-muted">Ví điện tử Momo</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-end">
-                                <div class="fw-bold amount-positive fs-5">+1,000,000 VNĐ</div>
-                                <small class="text-muted">Số dư: 1,000,000 VNĐ</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Empty State -->
-            <div class="text-center py-5 d-none" id="emptyState">
-                <i class="fa-solid fa-credit-card fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Chưa có giao dịch nào</h5>
-                <p class="text-muted">Bạn chưa thực hiện giao dịch nạp tiền hoặc thanh toán nào</p>
-                <a th:href="@{/}" href="/" class="btn btn-primary">
-                    <i class="fa-solid fa-plus me-2"></i>Nạp tiền ngay
-                </a>
             </div>
         </div>
-    </div>
 
+         <div th:if="${walletHistory == null or walletHistory.isEmpty()}" class="empty-state">
+             <i class="fa-solid fa-credit-card"></i>
+             <h3>Chưa có giao dịch nào</h3>
+             <p>Bạn chưa thực hiện giao dịch nào trong hệ thống.</p>
+         </div>
 
-    <!-- Pagination -->
-    <nav aria-label="Payment history pagination" class="mt-4">
-        <ul class="pagination justify-content-center">
-            <li class="page-item disabled">
-                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Trước</a>
-            </li>
-            <li class="page-item active" aria-current="page">
-                <a class="page-link" href="#">1</a>
-            </li>
-            <li class="page-item"><a class="page-link" href="#">2</a></li>
-            <li class="page-item"><a class="page-link" href="#">3</a></li>
-            <li class="page-item">
-                <a class="page-link" href="#">Tiếp</a>
-            </li>
-        </ul>
-    </nav>
-</main>
+         <!-- Pagination -->
+         <div th:if="${totalPages > 1}" class="d-flex justify-content-center mt-4">
+             <nav aria-label="Page navigation">
+                 <ul class="pagination">
+                     <!-- Previous button -->
+                     <li class="page-item" th:classappend="${!hasPrevPage} ? 'disabled'">
+                         <a class="page-link" th:href="@{/payment-history(page=${prevPage}, fromDate=${fromDate}, toDate=${toDate}, transactionType=${transactionType}, transactionStatus=${transactionStatus})}" 
+                            th:if="${hasPrevPage}" href="#" aria-label="Previous">
+                             <span aria-hidden="true">&laquo;</span>
+                         </a>
+                         <span class="page-link" th:unless="${hasPrevPage}">
+                             <span aria-hidden="true">&laquo;</span>
+                         </span>
+                     </li>
+                     
+                     <!-- Page numbers -->
+                     <li th:each="pageNum : ${#numbers.sequence(1, totalPages)}" 
+                         class="page-item" th:classappend="${pageNum == currentPage} ? 'active'">
+                         <a class="page-link" th:href="@{/payment-history(page=${pageNum}, fromDate=${fromDate}, toDate=${toDate}, transactionType=${transactionType}, transactionStatus=${transactionStatus})}" 
+                            th:text="${pageNum}" th:if="${pageNum != currentPage}">1</a>
+                         <span class="page-link" th:unless="${pageNum != currentPage}" th:text="${pageNum}">1</span>
+                     </li>
+                     
+                     <!-- Next button -->
+                     <li class="page-item" th:classappend="${!hasNextPage} ? 'disabled'">
+                         <a class="page-link" th:href="@{/payment-history(page=${nextPage}, fromDate=${fromDate}, toDate=${toDate}, transactionType=${transactionType}, transactionStatus=${transactionStatus})}" 
+                            th:if="${hasNextPage}" href="#" aria-label="Next">
+                             <span aria-hidden="true">&raquo;</span>
+                         </a>
+                         <span class="page-link" th:unless="${hasNextPage}">
+                             <span aria-hidden="true">&raquo;</span>
+                         </span>
+                     </li>
+                 </ul>
+             </nav>
+         </div>
 
-<footer class="border-top py-3 mt-5">
-    <div class="container d-flex justify-content-between align-items-center small">
-        <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> MMO Market</div>
-        <div class="text-muted">Liên hệ: support@example.com</div>
-    </div>
-</footer>
+         <!-- Page info -->
+         <div th:if="${totalPages > 1}" class="text-center mt-3">
+             <small class="text-muted">
+                 Trang <span th:text="${currentPage}">1</span> / <span th:text="${totalPages}">1</span>
+             </small>
+         </div>
+     </main>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <footer class="border-top py-3 mt-5">
+        <div class="container d-flex justify-content-between align-items-center small">
+            <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> MMO Market</div>
+            <div class="text-muted">Liên hệ: support@example.com</div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
