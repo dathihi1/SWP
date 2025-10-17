@@ -40,6 +40,15 @@
         <input name="type" th:value="${type}" class="form-control" placeholder="Loại (type)">
     </div>
     <div class="col-auto">
+        <input name="minPrice" th:value="${minPrice}" class="form-control" placeholder="Giá từ">
+    </div>
+    <div class="col-auto">
+        <input name="maxPrice" th:value="${maxPrice}" class="form-control" placeholder="Giá đến">
+    </div>
+    <div class="col-auto">
+        <input name="shop" th:value="${shop}" class="form-control" placeholder="Tên shop">
+    </div>
+    <div class="col-auto">
         <button class="btn btn-primary" type="submit">Tìm</button>
     </div>
 </form>
@@ -47,14 +56,20 @@
 <div class="row g-3">
     <div class="col-12 col-md-4" th:each="p: ${products}">
         <div class="card h-100">
+            <img th:alt="${p.name}" th:src="@{|https://picsum.photos/seed/${p.uniqueKey}/600/400|}" class="card-img-top" style="object-fit:cover;height:180px">
             <div class="card-body">
                 <h5 class="card-title" th:text="${p.name}">Tên</h5>
                 <div class="text-muted" th:text="${p.description}">Mô tả</div>
                 <div class="fw-bold mt-2" th:text="${#numbers.formatDecimal(p.price,1,'COMMA',2,'POINT')}">0</div>
+                <div class="small mt-1">
+                    <span class="text-warning">★</span>
+                    <span th:text="${#numbers.formatDecimal(productRatings[p.id] != null ? productRatings[p.id] : 0,1,'COMMA',1,'POINT')}">0.0</span>
+                </div>
             </div>
             <div class="card-footer d-flex gap-2">
-                <a class="btn btn-outline-secondary" th:href="@{|/products/${p.id}|}">Xem chi tiết</a>
+                <a class="btn btn-outline-secondary" th:href="@{|/product/${p.id}|}">Xem chi tiết</a>
                 <button type="button" class="btn btn-primary" th:onclick="|addToCart(${p.id})|">Thêm giỏ</button>
+                <a class="btn btn-success" th:href="@{|/product/${p.id}|}">Mua ngay</a>
             </div>
         </div>
     </div>
