@@ -31,6 +31,7 @@ public class SecurityConfiguration {
             "/login", "/register", "/verify-otp", "/forgot-password", 
             "/seller/register", 
             "/terms", "/faqs", 
+            "/admin-simple",
             "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico"};
 
     private static final String[] API_PROTECTED_PATHS = {"/api/profile/**", "/api/auth/me", "/api/auth/logout", "/api/auth/refresh"};
@@ -47,8 +48,23 @@ public class SecurityConfiguration {
                         .requestMatchers(API_PROTECTED_PATHS).authenticated()
                         .anyRequest().authenticated()
                 )
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .defaultSuccessUrl("/", true)
+                        .failureUrl("/login?error=true")
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessUrl("/")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .permitAll()
+                )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        .maximumSessions(1)
+                        .maxSessionsPreventsLogin(false)
                 );
         // Add JWT filter before default authentication
         http.addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);

@@ -11,4 +11,6 @@ public interface WithdrawRequestRepository extends JpaRepository<WithdrawRequest
     List<WithdrawRequest> findByShopId(Long shopId);
     List<WithdrawRequest> findByShopIdAndIsDeleteFalse(Long shopId);
     List<WithdrawRequest> findByStatus(WithdrawRequest.Status status);
+    List<WithdrawRequest> findByShopIdOrderByCreatedAtDesc(Long shopId);
+    List<WithdrawRequest> findByStatusOrderByCreatedAtDesc(WithdrawRequest.Status status);
 }

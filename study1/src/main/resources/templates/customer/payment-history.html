@@ -16,18 +16,30 @@
             transition: all 0.3s ease;
         }
 
-        /* Màu viền cho từng loại */
-         .transaction-wrapper.deposit {
-             background-color: #28a745; /* Xanh lá */
+        /* Màu viền cho từng loại theo yêu cầu */
+         .transaction-wrapper.pending {
+             background-color: #ffc107; /* Vàng - PENDING */
          }
-         .transaction-wrapper.deposit-failed {
-             background-color: #ffc107; /* Vàng */
+         .transaction-wrapper.failed {
+             background-color: #dc3545; /* Đỏ - FAILED */
          }
-         .transaction-wrapper.expense {
-             background-color: #dc3545; /* Đỏ */
+         .transaction-wrapper.canceled {
+             background-color: #6c757d; /* Xám - CANCELED */
+         }
+         .transaction-wrapper.withdraw-success {
+             background-color: #fd7e14; /* Cam - Rút tiền thành công */
+         }
+         .transaction-wrapper.purchase-success {
+             background-color: #fd7e14; /* Cam - Mua đồ thành công */
+         }
+         .transaction-wrapper.deposit-success {
+             background-color: #28a745; /* Xanh lá - Nạp tiền thành công */
          }
          .transaction-wrapper.refund {
-             background-color: #0d6efd; /* Xanh dương */
+             background-color: #0d6efd; /* Xanh dương - Hoàn tiền */
+         }
+         .transaction-wrapper.default {
+             background-color: #e9ecef; /* Mặc định */
          }
 
         .transaction-wrapper:hover {
@@ -79,10 +91,14 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-         .transaction-icon.deposit { background: #28a745; }
-         .transaction-icon.deposit-failed { background: #ffc107; }
-         .transaction-icon.expense { background: #dc3545; }
+         .transaction-icon.pending { background: #ffc107; }
+         .transaction-icon.failed { background: #dc3545; }
+         .transaction-icon.canceled { background: #6c757d; }
+         .transaction-icon.withdraw-success { background: #fd7e14; }
+         .transaction-icon.purchase-success { background: #fd7e14; }
+         .transaction-icon.deposit-success { background: #28a745; }
          .transaction-icon.refund { background: #0d6efd; }
+         .transaction-icon.default { background: #6c757d; }
         
         .transaction-date-time {
             display: flex;
@@ -298,11 +314,12 @@
                                 <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                                 <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
                                 <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/store}" href="/seller/store"><i class="fa-solid fa-store me-2"></i>Gian hàng của tôi</a></li>
+                                <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                                 <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                                 <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                                <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                             </ul>
                         </div>
                         <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
@@ -330,17 +347,15 @@
                      <div class="col-md-3">
                          <label for="fromDate" class="form-label fw-semibold text-dark">Từ ngày</label>
                          <div class="position-relative">
-                             <input type="text" class="form-control" id="fromDate" name="fromDate" 
-                                    placeholder="dd/mm/yyyy" th:value="${fromDate}">
-                             <i class="fa-solid fa-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+                             <input type="date" class="form-control" id="fromDate" name="fromDate" th:value="${fromDate}">
+                             <i class="fa-solid fa-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted" style="pointer-events: none;"></i>
                          </div>
                      </div>
                      <div class="col-md-3">
                          <label for="toDate" class="form-label fw-semibold text-dark">Đến ngày</label>
                          <div class="position-relative">
-                             <input type="text" class="form-control" id="toDate" name="toDate" 
-                                    placeholder="dd/mm/yyyy" th:value="${toDate}">
-                             <i class="fa-solid fa-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+                             <input type="date" class="form-control" id="toDate" name="toDate" th:value="${toDate}">
+                             <i class="fa-solid fa-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted" style="pointer-events: none;"></i>
                          </div>
                      </div>
                      <div class="col-md-2">
@@ -382,10 +397,13 @@
         <div th:if="${walletHistory != null and !walletHistory.isEmpty()}" class="transactions-container">
             <div th:each="history : ${walletHistory}">
                 <div th:with="
-                    typeClass=${(history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') ? 'deposit' : 
-                              (history.type.name() == 'DEPOSIT' && (history.status.name() == 'FAILED' || history.status.name() == 'PENDING') ? 'deposit-failed' :
-                              (history.type.name() == 'REFUND' ? 'refund' : 
-                              (history.type.name() == 'WITHDRAW' || history.type.name() == 'PURCHASE' ? 'expense' : '')))}">
+                    typeClass=${(history.status.name() == 'PENDING') ? 'pending' : 
+                              (history.status.name() == 'FAILED') ? 'failed' :
+                              (history.status.name() == 'CANCELED') ? 'canceled' :
+                              (history.type.name() == 'WITHDRAW' && history.status.name() == 'SUCCESS') ? 'withdraw-success' :
+                              (history.type.name() == 'PURCHASE' && history.status.name() == 'SUCCESS') ? 'purchase-success' :
+                              (history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') ? 'deposit-success' :
+                              (history.type.name() == 'REFUND') ? 'refund' : 'default'}">
                     
                     <div class="transaction-wrapper" th:classappend="${typeClass}">
                         
@@ -393,12 +411,22 @@
                             <div class="transaction-content">
                                 <div class="transaction-left">
                                     <div class="transaction-icon" th:classappend="${typeClass}">
-                                        <i th:if="${(history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') || history.type.name() == 'REFUND'}" 
+                                        <i th:if="${history.status.name() == 'PENDING'}" 
+                                           class="fa-solid fa-clock"></i>
+                                        <i th:if="${history.status.name() == 'FAILED'}" 
+                                           class="fa-solid fa-times"></i>
+                                        <i th:if="${history.status.name() == 'CANCELED'}" 
+                                           class="fa-solid fa-ban"></i>
+                                        <i th:if="${history.type.name() == 'WITHDRAW' && history.status.name() == 'SUCCESS'}" 
+                                           class="fa-solid fa-money-bill-transfer"></i>
+                                        <i th:if="${history.type.name() == 'PURCHASE' && history.status.name() == 'SUCCESS'}" 
+                                           class="fa-solid fa-shopping-cart"></i>
+                                        <i th:if="${history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS'}" 
                                            class="fa-solid fa-plus"></i>
-                                        <i th:if="${history.type.name() == 'DEPOSIT' && (history.status.name() == 'FAILED' || history.status.name() == 'PENDING')}" 
-                                           class="fa-solid fa-exclamation"></i>
-                                        <i th:if="${history.type.name() == 'WITHDRAW' || history.type.name() == 'PURCHASE'}" 
-                                           class="fa-solid fa-minus"></i>
+                                        <i th:if="${history.type.name() == 'REFUND'}" 
+                                           class="fa-solid fa-undo"></i>
+                                        <i th:if="${typeClass == 'default'}" 
+                                           class="fa-solid fa-info"></i>
                                     </div>
                                     <div class="transaction-date-time">
                                         <div class="transaction-date" th:text="${#dates.format(history.createdAt, 'dd/MM/yyyy')}">15/01/2025</div>
@@ -410,7 +438,10 @@
                                         <span th:if="${history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS'}">Nạp tiền thành công</span>
                                         <span th:if="${history.type.name() == 'DEPOSIT' && history.status.name() == 'FAILED'}">Nạp tiền thất bại</span>
                                         <span th:if="${history.type.name() == 'DEPOSIT' && history.status.name() == 'PENDING'}">Nạp tiền đang xử lý</span>
-                                        <span th:if="${history.type.name() == 'WITHDRAW'}">Rút tiền</span>
+                                        <span th:if="${history.type.name() == 'WITHDRAW' && history.status.name() == 'SUCCESS'}">Rút tiền thành công</span>
+                                        <span th:if="${history.type.name() == 'WITHDRAW' && history.status.name() == 'FAILED'}">Rút tiền thất bại</span>
+                                        <span th:if="${history.type.name() == 'WITHDRAW' && history.status.name() == 'PENDING'}">Rút tiền đang xử lý</span>
+                                        <span th:if="${history.type.name() == 'WITHDRAW' && history.status.name() == 'CANCELED'}">Rút tiền đã hủy</span>
                                         <span th:if="${history.type.name() == 'PURCHASE'}">Thanh toán</span>
                                         <span th:if="${history.type.name() == 'REFUND'}">Hoàn tiền</span>
                                     </div>
@@ -493,3 +524,103 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/auth.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fromDateInput = document.getElementById('fromDate');
+        const toDateInput = document.getElementById('toDate');
+        const form = document.querySelector('form[method="get"]');
+        
+        // Set max date to today for both inputs
+        const today = new Date().toISOString().split('T')[0];
+        fromDateInput.setAttribute('max', today);
+        toDateInput.setAttribute('max', today);
+        
+        // Validation: fromDate should not be after toDate
+        function validateDateRange() {
+            const fromDate = fromDateInput.value;
+            const toDate = toDateInput.value;
+            
+            if (fromDate && toDate && fromDate > toDate) {
+                toDateInput.setCustomValidity('Ngày kết thúc phải sau ngày bắt đầu');
+                return false;
+            } else {
+                toDateInput.setCustomValidity('');
+                return true;
+            }
+        }
+        
+        // Add event listeners
+        fromDateInput.addEventListener('change', function() {
+            // Set min date for toDate to be fromDate
+            if (this.value) {
+                toDateInput.setAttribute('min', this.value);
+            } else {
+                toDateInput.removeAttribute('min');
+            }
+            validateDateRange();
+        });
+        
+        toDateInput.addEventListener('change', validateDateRange);
+        
+        // Form submission validation
+        form.addEventListener('submit', function(e) {
+            if (!validateDateRange()) {
+                e.preventDefault();
+                toDateInput.focus();
+                return false;
+            }
+        });
+        
+        // Auto-fill date range for common filters
+        const quickFilters = {
+            today: () => {
+                fromDateInput.value = today;
+                toDateInput.value = today;
+            },
+            thisWeek: () => {
+                const today = new Date();
+                const startOfWeek = new Date(today);
+                startOfWeek.setDate(today.getDate() - today.getDay());
+                
+                fromDateInput.value = startOfWeek.toISOString().split('T')[0];
+                toDateInput.value = today.toISOString().split('T')[0];
+            },
+            thisMonth: () => {
+                const today = new Date();
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                
+                fromDateInput.value = startOfMonth.toISOString().split('T')[0];
+                toDateInput.value = today.toISOString().split('T')[0];
+            },
+            lastMonth: () => {
+                const today = new Date();
+                const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                
+                fromDateInput.value = lastMonth.toISOString().split('T')[0];
+                toDateInput.value = endOfLastMonth.toISOString().split('T')[0];
+            }
+        };
+        
+        // Add quick filter buttons
+        const filterCard = document.querySelector('.card.mb-4 .card-body');
+        const quickFilterDiv = document.createElement('div');
+        quickFilterDiv.className = 'mt-3';
+        quickFilterDiv.innerHTML = `
+            <label class="form-label fw-semibold text-dark">Lọc nhanh:</label>
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickFilters.today()">Hôm nay</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickFilters.thisWeek()">Tuần này</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickFilters.thisMonth()">Tháng này</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickFilters.lastMonth()">Tháng trước</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="fromDateInput.value=''; toDateInput.value=''; fromDateInput.removeAttribute('min'); toDateInput.removeAttribute('min');">Xóa</button>
+            </div>
+        `;
+        
+        // Insert quick filters before the form
+        filterCard.insertBefore(quickFilterDiv, filterCard.querySelector('form'));
+        
+        // Make quickFilters available globally
+        window.quickFilters = quickFilters;
+    });
+</script>

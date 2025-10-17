@@ -35,6 +35,18 @@ public class WithdrawRequest extends BaseEntity {
     @Builder.Default
     Status status = Status.PENDING;
     
+    @Column(name = "bank_account_number", nullable = false, length = 50)
+    String bankAccountNumber;
+    
+    @Column(name = "bank_account_name", nullable = false, length = 100)
+    String bankAccountName;
+    
+    @Column(name = "bank_name", nullable = false, length = 100)
+    String bankName;
+    
+    @Column(name = "note", length = 255)
+    String note;
+    
     public enum Status {
         PENDING, APPROVED, REJECTED
     }
