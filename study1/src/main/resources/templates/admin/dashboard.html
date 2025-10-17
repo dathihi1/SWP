@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/>
+</head>
+<body>
+<div th:replace="~{admin/fragments/_admin-topbar}"></div>
+<div class="container my-4">
+  <div class="row">
+    <aside class="col-md-3">
+      <div class="card p-0">
+        <div class="card-body p-0" th:replace="~{admin/fragments/_admin-sidebar}"></div>
+      </div>
+    </aside>
+    <main class="col-md-9">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="card p-3">
+            <div class="text-muted">Users</div>
+            <div class="h4" th:text="${stats.totalUsers}">0</div>
+          </div>
+        </div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Shops</div><div class="h4" th:text="${stats.totalShops}">0</div></div></div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Products</div><div class="h4" th:text="${stats.totalProducts}">0</div></div></div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Orders</div><div class="h4" th:text="${stats.totalOrders}">0</div></div></div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Disputes</div><div class="h4" th:text="${stats.totalDisputes}">0</div></div></div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Withdraw Pending</div><div class="h4" th:text="${stats.totalWithdrawsPending}">0</div></div></div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">GMV</div><div class="h4" th:text="${#numbers.formatDecimal(stats.gmV, 0, 'COMMA', 0, 'POINT')}">0</div></div></div>
+      </div>
+
+      <div class="card p-3 mt-4">
+        <h5>Gửi thông báo nhanh</h5>
+        <form th:action="@{/templates/admin/notify}" method="post" class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label">Kênh</label>
+            <select class="form-control" name="channel">
+              <option>EMAIL</option>
+              <option>SMS</option>
+              <option>INAPP</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Đến</label>
+            <input class="form-control" name="to" placeholder="email/phone/userId" required/>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Tiêu đề</label>
+            <input class="form-control" name="subject"/>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Nội dung</label>
+            <textarea class="form-control" name="content" rows="3"></textarea>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary">Gửi</button>
+            <span class="text-success ms-2" th:if="${param.notified}">Đã gửi!</span>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>

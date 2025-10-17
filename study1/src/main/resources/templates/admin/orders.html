@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head><meta charset="UTF-8"/><title>Orders</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/></head>
+<body>
+<div th:replace="~{admin/fragments/_admin-topbar}"></div>
+<div class="container my-4">
+  <div class="row">
+    <aside class="col-md-3"><div class="card"><div th:replace="~{admin/fragments/_admin-sidebar}"></div></div></aside>
+    <main class="col-md-9">
+      <div class="card p-3">
+        <h5>Orders</h5>
+        <table class="table table-striped">
+          <thead><tr><th>ID</th><th>User</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+          <tr th:each="o: ${orders}">
+            <td th:text="${o.id}">1</td>
+            <td th:text="${o.user != null ? o.user.email : '-'}">user</td>
+            <td th:text="${#numbers.formatDecimal(o.totalPaid, 0, 'COMMA', 0, 'POINT')}">0</td>
+            <td th:text="${o.status}">PAID</td>
+            <td>
+              <form th:action="@{|/admin/orders/${o.id}/status|}" method="post" class="d-inline">
+                <select class="form-control form-control-sm d-inline w-auto" name="status">
+                  <option>NEW</option><option>PAID</option><option>SHIPPED</option><option>DONE</option><option>CANCELLED</option>
+                </select>
+                <button class="btn btn-sm btn-primary">Cập nhật</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>
