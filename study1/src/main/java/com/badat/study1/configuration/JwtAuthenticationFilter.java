@@ -132,6 +132,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.startsWith("/api/withdraw/") ||
                path.equals("/admin/withdraw-requests") ||
                path.startsWith("/api/admin/withdraw/");
+               path.equals("/forgot-password");
     }
 }
 

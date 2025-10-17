@@ -429,8 +429,8 @@
                                            class="fa-solid fa-info"></i>
                                     </div>
                                     <div class="transaction-date-time">
-                                        <div class="transaction-date" th:text="${#dates.format(history.createdAt, 'dd/MM/yyyy')}">15/01/2025</div>
-                                        <div class="transaction-time" th:text="${#dates.format(history.createdAt, 'HH:mm')}">14:30</div>
+                                        <div class="transaction-date" th:text="${#temporals.format(history.createdAt, 'dd/MM/yyyy')}">15/01/2025</div>
+                                        <div class="transaction-time" th:text="${#temporals.format(history.createdAt, 'HH:mm')}">14:30</div>
                                     </div>
                                 </div>
                                 <div class="transaction-details">
@@ -517,7 +517,7 @@
 
     <footer class="border-top py-3 mt-5">
         <div class="container d-flex justify-content-between align-items-center small">
-            <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> MMO Market</div>
+            <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
             <div class="text-muted">Liên hệ: support@example.com</div>
         </div>
     </footer>

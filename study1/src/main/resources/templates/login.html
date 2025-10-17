@@ -362,7 +362,8 @@
                         // Store tokens
                         localStorage.setItem('accessToken', data.accessToken);
                         localStorage.setItem('refreshToken', data.refreshToken);
-                        document.cookie = `accessToken=${data.accessToken}; path=/; max-age=3600; SameSite=Lax; Secure=false`;
+                        const cookieBase = `accessToken=${data.accessToken}; Path=/; Max-Age=3600; SameSite=Lax`;
+                        document.cookie = (location.protocol === 'https:' ? `${cookieBase}; Secure` : cookieBase);
                         
                         // Show success message
                         alert('Đăng nhập thành công!');

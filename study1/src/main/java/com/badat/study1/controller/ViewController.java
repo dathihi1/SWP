@@ -242,6 +242,7 @@ public class ViewController {
         return "faqs";
     }
 
+
     @GetMapping("/payment-history")
     public String paymentHistoryPage(Model model,
                                      @RequestParam(defaultValue = "1") int page,
@@ -493,6 +494,7 @@ public class ViewController {
         
         return "seller/shop";
     }
+
 
     @GetMapping("/seller/shop-management")
     public String sellerShopManagementPage(Model model) {

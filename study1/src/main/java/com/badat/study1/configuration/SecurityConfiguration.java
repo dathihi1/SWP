@@ -27,7 +27,7 @@ public class SecurityConfiguration {
             "/cart", 
             "/profile", "/orders", "/payment", "/payment-history", "/change-password",
             "/auth/**", 
-            "/api/auth/login", "/api/auth/login-form", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp",
+            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp",
             "/users/**", 
             "/login", "/register", "/verify-otp", "/forgot-password", 
             "/seller/register", 
@@ -61,6 +61,10 @@ public class SecurityConfiguration {
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()
+=======
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((req, res, ex) -> res.sendRedirect("/login"))
+>>>>>>> d1e9c77 (Merge update: keep local (+) changes and resolve conflicts)
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
