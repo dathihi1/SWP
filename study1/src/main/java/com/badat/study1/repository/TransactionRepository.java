@@ -13,6 +13,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query(value = "SELECT DATE(t.created_at) as d, SUM(t.amount) as total, COUNT(*) as cnt " +
             "FROM `transaction` t " +
             "WHERE DATE(t.created_at) BETWEEN :fromDate AND :toDate " +
+            "AND t.status = 'SUCCESS' " +
             "GROUP BY DATE(t.created_at) " +
             "ORDER BY d", nativeQuery = true)
     List<Object[]> aggregateBetween(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);

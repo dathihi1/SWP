@@ -5,6 +5,7 @@ import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
+import com.badat.study1.repository.StallRepository;
 import com.badat.study1.service.WalletHistoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -26,12 +27,14 @@ import java.time.ZoneId;
 public class ViewController {
     private final WalletRepository walletRepository;
     private final ShopRepository shopRepository;
+    private final StallRepository stallRepository;
 
     private final WalletHistoryService walletHistoryService;
 
-    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, WalletHistoryService walletHistoryService) {
+    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, WalletHistoryService walletHistoryService) {
         this.walletRepository = walletRepository;
         this.shopRepository = shopRepository;
+        this.stallRepository = stallRepository;
         this.walletHistoryService = walletHistoryService;
     }
 
@@ -366,8 +369,8 @@ public class ViewController {
         return "customer/profile";
     }
 
-    @GetMapping("/seller/shop")
-    public String sellerShopPage(Model model) {
+    @GetMapping("/cart")
+    public String cartPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
@@ -387,11 +390,11 @@ public class ViewController {
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
         
-        return "seller/shop";
+        return "customer/cart";
     }
 
-    @GetMapping("/cart")
-    public String cartPage(Model model) {
+    @GetMapping("/seller/shop")
+    public String sellerShopPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
@@ -401,15 +404,27 @@ public class ViewController {
         }
         
         User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
         
-        return "customer/cart";
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+        
+        return "seller/shop";
     }
 
-    @GetMapping("/seller/store")
-    public String sellerStorePage(Model model) {
+    @GetMapping("/seller/products")
+    public String sellerProductsPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
@@ -438,6 +453,75 @@ public class ViewController {
         return "seller/shop";
     }
 
+    @GetMapping("/seller/shop-management")
+    public String sellerShopManagementPage(Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+        
+        // Lấy danh sách gian hàng của user
+        shopRepository.findByUserId(user.getId()).ifPresent(shop -> {
+            var stalls = stallRepository.findByShopIdAndIsDeleteFalse(shop.getId());
+            model.addAttribute("stalls", stalls);
+        });
+        
+        return "seller/shop-management";
     }
 
-
+    @GetMapping("/seller/add-stall")
+    public String sellerAddStallPage(Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
+        // Check if user has a shop
+        boolean hasShop = shopRepository.findByUserId(user.getId()).isPresent();
+        if (!hasShop) {
+            return "redirect:/seller/shop-management";
+        }
+        
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+        
+        return "seller/add-stall";
+    }
+}

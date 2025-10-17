@@ -37,7 +37,7 @@ public class    Transaction {
     Instant createdAt;
 
     public enum Status {
-        PENDING, HOLD, RELEASED, REFUND
+        SUCCESS, PENDING, REFUND;
     }
 }
 
