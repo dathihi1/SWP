@@ -127,7 +127,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.equals("/orders") ||
                path.equals("/payment") ||
                path.equals("/payment-history") ||
-               path.equals("/change-password");
+               path.equals("/change-password") ||
+               path.equals("/withdraw") ||
+               path.startsWith("/api/withdraw/") ||
+               path.equals("/admin/withdraw-requests") ||
+               path.startsWith("/api/admin/withdraw/");
     }
 }
 
