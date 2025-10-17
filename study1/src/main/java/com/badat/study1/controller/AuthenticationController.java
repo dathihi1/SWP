@@ -5,38 +5,126 @@ import com.badat.study1.dto.response.LoginResponse;
 import com.badat.study1.service.AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.text.ParseException;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RestController
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
-    @PostMapping("/auth/login")
-    public LoginResponse login(@RequestBody LoginRequest loginRequest) {
-        return authenticationService.login(loginRequest);
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        try {
+            log.info("Login attempt for username: {}", loginRequest.getUsername());
+            
+    
+            LoginResponse loginResponse = authenticationService.login(loginRequest);
+            log.info("Login successful for username: {}", loginRequest.getUsername());
+            
+            return ResponseEntity.ok(loginResponse);
+            
+        } catch (Exception e) {
+            log.error("Login failed for username: {}, error: {}", loginRequest.getUsername(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Tên đăng nhập hoặc mật khẩu không đúng"));
+        }
     }
 
-    @PostMapping("/auth/logout")
-    public void logout(@RequestHeader("Authorization") String authHeader) throws ParseException {
-        log.info(authHeader);
-        authenticationService.logout(authHeader.replace("Bearer ", ""));
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Authorization header không hợp lệ"));
+            }
+            
+            String token = authHeader.replace("Bearer ", "");
+            authenticationService.logout(token);
+            
+            log.info("Logout successful");
+            return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công"));
+            
+        } catch (ParseException e) {
+            log.error("Logout failed: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Token không hợp lệ"));
+        } catch (Exception e) {
+            log.error("Logout failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Có lỗi xảy ra khi đăng xuất"));
+        }
     }
 
-    @GetMapping("/auth/debug")
-    public String debugAuth() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return "Authentication: " + (auth != null ? auth.getName() : "null");
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Chưa đăng nhập"));
+            }
+            
+            // Get User object from authentication principal
+            Object principal = auth.getPrincipal();
+            if (principal instanceof com.badat.study1.model.User) {
+                com.badat.study1.model.User user = (com.badat.study1.model.User) principal;
+                
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("id", user.getId());
+                userInfo.put("username", user.getUsername());
+                userInfo.put("email", user.getEmail());
+                userInfo.put("role", user.getRole().name());
+                userInfo.put("status", user.getStatus().name());
+                userInfo.put("authorities", auth.getAuthorities());
+                
+                return ResponseEntity.ok(userInfo);
+            } else {
+                // Fallback for other types of principals
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("username", auth.getName());
+                userInfo.put("authorities", auth.getAuthorities());
+                
+                return ResponseEntity.ok(userInfo);
+            }
+            
+        } catch (Exception e) {
+            log.error("Get current user failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Có lỗi xảy ra khi lấy thông tin người dùng"));
+        }
     }
 
-}
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Authorization header không hợp lệ"));
+            }
+            
+            String refreshToken = authHeader.replace("Bearer ", "");
+            LoginResponse loginResponse = authenticationService.refreshToken(refreshToken);
+            
+            log.info("Token refresh successful");
+            return ResponseEntity.ok(loginResponse);
+            
+        } catch (Exception e) {
+            log.error("Token refresh failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Refresh token không hợp lệ hoặc đã hết hạn"));
+        }
+    }
+
+    }
+

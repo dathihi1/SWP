@@ -38,6 +38,28 @@ public class ViewController {
         this.walletHistoryService = walletHistoryService;
     }
 
+    private void addUserAttributes(Model model, Authentication authentication) {
+        if (authentication != null && authentication.isAuthenticated() && 
+            !authentication.getName().equals("anonymousUser")) {
+            
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof User) {
+                User user = (User) principal;
+                model.addAttribute("username", user.getUsername());
+                model.addAttribute("userRole", user.getRole().name());
+                
+                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                        .map(Wallet::getBalance)
+                        .orElse(BigDecimal.ZERO);
+                model.addAttribute("walletBalance", walletBalance);
+            } else {
+                model.addAttribute("username", authentication.getName());
+                model.addAttribute("userRole", "USER");
+                model.addAttribute("walletBalance", BigDecimal.ZERO);
+            }
+        }
+    }
+
     // Inject common attributes (auth info and wallet balance) for all views
     @ModelAttribute
     public void addCommonAttributes(Model model) {
@@ -48,47 +70,60 @@ public class ViewController {
         model.addAttribute("isAuthenticated", isAuthenticated);
 
         if (isAuthenticated) {
-            User user = (User) authentication.getPrincipal();
-            model.addAttribute("username", user.getUsername());
-            model.addAttribute("userRole", user.getRole().name());
+            // Get UserDetails from authentication principal
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof User) {
+                User user = (User) principal;
+                model.addAttribute("username", user.getUsername());
+                model.addAttribute("userRole", user.getRole().name());
 
-            BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                    .map(Wallet::getBalance)
-                    .orElse(BigDecimal.ZERO);
-            model.addAttribute("walletBalance", walletBalance);
+                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                        .map(Wallet::getBalance)
+                        .orElse(BigDecimal.ZERO);
+                model.addAttribute("walletBalance", walletBalance);
+            } else {
+                // Fallback for other types of principals
+                model.addAttribute("username", authentication.getName());
+                model.addAttribute("userRole", "USER");
+                model.addAttribute("walletBalance", BigDecimal.ZERO);
+            }
         }
     }
 
     @GetMapping("/")
     public String homePage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.debug("Home page - Authentication: {}, Name: {}", authentication, 
-                 authentication != null ? authentication.getName() : "null");
-        
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
-        
-        log.debug("Is authenticated: {}", isAuthenticated);
         
         model.addAttribute("isAuthenticated", isAuthenticated);
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
         
         if (isAuthenticated) {
-            // Lấy User object từ authentication principal
-            User user = (User) authentication.getPrincipal();
-            log.debug("User: {}, Role: {}", user.getUsername(), user.getRole());
-            
-            model.addAttribute("username", user.getUsername());
-            model.addAttribute("authorities", authentication.getAuthorities());
-            model.addAttribute("userRole", user.getRole().name());
-            // Default submitSuccess to false to avoid null in template conditions
-            model.addAttribute("submitSuccess", false);
-            
-            // Lấy số dư ví
-            BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                    .map(Wallet::getBalance)
-                    .orElse(BigDecimal.ZERO);
-            model.addAttribute("walletBalance", walletBalance);
+            // Get User object from authentication principal
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof User) {
+                User user = (User) principal;
+                
+                model.addAttribute("username", user.getUsername());
+                model.addAttribute("authorities", authentication.getAuthorities());
+                model.addAttribute("userRole", user.getRole().name());
+                // Default submitSuccess to false to avoid null in template conditions
+                model.addAttribute("submitSuccess", false);
+                
+                // Lấy số dư ví
+                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                        .map(Wallet::getBalance)
+                        .orElse(BigDecimal.ZERO);
+                model.addAttribute("walletBalance", walletBalance);
+            } else {
+                // Fallback for other types of principals
+                model.addAttribute("username", authentication.getName());
+                model.addAttribute("authorities", authentication.getAuthorities());
+                model.addAttribute("userRole", "USER");
+                model.addAttribute("submitSuccess", false);
+                model.addAttribute("walletBalance", BigDecimal.ZERO);
+            }
         }
         
         return "home";
@@ -365,6 +400,12 @@ public class ViewController {
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
+        
+        // Thêm thông tin ngày đăng ký
+        model.addAttribute("userCreatedAt", user.getCreatedAt());
+        
+        // Thêm thông tin đơn hàng (tạm thời set 0, có thể cập nhật sau)
+        model.addAttribute("totalOrders", 0);
         
         return "customer/profile";
     }
