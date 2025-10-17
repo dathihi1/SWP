@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head><meta charset="UTF-8"/><title>Shops</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}"/></head>
+<body>
+<div th:replace="~{admin/fragments/_admin-topbar}"></div>
+<div class="container my-4">
+  <div class="row">
+    <aside class="col-md-3"><div class="card"><div th:replace="~{admin/fragments/_admin-sidebar}"></div></div></aside>
+    <main class="col-md-9">
+      <div class="card p-3">
+        <h5>Shops</h5>
+        <table class="table table-striped">
+          <thead><tr><th>ID</th><th>Name</th><th>Owner</th><th>Hidden</th><th></th></tr></thead>
+          <tbody>
+          <tr th:each="s: ${shops}">
+            <td th:text="${s.id}">1</td>
+            <td th:text="${s.name}">Shop</td>
+            <td th:text="${s.owner != null ? s.owner.email : '-'}">owner</td>
+            <td th:text="${s.hidden} ? 'Yes' : 'No'">No</td>
+            <td>
+              <form th:action="@{|/admin/shops/${s.id}/hide|}" method="post" class="d-inline">
+                <input type="hidden" name="hidden" th:value="${!s.hidden}"/>
+                <button class="btn btn-sm" th:classappend="${s.hidden} ? 'btn-success' : 'btn-warning'"
+                        th:text="${s.hidden} ? 'Hiện' : 'Ẩn'">Ẩn/Hiện</button>
+              </form>
+              <form th:action="@{|/admin/shops/${s.id}/delete|}" method="post" class="d-inline"
+                    onsubmit="return confirm('Xóa shop này?');">
+                <button class="btn btn-sm btn-danger">Xóa</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>
