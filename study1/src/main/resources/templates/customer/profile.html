@@ -130,19 +130,19 @@
                         <div class="info-label">
                             <i class="fa-solid fa-envelope me-2 text-primary"></i>Email
                         </div>
-                        <div class="info-value" id="profileEmail">Loading...</div>
+                        <div class="info-value" th:text="${user?.email ?: 'Chưa cập nhật'}" data-email="${user?.email}">Loading...</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">
                             <i class="fa-solid fa-id-card me-2 text-primary"></i>Họ và tên
                         </div>
-                        <div class="info-value" id="profileFullName">Loading...</div>
+                        <div class="info-value" th:text="${user?.fullName ?: 'Chưa cập nhật'}" data-fullname="${user?.fullName}">Loading...</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">
                             <i class="fa-solid fa-phone me-2 text-primary"></i>Số điện thoại
                         </div>
-                        <div class="info-value" id="profilePhone">Loading...</div>
+                        <div class="info-value" th:text="${user?.phone ?: 'Chưa cập nhật'}" data-phone="${user?.phone}">Loading...</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">
@@ -156,13 +156,13 @@
                         <div class="info-label">
                             <i class="fa-solid fa-calendar-plus me-2 text-info"></i>Ngày đăng ký
                         </div>
-                        <div class="info-value" id="profileCreatedAt">Loading...</div>
+                        <div class="info-value" th:text="${#dates.format(userCreatedAt, 'dd/MM/yyyy HH:mm')}">Loading...</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">
                             <i class="fa-solid fa-shopping-cart me-2 text-warning"></i>Đơn đã mua
                         </div>
-                        <div class="info-value" id="profileTotalOrders">Loading...</div>
+                        <div class="info-value" th:text="${totalOrders} + ' đơn hàng'">Loading...</div>
                     </div>
                     <div class="info-item" th:if="${userRole == 'ADMIN'}">
                         <div class="info-label">
@@ -188,7 +188,7 @@
                         <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 100px; height: 100px;">
                             <i class="fa-solid fa-user-circle fa-3x text-primary"></i>
                         </div>
-                        <h4 class="mb-1" th:text="${username}">Username</h4>
+                        <h4 class="mb-1" th:text="${username}" data-username="${username}">Username</h4>
                         <p class="text-muted mb-0" th:text="${userRole}">USER</p>
                     </div>
                 </div>
@@ -264,67 +264,24 @@
 <script>
     let currentProfile = null;
     
-    // Load profile data
-    async function loadProfile() {
-        try {
-            const token = window.authManager ? window.authManager.getAccessToken() : localStorage.getItem('accessToken');
-            if (!token) {
-                console.error('No access token found');
-                return;
-            }
-            
-            const response = await fetch('/api/profile', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to load profile');
-            }
-            
-            const result = await response.json();
-            if (result.success) {
-                currentProfile = result.data;
-                updateProfileDisplay(result.data);
-                populateEditForm(result.data);
-            } else {
-                throw new Error(result.message || 'Failed to load profile');
-            }
-        } catch (error) {
-            console.error('Error loading profile:', error);
-            showError('Không thể tải thông tin profile: ' + error.message);
-        }
-    }
+    // Profile data is now loaded via server-side Thymeleaf
+    // No need for client-side loading
     
-    // Update profile display
-    function updateProfileDisplay(profile) {
-        document.getElementById('profileEmail').textContent = profile.email || 'Chưa cập nhật';
-        document.getElementById('profileFullName').textContent = profile.fullName || 'Chưa cập nhật';
-        document.getElementById('profilePhone').textContent = profile.phone || 'Chưa cập nhật';
-        document.getElementById('profileWalletBalance').textContent = formatCurrency(profile.walletBalance);
-        document.getElementById('profileCreatedAt').textContent = formatDate(profile.createdAt);
-        document.getElementById('profileTotalOrders').textContent = profile.totalOrders + ' đơn hàng';
+    // Profile display is now handled by server-side Thymeleaf
+    // No need for client-side updates
+    
+    // Populate edit form with server-side data
+    function populateEditForm() {
+        // Get data from Thymeleaf attributes
+        const username = document.querySelector('[data-username]')?.dataset.username || '';
+        const email = document.querySelector('[data-email]')?.dataset.email || '';
+        const fullName = document.querySelector('[data-fullname]')?.dataset.fullname || '';
+        const phone = document.querySelector('[data-phone]')?.dataset.phone || '';
         
-        // Only update shop and sales info for ADMIN role
-        const totalShopsElement = document.getElementById('profileTotalShops');
-        const totalSalesElement = document.getElementById('profileTotalSales');
-        if (totalShopsElement) {
-            totalShopsElement.textContent = profile.totalShops + ' gian hàng';
-        }
-        if (totalSalesElement) {
-            totalSalesElement.textContent = profile.totalSales + ' đơn hàng';
-        }
-    }
-    
-    // Populate edit form
-    function populateEditForm(profile) {
-        document.getElementById('editUsername').value = profile.username;
-        document.getElementById('editEmail').value = profile.email;
-        document.getElementById('editFullName').value = profile.fullName || '';
-        document.getElementById('editPhone').value = profile.phone || '';
+        document.getElementById('editUsername').value = username;
+        document.getElementById('editEmail').value = email;
+        document.getElementById('editFullName').value = fullName;
+        document.getElementById('editPhone').value = phone;
     }
     
     // Update profile
@@ -414,11 +371,19 @@
     
     // Initialize page
     document.addEventListener('DOMContentLoaded', function() {
-        loadProfile();
+        // Populate edit form when modal opens
+        const editModal = document.getElementById('editProfileModal');
+        if (editModal) {
+            editModal.addEventListener('show.bs.modal', function() {
+                populateEditForm();
+            });
+        }
         
         // Handle save button click
         const saveButton = document.querySelector('#editProfileModal .btn-primary');
-        saveButton.addEventListener('click', updateProfile);
+        if (saveButton) {
+            saveButton.addEventListener('click', updateProfile);
+        }
     });
 </script>
 </body>

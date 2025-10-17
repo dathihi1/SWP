@@ -311,25 +311,25 @@
                 
                 // Basic frontend validation
                 if (!username) {
-                    showAlert('Vui lòng nhập tên đăng nhập', 'danger');
+                    alert('Vui lòng nhập tên đăng nhập');
                     return;
                 }
                 
                 if (!password) {
-                    showAlert('Vui lòng nhập mật khẩu', 'danger');
+                    alert('Vui lòng nhập mật khẩu');
                     return;
                 }
                 
                 // Check username format (no special characters)
                 const usernameRegex = /^[a-zA-Z0-9_]+$/;
                 if (!usernameRegex.test(username)) {
-                    showAlert('Tên đăng nhập không được chứa ký tự đặc biệt', 'danger');
+                    alert('Tên đăng nhập không được chứa ký tự đặc biệt');
                     return;
                 }
                 
                 // Check password length (minimum 6 characters)
                 if (password.length < 6) {
-                    showAlert('Mật khẩu phải có ít nhất 6 ký tự', 'danger');
+                    alert('Mật khẩu phải có ít nhất 6 ký tự');
                     return;
                 }
                 
@@ -359,26 +359,21 @@
                     const data = await response.json();
                     
                     if (response.ok) {
-                        // Store tokens in localStorage
+                        // Store tokens
                         localStorage.setItem('accessToken', data.accessToken);
                         localStorage.setItem('refreshToken', data.refreshToken);
-                        
-                        // Also store access token in cookie for server-side rendering
                         document.cookie = `accessToken=${data.accessToken}; path=/; max-age=3600; SameSite=Lax; Secure=false`;
                         
                         // Show success message
-                        showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+                        alert('Đăng nhập thành công!');
                         
-                        // Redirect to home page after 1 second
-                        setTimeout(() => {
-                            window.location.href = '/';
-                        }, 1000);
+                        // Redirect to home immediately
+                        window.location.href = '/';
                     } else {
-                        showAlert(data.error || 'Đăng nhập thất bại', 'danger');
+                        alert('Tài khoản hoặc mật khẩu không đúng!');
                     }
                 } catch (error) {
-                    console.error('Login error:', error);
-                    showAlert('Có lỗi xảy ra khi đăng nhập', 'danger');
+                    alert('Tài khoản hoặc mật khẩu không đúng!');
                 } finally {
                     // Re-enable button
                     loginBtn.disabled = false;

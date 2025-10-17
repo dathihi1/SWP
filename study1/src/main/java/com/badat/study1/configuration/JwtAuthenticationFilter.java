@@ -112,6 +112,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.startsWith("/images/") ||
                path.startsWith("/auth/") ||           // Allow all /auth/* endpoints
                path.equals("/api/auth/login") ||      // Allow login endpoint
+               path.equals("/api/auth/login-form") || // Allow form login endpoint
                path.equals("/api/auth/register") ||   // Allow register endpoint
                path.equals("/api/auth/forgot-password") || // Allow forgot password
                path.equals("/api/auth/verify-otp") ||   // Allow verify OTP
@@ -121,7 +122,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.equals("/logout") ||
                path.equals("/register") ||
                path.equals("/verify-otp") ||
-               path.equals("/forgot-password");
+               path.equals("/forgot-password") ||
+               path.equals("/profile") ||
+               path.equals("/orders") ||
+               path.equals("/payment") ||
+               path.equals("/payment-history") ||
+               path.equals("/change-password");
     }
 }
 

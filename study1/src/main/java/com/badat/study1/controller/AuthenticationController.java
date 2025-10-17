@@ -17,8 +17,8 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
@@ -75,11 +75,28 @@ public class AuthenticationController {
                     .body(Map.of("error", "Chưa đăng nhập"));
             }
             
-            Map<String, Object> userInfo = new HashMap<>();
-            userInfo.put("username", auth.getName());
-            userInfo.put("authorities", auth.getAuthorities());
-            
-            return ResponseEntity.ok(userInfo);
+            // Get User object from authentication principal
+            Object principal = auth.getPrincipal();
+            if (principal instanceof com.badat.study1.model.User) {
+                com.badat.study1.model.User user = (com.badat.study1.model.User) principal;
+                
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("id", user.getId());
+                userInfo.put("username", user.getUsername());
+                userInfo.put("email", user.getEmail());
+                userInfo.put("role", user.getRole().name());
+                userInfo.put("status", user.getStatus().name());
+                userInfo.put("authorities", auth.getAuthorities());
+                
+                return ResponseEntity.ok(userInfo);
+            } else {
+                // Fallback for other types of principals
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("username", auth.getName());
+                userInfo.put("authorities", auth.getAuthorities());
+                
+                return ResponseEntity.ok(userInfo);
+            }
             
         } catch (Exception e) {
             log.error("Get current user failed: {}", e.getMessage());
@@ -109,15 +126,5 @@ public class AuthenticationController {
         }
     }
 
-    @GetMapping("/debug")
-    public ResponseEntity<?> debugAuth() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        Map<String, Object> debugInfo = new HashMap<>();
-        debugInfo.put("authenticated", auth != null && auth.isAuthenticated());
-        debugInfo.put("username", auth != null ? auth.getName() : "null");
-        debugInfo.put("authorities", auth != null ? auth.getAuthorities() : "null");
-        debugInfo.put("principal", auth != null ? auth.getPrincipal().getClass().getSimpleName() : "null");
-        
-        return ResponseEntity.ok(debugInfo);
     }
-}
+

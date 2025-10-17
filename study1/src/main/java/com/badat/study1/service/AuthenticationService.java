@@ -35,8 +35,9 @@ public class AuthenticationService {
         
         User user = userOpt.get();
         
-        // Check if user is active
-        if (user.getStatus() != User.Status.ACTIVE) {
+        
+        
+        if (user.getStatus() == User.Status.LOCKED) {
             throw new RuntimeException("Tài khoản đã bị khóa");
         }
         
@@ -78,8 +79,7 @@ public class AuthenticationService {
         
         User user = userOpt.get();
         
-        // Check if user is still active
-        if (user.getStatus() != User.Status.ACTIVE) {
+        if (user.getStatus() == User.Status.LOCKED) {
             throw new RuntimeException("Tài khoản đã bị khóa");
         }
         

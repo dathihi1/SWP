@@ -19,6 +19,7 @@ spring:
     port: 587
     username: dat2801zz@gmail.com
     password: yoxh secc lerq ykat # <-- See security note below
+    from: dat2801zz@gmail.com
     properties:
       mail:
         smtp:
@@ -46,7 +47,4 @@ vnpay:
   currency-code: "VND"
 logging:
   level:
-    com.badat.study1.configuration.JwtAuthenticationFilter: DEBUG
-    com.badat.study1.controller.ViewController: DEBUG
-    com.badat.study1.service.JwtService: DEBUG
-    com.badat.study1.service.AuthenticationService: DEBUG
+    com.badat.study1: INFO
