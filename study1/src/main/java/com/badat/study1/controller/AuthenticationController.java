@@ -39,8 +39,4 @@ public class AuthenticationController {
         return "Authentication: " + (auth != null ? auth.getName() : "null");
     }
 
-    @GetMapping("/logout")
-    public String logoutPage() {
-        return "redirect:/";
-    }
 }

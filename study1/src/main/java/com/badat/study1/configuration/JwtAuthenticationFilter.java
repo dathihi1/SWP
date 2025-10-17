@@ -115,6 +115,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.startsWith("/users/") ||
                path.equals("/favicon.ico") ||
                path.equals("/login") ||
+               path.equals("/logout") ||
                path.equals("/register") ||
                path.equals("/verify-otp") ||
                path.equals("/forgot-password");

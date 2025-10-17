@@ -79,7 +79,7 @@ public class User extends BaseEntity implements UserDetails {
     Status status = Status.ACTIVE;
     
     public enum Role {
-        USER, ADMIN
+        USER, ADMIN, SELLER
     }
     
     public enum Status {

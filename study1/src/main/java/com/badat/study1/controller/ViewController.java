@@ -27,13 +27,11 @@ public class ViewController {
     private final WalletRepository walletRepository;
     private final ShopRepository shopRepository;
 
-    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository) {
-        this.walletRepository = walletRepository;
-        this.shopRepository = shopRepository;
     private final WalletHistoryService walletHistoryService;
 
-    public ViewController(WalletRepository walletRepository, WalletHistoryService walletHistoryService) {
+    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, WalletHistoryService walletHistoryService) {
         this.walletRepository = walletRepository;
+        this.shopRepository = shopRepository;
         this.walletHistoryService = walletHistoryService;
     }
 
@@ -370,6 +368,28 @@ public class ViewController {
 
     @GetMapping("/seller/shop")
     public String sellerShopPage(Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+        
+        return "seller/shop";
+    }
+
     @GetMapping("/cart")
     public String cartPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -416,20 +436,8 @@ public class ViewController {
         model.addAttribute("walletBalance", walletBalance);
         
         return "seller/shop";
-        User user = (User) authentication.getPrincipal();
-        
-        // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
-        if (!user.getRole().equals(User.Role.ADMIN)) {
-            return "redirect:/profile";
-        }
-        
-        model.addAttribute("username", user.getUsername());
-        model.addAttribute("isAuthenticated", true);
-        model.addAttribute("userRole", user.getRole().name());
-        
-        return "seller/products";
     }
 
-}
+    }
 
 
