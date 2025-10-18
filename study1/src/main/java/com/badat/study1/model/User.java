@@ -78,6 +78,13 @@ public class User extends BaseEntity implements UserDetails {
     @Builder.Default
     Status status = Status.ACTIVE;
     
+    @Column(name = "provider", length = 20)
+    @Builder.Default
+    String provider = "LOCAL";
+    
+    @Column(name = "provider_id", length = 100)
+    String providerId;
+    
     public enum Role {
         USER, ADMIN, SELLER
     }

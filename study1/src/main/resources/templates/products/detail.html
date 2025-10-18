@@ -3,14 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chi tiết sản phẩm</title>
+    <title th:text="${product.name} + ' - MMO Market'">Chi tiết sản phẩm - MMO Market</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
+        .navbar-brand span { color: #0d6efd; font-weight: 700; }
         :root { --brand: #dc3545; }
         .btn-primary { background-color: var(--brand); border-color: var(--brand); }
         .btn-primary:hover { filter: brightness(0.95); }
         .text-brand { color: var(--brand); }
+        .product-image { max-height: 400px; object-fit: cover; }
+        .product-badge { position: absolute; top: 10px; left: 10px; z-index: 10; }
+        .seller-badge { background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
+        .stock-badge { background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
+        .product-variant { border: 2px solid #e9ecef; border-radius: 8px; padding: 10px; margin: 5px 0; cursor: pointer; transition: all 0.3s; }
+        .product-variant:hover { border-color: #0d6efd; background-color: #f8f9fa; }
+        .product-variant.selected { border-color: #0d6efd; background-color: #e3f2fd; }
+        .tab-content { min-height: 300px; }
+        .review-item { border-bottom: 1px solid #e9ecef; padding: 15px 0; }
+        .review-item:last-child { border-bottom: none; }
     </style>
+    <script src="/js/auth.js"></script>
     <script>
         async function addToCart(id){
             const qtyEl = document.getElementById('qty');
@@ -31,21 +44,329 @@
         }
     </script>
 </head>
-<body class="container py-4">
-<a class="btn btn-link" href="/products">← Quay lại danh sách</a>
-
-<div class="card">
-    <div class="card-body">
-        <h3 th:text="${product.name}">Tên</h3>
-        <div class="text-muted mb-2" th:text="${product.description}">Mô tả</div>
-        <div class="h5" th:text="${#numbers.formatDecimal(product.price,1,'COMMA',2,'POINT')}">0</div>
-        <div class="d-flex align-items-center gap-2 mt-3">
-            <input type="number" id="qty" class="form-control" value="1" min="1" style="width:100px">
-            <button class="btn btn-primary" th:onclick="|addToCart(${product.id})|">Thêm vào giỏ</button>
+<body>
+<!-- Header -->
+<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
+            <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+            MMO Market
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
+            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
+                <form role="search">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
+                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
+                <!-- Guest user navigation -->
+                <div th:if="${!isAuthenticated}" class="d-flex align-items-center gap-2">
+                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
+                        <i class="fa-regular fa-user"></i>
+                        <span>Đăng nhập</span>
+                    </a>
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>Giỏ hàng</span>
+                    </a>
+                </div>
+                
+                <!-- Authenticated user navigation -->
+                <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
+                    <!-- Current Balance -->
+                    <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
+                        <i class="fa-solid fa-wallet"></i>
+                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
+                    </div>
+                    
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-user"></i>
+                            <span th:text="${username}">User</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
+                            <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
+                            <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
+                            <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                        </ul>
+                    </div>
+                    
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>Giỏ hàng</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
+</nav>
+
+<!-- Main Content -->
+<main class="container py-4 py-md-5">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/}" href="/">Trang chủ</a></li>
+            <li class="breadcrumb-item"><a th:href="@{/products}" href="/products">Sản phẩm</a></li>
+            <li class="breadcrumb-item active" th:text="${product.name}">Chi tiết</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Product Image -->
+        <div class="col-md-6 mb-4">
+            <div class="position-relative">
+                <img th:alt="${product.name}" 
+                     th:src="@{|https://picsum.photos/seed/${product.uniqueKey}/600/400|}" 
+                     class="img-fluid rounded product-image w-100" 
+                     style="object-fit:cover;">
+                <span class="badge bg-success product-badge">KHÔNG TRÙNG</span>
+            </div>
+        </div>
+
+        <!-- Product Info -->
+        <div class="col-md-6">
+            <div class="d-flex align-items-center mb-2">
+                <h1 class="h3 mb-0 me-3" th:text="${product.name}">Tên sản phẩm</h1>
+                <span class="badge bg-warning">Tài trợ</span>
+            </div>
+            
+            <!-- Rating & Sales -->
+            <div class="d-flex align-items-center mb-3">
+                <div class="text-warning me-2">
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <span class="me-3" th:text="${#lists.size(reviews)} + ' Reviews'">0 Reviews</span>
+                <span class="me-3">Đã bán: <strong>863836</strong></span>
+                <span class="text-success">Khiếu nại: 0.0%</span>
+            </div>
+
+            <!-- Seller Info -->
+            <div class="d-flex align-items-center mb-3">
+                <span class="me-2">Người bán:</span>
+                <strong class="me-2" th:text="${product.shop != null ? product.shop.shopName : 'N/A'}">N/A</strong>
+                <span class="seller-badge me-2">Đã xác thực</span>
+                <span class="badge bg-success">Online</span>
+            </div>
+
+            <!-- Product Type -->
+            <div class="mb-3">
+                <span class="text-muted">Sản phẩm: </span>
+                <span class="badge bg-primary" th:text="${product.type}">Loại</span>
+            </div>
+
+            <!-- Stock Status -->
+            <div class="mb-3">
+                <span class="stock-badge" th:if="${product.quantity == 0}">Hết hàng</span>
+                <span class="badge bg-success" th:if="${product.quantity > 0}" th:text="'Kho: ' + ${product.quantity}">Còn hàng</span>
+            </div>
+
+            <!-- Price -->
+            <div class="h4 text-danger mb-4" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</div>
+
+            <!-- Product Variants -->
+            <div class="mb-4">
+                <h6 class="mb-3">SẢN PHẨM</h6>
+                <div class="product-variant selected" onclick="selectVariant(this)">
+                    <div class="fw-bold" th:text="${product.name}">Gmail USA 2-5 THÁNG. Bật 2FA. Not Used SỐNG TRÂU (ĐỌC MÔ TẢ)</div>
+                </div>
+                <div class="product-variant" onclick="selectVariant(this)">
+                    <div class="fw-bold">Gmail NEW RANDOM NGÂM 8-12 THÁNG. HÀNG TRÂU.</div>
+                </div>
+                <div class="product-variant" onclick="selectVariant(this)">
+                    <div class="fw-bold">Gmail USA 1-5 THÁNG. Not Used. SỐNG TRÂU (ĐỌC MÔ TẢ).</div>
+                </div>
+                <div class="product-variant" onclick="selectVariant(this)">
+                    <div class="fw-bold">GMAIL USA 10-20 THÁNG 2FA. NGÂM PTTT + Chpay+</div>
+                </div>
+                <div class="product-variant" onclick="selectVariant(this)">
+                    <div class="fw-bold">Gmail IOS USA 2022-2024 Not Used. SỐNG TRÂU (ĐỌC MÔ TẢ)</div>
+                </div>
+            </div>
+
+            <!-- Quantity & Actions -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">SỐ LƯỢNG</label>
+                    <div class="input-group">
+                        <button class="btn btn-outline-secondary" type="button" onclick="changeQty(-1)">-</button>
+                        <input type="number" id="qty" class="form-control text-center" value="1" min="1" max="10">
+                        <button class="btn btn-outline-secondary" type="button" onclick="changeQty(1)">+</button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">NHẬP MÃ GIẢM GIÁ</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Nhập mã giảm giá">
+                        <button class="btn btn-outline-primary" type="button"><i class="fa-solid fa-search"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2 d-md-flex">
+                <button class="btn btn-primary btn-lg flex-fill" th:onclick="|addToCart(${product.id})|">
+                    <i class="fa-solid fa-shopping-cart me-2"></i>Mua hàng
+                </button>
+                <button class="btn btn-outline-warning btn-lg flex-fill">
+                    <i class="fa-solid fa-clock me-2"></i>Đặt trước
+                </button>
+                <button class="btn btn-outline-info btn-lg flex-fill">
+                    <i class="fa-solid fa-message me-2"></i>Nhắn tin
+                </button>
+            </div>
+        </div>
     </div>
 
+    <!-- Product Tabs -->
+    <div class="mt-5">
+        <ul class="nav nav-tabs" id="productTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab">
+                    Mô tả
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">
+                    Reviews
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="api-tab" data-bs-toggle="tab" data-bs-target="#api" type="button" role="tab">
+                    API
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="productTabsContent">
+            <!-- Description Tab -->
+            <div class="tab-pane fade show active" id="description" role="tabpanel">
+                <div class="p-4">
+                    <h5 class="mb-3">Thông tin sản phẩm</h5>
+                    <div class="mb-4" th:text="${product.description}">Mô tả sản phẩm...</div>
+                    
+                    <h6 class="mb-3">Hướng dẫn sử dụng:</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="fa-solid fa-check text-success me-2"></i>Bảo hành login lần đầu hoặc không login được trong vòng 24h</li>
+                        <li class="mb-2"><i class="fa-solid fa-check text-success me-2"></i>Change password sau khi login 3-7 ngày</li>
+                        <li class="mb-2"><i class="fa-solid fa-check text-success me-2"></i>Đối với gmail bị hạn chế thư: Khách hàng thêm mail chính chuyển tiếp để nhận thư</li>
+                        <li class="mb-2"><i class="fa-solid fa-check text-success me-2"></i>Hàng cam kết đúng năm, sai chịu trách nhiệm hoàn tiền</li>
+                    </ul>
+                    
+                    <div class="text-center mt-4">
+                        <h4 class="text-primary">Chúc all ae làm việc thuận lợi</h4>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Reviews Tab -->
+            <div class="tab-pane fade" id="reviews" role="tabpanel">
+                <div class="p-4">
+                    <h5 class="mb-4">Đánh giá sản phẩm</h5>
+                    <div class="review-item" th:each="r: ${reviews}">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="text-warning me-2">
+                                <i class="fa-solid fa-star" th:each="star : ${#numbers.sequence(1, r.rating)}"></i>
+                            </div>
+                            <strong th:text="'User ' + ${r.id}">User</strong>
+                            <span class="text-muted ms-2" th:text="${#temporals.format(r.createdAt, 'dd/MM/yyyy')}">01/01/2024</span>
+                        </div>
+                        <div th:text="${r.comment}">Không có bình luận</div>
+                    </div>
+                    <div class="text-muted text-center" th:if="${#lists.isEmpty(reviews)}">
+                        <i class="fa-solid fa-comment-slash fa-2x mb-3"></i>
+                        <p>Chưa có đánh giá nào</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- API Tab -->
+            <div class="tab-pane fade" id="api" role="tabpanel">
+                <div class="p-4">
+                    <h5 class="mb-4">API Documentation</h5>
+                    <div class="alert alert-info">
+                        <i class="fa-solid fa-info-circle me-2"></i>
+                        API documentation sẽ được cập nhật sớm nhất có thể.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<section class="border-top py-5 mt-4">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-12 col-lg-4">
+                <h4 class="fw-bold mb-3">Liên hệ</h4>
+                <p>Liên hệ ngay nếu bạn có khó khăn khi sử dụng dịch vụ hoặc cần hợp tác.</p>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-2"><i class="fa-regular fa-comment-dots me-2"></i> Chat với hỗ trợ viên</li>
+                    <li class="mb-2"><i class="fa-brands fa-facebook me-2"></i> MMO Market</li>
+                    <li class="mb-2"><i class="fa-regular fa-envelope me-2"></i> support@example.com</li>
+                    <li><i class="fa-regular fa-clock me-2"></i> Mon-Sat 08:00am - 10:00pm</li>
+                </ul>
+            </div>
+            <div class="col-12 col-lg-4">
+                <h4 class="fw-bold mb-3">Thông tin</h4>
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2">Một ứng dụng nhằm kết nối, trao đổi, mua bán trong cộng đồng kiếm tiền online.</li>
+                    <li class="mb-2">Thanh toán tự động, nhận hàng ngay tức thì.</li>
+                    <li class="mb-2"><a class="link-secondary" th:href="@{/faqs}" target="_blank" rel="noopener noreferrer">Câu hỏi thường gặp</a></li>
+                    <li><a class="link-secondary" th:href="@{/terms}" target="_blank" rel="noopener noreferrer">Điều khoản sử dụng</a></li>
+                </ul>
+            </div>
+            <div class="col-12 col-lg-4">
+                <h4 class="fw-bold mb-3">Đăng ký bán hàng</h4>
+                <p>Tạo một gian hàng của bạn trên trang của chúng tôi. Đội ngũ hỗ trợ sẽ liên lạc để giúp bạn tối ưu khả năng bán hàng.</p>
+                <a class="btn btn-success" th:href="@{/seller/register}" href="/seller/register">Tham gia</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="border-top py-3">
+    <div class="container d-flex justify-content-between align-items-center small">
+        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div class="text-muted">Liên hệ: support@example.com</div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function selectVariant(element) {
+        // Remove selected class from all variants
+        document.querySelectorAll('.product-variant').forEach(v => v.classList.remove('selected'));
+        // Add selected class to clicked variant
+        element.classList.add('selected');
+    }
+
+    function changeQty(delta) {
+        const qtyEl = document.getElementById('qty');
+        const currentQty = parseInt(qtyEl.value) || 1;
+        const newQty = Math.max(1, Math.min(10, currentQty + delta));
+        qtyEl.value = newQty;
+    }
+</script>
 </body>
 </html>
 

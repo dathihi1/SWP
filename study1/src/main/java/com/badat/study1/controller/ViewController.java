@@ -250,6 +250,7 @@ public class ViewController {
         return "faqs";
     }
 
+
     @GetMapping("/payment-history")
     public String paymentHistoryPage(Model model,
                                      @RequestParam(defaultValue = "1") int page,
@@ -421,26 +422,27 @@ public class ViewController {
     @GetMapping("/cart")
     public String cartPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
                                 !authentication.getName().equals("anonymousUser");
-        
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         return "customer/cart";
     }
+
 
     @GetMapping("/seller/shop")
     public String sellerShopPage(Model model) {
@@ -453,12 +455,12 @@ public class ViewController {
         }
         
         User user = (User) authentication.getPrincipal();
-        
+
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
-        
+
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
@@ -475,32 +477,33 @@ public class ViewController {
     @GetMapping("/seller/products")
     public String sellerProductsPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
                                 !authentication.getName().equals("anonymousUser");
-        
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
-        
+
         // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
         if (!user.getRole().equals(User.Role.ADMIN)) {
             return "redirect:/profile";
         }
-        
+
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         return "seller/shop";
     }
+
 
     @GetMapping("/seller/shop-management")
     public String sellerShopManagementPage(Model model) {
@@ -513,12 +516,12 @@ public class ViewController {
         }
         
         User user = (User) authentication.getPrincipal();
-        
+
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
-        
+
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
@@ -552,7 +555,7 @@ public class ViewController {
             long totalProducts = productRepository.countByShopIdAndIsDeleteFalse(shop.getId());
             model.addAttribute("totalProducts", totalProducts);
         });
-        
+
         return "seller/shop-management";
     }
 
@@ -568,8 +571,8 @@ public class ViewController {
         
         User user = (User) authentication.getPrincipal();
         
-        // Check if user has SELLER role
-        if (!user.getRole().equals(User.Role.SELLER)) {
+        // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
+        if (!user.getRole().equals(User.Role.ADMIN)) {
             return "redirect:/profile";
         }
         
@@ -578,7 +581,7 @@ public class ViewController {
         if (!hasShop) {
             return "redirect:/seller/shop-management";
         }
-        
+
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
@@ -589,7 +592,7 @@ public class ViewController {
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
         
-        return "seller/add-stall";
+        return "seller/shop";
     }
 
     @GetMapping("/seller/edit-stall/{id}")

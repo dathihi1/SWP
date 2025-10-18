@@ -23,6 +23,8 @@ create table user
     full_name  varchar(100)                                               null,
     role       enum ('USER', 'ADMIN', 'SELLER') default 'USER'            null,
     status     enum ('ACTIVE', 'LOCKED')        default 'ACTIVE'          null,
+    provider   varchar(20)                       default 'LOCAL'          null,
+    provider_id varchar(100)                                             null,
     isDelete   tinyint(1)                       default 0                 null,
     createdBy  varchar(50)                                                null,
     createdAt  timestamp                        default CURRENT_TIMESTAMP null,
