@@ -32,8 +32,28 @@ spring:
       static-locations: classpath:/static/,classpath:/templates/
       cache:
         period: 0
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: "84371119573-vd16u13p71e77ies0bch5d47n1c9fubs.apps.googleusercontent.com"
+            client-secret: "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"
+            scope:
+              - email
+              - profile
+            redirect-uri: "http://localhost:8080/login/oauth2/code/google"
+        provider:
+          google:
+            authorization-uri: "https://accounts.google.com/o/oauth2/auth"
+            token-uri: "https://oauth2.googleapis.com/token"
+            user-info-uri: "https://www.googleapis.com/oauth2/v2/userinfo"
+            user-name-attribute: "id"
 jwt:
   secret-key: "nVhBcHbv71BB6bdjaopOoa4LWx/tjz9c7wBREJdpLU7O+EQBGH3Np+PmgDpMziH4zLGbqtt9CWDPbVwToH/cGyDbZeIJ5rUsL1MAeVs0ER0="
+
+
+  
 
 vnpay:
   url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"

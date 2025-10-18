@@ -86,10 +86,11 @@ public class UserService {
         // Create user with ACTIVE status
         User user = User.builder()
                 .email(request.getEmail())
-                .username(request.getUsername())
+                .username(request.getUsername()) // Dùng username từ form
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(User.Role.USER)
                 .status(User.Status.ACTIVE)
+                .provider("LOCAL") // Đánh dấu là đăng ký manual
                 .build();
         
         // Set isDelete explicitly (since it's inherited from BaseEntity)

@@ -235,11 +235,14 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
+            text-decoration: none;
         }
         .google-btn:hover {
             border-color: #dc3545;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(220, 53, 69, 0.2);
+            color: #495057;
+            text-decoration: none;
         }
         .footer-links {
             text-align: center;
@@ -362,7 +365,8 @@
                         // Store tokens
                         localStorage.setItem('accessToken', data.accessToken);
                         localStorage.setItem('refreshToken', data.refreshToken);
-                        document.cookie = `accessToken=${data.accessToken}; path=/; max-age=3600; SameSite=Lax; Secure=false`;
+                        const cookieBase = `accessToken=${data.accessToken}; Path=/; Max-Age=3600; SameSite=Lax`;
+                        document.cookie = (location.protocol === 'https:' ? `${cookieBase}; Secure` : cookieBase);
                         
                         // Show success message
                         alert('Đăng nhập thành công!');
@@ -482,10 +486,10 @@
             <span>hoặc</span>
         </div>
         
-        <button type="button" class="google-btn">
+        <a href="/oauth2/authorization/google" class="google-btn">
             <i class="fab fa-google" style="color: #dc3545;"></i>
             Đăng nhập với Google
-        </button>
+        </a>
         
         <div class="footer-links">
             <div>
