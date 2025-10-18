@@ -2,6 +2,8 @@ package com.badat.study1.repository;
 
 import com.badat.study1.model.Stall;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -27,4 +29,8 @@ public interface StallRepository extends JpaRepository<Stall, Long> {
     
     // Check if stall category already exists for a shop
     boolean existsByShopIdAndStallCategoryAndIsDeleteFalse(Long shopId, String stallCategory);
+    
+    // Check if stall with same name and category already exists for a shop
+    Optional<Stall> findByStallNameAndStallCategoryAndShopIdAndIsDeleteFalse(String stallName, String stallCategory, Long shopId);
+    
 }
