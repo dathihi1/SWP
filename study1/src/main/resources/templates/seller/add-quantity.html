@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thêm sản phẩm - MMO Market</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #333;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            border-right: 1px solid rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header .navbar-brand {
+            color: #0d6efd;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        
+        .sidebar-header .navbar-brand:hover {
+            color: #0b5ed7;
+        }
+        
+        .menu-section {
+            padding: 20px 0;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 20px 10px;
+            margin-bottom: 10px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #0d6efd;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            margin: 2px 0;
+            font-weight: 500;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+            color: #0b5ed7;
+            border-left-color: #0d6efd;
+            transform: translateX(5px);
+        }
+        
+        .menu-item.active {
+            background-color: rgba(13, 110, 253, 0.15);
+            color: #0b5ed7;
+            border-left-color: #0d6efd;
+            font-weight: 600;
+        }
+        
+        .menu-item i {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        .top-navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .content-area {
+            padding: 30px;
+        }
+        
+        .page-header {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .page-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0;
+        }
+        
+        .btn-back {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn-back:hover {
+            background: linear-gradient(135deg, #0b5ed7, #0a58ca);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+            color: white;
+        }
+        
+        .upload-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .product-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .form-control, .form-select {
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .btn-upload {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-upload:hover {
+            background: linear-gradient(135deg, #20c997, #17a2b8);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            color: white;
+        }
+        
+        .required {
+            color: #dc3545;
+        }
+        
+        .form-text {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        
+        .info-bar {
+            background: white;
+            color: #333;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .product-name {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .file-format-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            height: 100%;
+        }
+        
+        .format-examples {
+            margin-top: 20px;
+        }
+        
+        .format-item {
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #0d6efd;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .format-title {
+            color: #0d6efd;
+            font-weight: 600;
+            margin-bottom: 8px;
+            margin-top: 15px;
+            font-size: 0.95rem;
+        }
+        
+        .format-title:first-child {
+            margin-top: 0;
+        }
+        
+        .format-item code {
+            background: #e9ecef;
+            color: #495057;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            display: block;
+            word-break: break-all;
+            margin-bottom: 10px;
+        }
+        
+        .upload-history-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        .upload-history-container .table {
+            margin-bottom: 0;
+        }
+        
+        .upload-history-container .table th {
+            background: #f8f9fa;
+            border-top: none;
+            border-bottom: 2px solid #e9ecef;
+            font-weight: 600;
+            color: #495057;
+            padding: 15px;
+        }
+        
+        .upload-history-container .table td {
+            padding: 15px;
+            vertical-align: middle;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .upload-history-container .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <a class="navbar-brand d-flex align-items-center" th:href="@{/}" href="/">
+                    <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+                    MMO Market
+                </a>
+            </div>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">SALE</div>
+            <a href="/seller/shop" class="menu-item">
+                <i class="fas fa-shopping-cart"></i>
+                Doanh số
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">SHOP</div>
+            <a href="/seller/shop-management" class="menu-item">
+                <i class="fas fa-clipboard-list"></i>
+                Quản lý gian hàng
+            </a>
+            <a href="/seller/add-stall" class="menu-item">
+                <i class="fas fa-plus"></i>
+                Thêm gian hàng
+            </a>
+            <a href="#" class="menu-item">
+                <i class="fas fa-file-invoice-dollar"></i>
+                Đơn hàng sản phẩm
+            </a>
+            <a href="#" class="menu-item">
+                <i class="fas fa-comment"></i>
+                Đánh giá
+            </a>
+            <a href="#" class="menu-item">
+                <i class="fas fa-arrow-up"></i>
+                Gian hàng Top 1
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-secondary me-3" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <!-- Profile Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                        <i class="fa-solid fa-user"></i>
+                        <span th:text="${username}">User</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
+                        <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                        <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
+                        <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Success/Error Messages -->
+            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                <span th:text="${successMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <span th:text="${errorMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="page-title">Thêm sản phẩm</h1>
+                    </div>
+                    <a th:href="@{/seller/product-management/{stallId}(stallId=${stall.id})}" href="/seller/product-management" class="btn-back">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Quay lại
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Information Bar -->
+            <div class="info-bar">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <h6 class="mb-0"><strong>Gian hàng:</strong> <span th:text="${stall.stallName}">Tên gian hàng</span></h6>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <h6 class="mb-0"><strong>Loại:</strong> <span class="badge bg-info" th:text="${stall.stallCategory}">Loại gian hàng</span></h6>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <h6 class="mb-0"><strong>Mặt hàng:</strong> <span class="product-name" th:text="${product.name}">Tên mặt hàng</span></h6>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upload Section -->
+            <div class="upload-container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="mb-4">Chọn file(txt)</h5>
+                
+                        <form th:action="@{/seller/update-product-quantity-file/{productId}(productId=${product.id})}" method="post" enctype="multipart/form-data" id="uploadForm">
+                            <div class="mb-3">
+                                <label for="quantityFile" class="form-label">Chọn file TXT</label>
+                                <input type="file" class="form-control" id="quantityFile" name="file" accept=".txt" required>
+                                <div class="form-text">Chỉ chấp nhận file .txt</div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload me-2"></i>
+                                    Tải lên
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="file-format-info">
+                            <h6 class="mb-3"><strong>Chú ý:</strong> File tải lên mỗi dòng sẽ là 1 sản phẩm.</h6>
+                            
+                            <div class="format-examples">
+                                <div class="format-item">
+                                    <h6 class="format-title">Hướng dẫn:</h6>
+                                    <p>File TXT chứa sản phẩm tùy theo loại gian hàng:</p>
+                                    <ul class="small text-muted">
+                                        <li><strong>Gian hàng Tài Khoản:</strong> EMAIL, ACCOUNT, hoặc cả hai</li>
+                                        <li><strong>Gian hàng Thẻ Cào:</strong> Chỉ CARD</li>
+                                        <li><strong>Gian hàng Key Game:</strong> Chỉ KEY</li>
+                                    </ul>
+                                    
+                                    <div class="mt-3">
+                                        <h6 class="format-title">Gian hàng Tài Khoản:</h6>
+                                        <code>EMAIL|username@gmail.com|password</code>
+                                        <code>ACCOUNT|username|password</code>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h6 class="format-title">Gian hàng Thẻ Cào:</h6>
+                                        <code>CARD|mã thẻ|số serial</code>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h6 class="format-title">Gian hàng Key Game:</h6>
+                                        <code>KEY|key game</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Upload History Section -->
+            <div class="upload-history-container">
+                <h5 class="mb-4">Lịch sử file tải lên gần nhất</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tên mặt hàng</th>
+                                <th>Tên file</th>
+                                <th>Ngày upload</th>
+                                <th>Kết quả</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="upload : ${recentUploads}">
+                                <td th:text="${upload.product.name}">Tên mặt hàng</td>
+                                <td th:text="${upload.fileName}">Tên file</td>
+                                <td th:text="${#temporals.format(upload.createdAt, 'dd/MM/yyyy HH:mm')}">Ngày upload</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            th:onclick="'showUploadDetails(' + ${upload.id} + ')'"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#uploadDetailsModal">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Chi tiết
+                                    </button>
+                                </td>
+                                <td>
+                                    <span class="badge" 
+                                          th:classappend="${upload.isSuccess} ? 'bg-success' : 'bg-danger'"
+                                          th:text="${upload.isSuccess} ? 'Thành công' : 'Thất bại'">
+                                        Trạng thái
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr th:if="${recentUploads.isEmpty()}">
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="fas fa-history fa-2x mb-2"></i><br>
+                                    Chưa có lịch sử upload nào.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upload Details Modal -->
+    <div class="modal fade" id="uploadDetailsModal" tabindex="-1" aria-labelledby="uploadDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadDetailsModalLabel">Chi tiết kết quả upload</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="uploadDetailsContent">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+                
+                // Update main content margin
+                if (sidebar.classList.contains('collapsed')) {
+                    mainContent.style.marginLeft = '0';
+                } else {
+                    mainContent.style.marginLeft = '280px';
+                }
+            });
+        });
+        
+        // File upload functionality
+        const fileInput = document.getElementById('quantityFile');
+        const fileDropZone = document.getElementById('fileDropZone');
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadBtn = document.getElementById('uploadBtn');
+        
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            handleFile(e.target.files[0]);
+        });
+        
+        // Drag and drop functionality
+        fileDropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.add('dragover');
+        });
+        
+        fileDropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.remove('dragover');
+        });
+        
+        fileDropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            fileDropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        // Click to select file
+        fileDropZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        function handleFile(file) {
+            if (!file) return;
+            
+            // Validate file type
+            if (!file.name.toLowerCase().endsWith('.txt')) {
+                alert('Vui lòng chọn file có định dạng TXT');
+                return;
+            }
+            
+            // Validate file size (max 1MB)
+            if (file.size > 1024 * 1024) {
+                alert('File quá lớn. Vui lòng chọn file nhỏ hơn 1MB');
+                return;
+            }
+            
+            // Show file info
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+            uploadBtn.disabled = false;
+        }
+        
+        function clearFile() {
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            uploadBtn.disabled = true;
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Form validation
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                e.preventDefault();
+                alert('Vui lòng chọn file TXT');
+                return;
+            }
+            
+            if (!file.name.toLowerCase().endsWith('.txt')) {
+                e.preventDefault();
+                alert('Vui lòng chọn file có định dạng TXT');
+                return;
+            }
+            
+            if (file.size > 1024 * 1024) {
+                e.preventDefault();
+                alert('File quá lớn. Vui lòng chọn file nhỏ hơn 1MB');
+                return;
+            }
+        });
+        
+        // Show upload details modal
+        function showUploadDetails(uploadId) {
+            // Fetch upload details from server
+            fetch('/seller/upload-details/' + uploadId)
+                .then(response => response.json())
+                .then(data => {
+                    const content = document.getElementById('uploadDetailsContent');
+                    content.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><strong>Tên file:</strong></h6>
+                                <p>${data.fileName}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><strong>Ngày upload:</strong></h6>
+                                <p>${data.createdAt}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6><strong>Tổng:</strong></h6>
+                                <p class="text-primary fs-5">${data.totalItems || 0}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6><strong>Thành công:</strong></h6>
+                                <p class="text-success fs-5">${data.successCount || 0}</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6><strong>Thất bại:</strong></h6>
+                                <p class="text-danger fs-5">${data.failureCount || 0}</p>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h6><strong>Chi tiết:</strong></h6>
+                            <div class="alert alert-info">
+                                <pre>${data.resultDetails || 'Không có thông tin chi tiết'}</pre>
+                            </div>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error fetching upload details:', error);
+                    document.getElementById('uploadDetailsContent').innerHTML = 
+                        '<div class="alert alert-danger">Có lỗi xảy ra khi tải thông tin chi tiết.</div>';
+                });
+        }
+        
+    </script>
+</body>
+</html>
