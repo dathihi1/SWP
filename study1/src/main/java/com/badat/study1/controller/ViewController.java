@@ -435,6 +435,7 @@ public class ViewController {
         return "customer/cart";
     }
 
+
     @GetMapping("/seller/shop")
     public String sellerShopPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

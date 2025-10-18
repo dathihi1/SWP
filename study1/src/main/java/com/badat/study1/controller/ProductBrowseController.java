@@ -2,9 +2,14 @@ package com.badat.study1.controller;
 
 import com.badat.study1.model.Product;
 import com.badat.study1.model.Review;
+import com.badat.study1.model.User;
+import com.badat.study1.model.Wallet;
 import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.ReviewRepository;
+import com.badat.study1.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +27,7 @@ public class ProductBrowseController {
 
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
+    private final WalletRepository walletRepository;
 
     @GetMapping("/products")
     public String listProducts(
@@ -77,6 +83,31 @@ public class ProductBrowseController {
                             .orElse(0.0);
                 }
         ));
+        // Add authentication attributes
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                                !authentication.getName().equals("anonymousUser");
+
+        model.addAttribute("isAuthenticated", isAuthenticated);
+        model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
+
+        if (isAuthenticated) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof User) {
+                User user = (User) principal;
+                model.addAttribute("username", user.getUsername());
+                model.addAttribute("userRole", user.getRole().name());
+
+                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                        .map(Wallet::getBalance)
+                        .orElse(BigDecimal.ZERO);
+                model.addAttribute("walletBalance", walletBalance);
+            } else {
+                model.addAttribute("username", authentication.getName());
+                model.addAttribute("userRole", "USER");
+            }
+        }
+
         model.addAttribute("products", products);
         model.addAttribute("q", query);
         model.addAttribute("type", type);
@@ -99,6 +130,32 @@ public class ProductBrowseController {
                 .mapToInt(Integer::intValue)
                 .average()
                 .orElse(0.0);
+        
+        // Add authentication attributes
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                                !authentication.getName().equals("anonymousUser");
+
+        model.addAttribute("isAuthenticated", isAuthenticated);
+        model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
+
+        if (isAuthenticated) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof User) {
+                User user = (User) principal;
+                model.addAttribute("username", user.getUsername());
+                model.addAttribute("userRole", user.getRole().name());
+
+                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                        .map(Wallet::getBalance)
+                        .orElse(BigDecimal.ZERO);
+                model.addAttribute("walletBalance", walletBalance);
+            } else {
+                model.addAttribute("username", authentication.getName());
+                model.addAttribute("userRole", "USER");
+            }
+        }
+        
         model.addAttribute("product", product);
         model.addAttribute("reviews", reviews);
         model.addAttribute("avgRating", avgRating);

@@ -127,28 +127,28 @@
         <h5 class="text-center text-uppercase text-muted mb-3">Danh mục nổi bật</h5>
         <div class="row g-3 g-md-4">
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="card category-card p-3 text-center h-100">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('email')" style="cursor: pointer;">
                     <div class="category-icon bg-success-subtle text-success mb-2"><i class="fa-solid fa-envelope fa-lg"></i></div>
                     <div class="category-title">Email</div>
                     <div class="text-muted small">Gmail, Yahoo, Hotmail...</div>
                 </div>
             </div>
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="card category-card p-3 text-center h-100">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('software')" style="cursor: pointer;">
                     <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-compact-disc fa-lg"></i></div>
                     <div class="category-title">Phần mềm</div>
                     <div class="text-muted small">Các tool hỗ trợ MMO</div>
                 </div>
             </div>
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="card category-card p-3 text-center h-100">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('account')" style="cursor: pointer;">
                     <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-user fa-lg"></i></div>
                     <div class="category-title">Tài khoản</div>
                     <div class="text-muted small">FB, BM, key Windows...</div>
                 </div>
             </div>
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="card category-card p-3 text-center h-100">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('other')" style="cursor: pointer;">
                     <div class="category-icon bg-info-subtle text-info mb-2"><i class="fa-solid fa-cube fa-lg"></i></div>
                     <div class="category-title">Khác</div>
                     <div class="text-muted small">Sản phẩm số khác</div>
@@ -417,6 +417,28 @@
             // User is authenticated, update UI
             updateUIAfterLogin();
         }
+    }
+
+    // Function to handle category clicks
+    function viewCategory(category) {
+        let type = '';
+        switch(category) {
+            case 'email':
+                type = 'email';
+                break;
+            case 'software':
+                type = 'software';
+                break;
+            case 'account':
+                type = 'account';
+                break;
+            case 'other':
+                type = 'other';
+                break;
+        }
+        
+        // Redirect to products page with category filter
+        window.location.href = `/products?type=${type}`;
     }
 
     </script>
