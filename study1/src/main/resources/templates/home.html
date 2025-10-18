@@ -355,6 +355,70 @@
         }
     });
 
+    // Handle OAuth2 login success
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const login = urlParams.get('login');
+        
+        if (token && login === 'success') {
+            // Store JWT token in localStorage
+            localStorage.setItem('accessToken', token);
+            
+            // Show success message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                <i class="fa-solid fa-check-circle me-2"></i>
+                Đăng nhập thành công!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            // Auto remove alert after 3 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+            
+            // Remove token from URL
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+            
+            // Update UI without reloading page
+            updateUIAfterLogin();
+        } else {
+            // Check if user is already authenticated via localStorage
+            checkAuthenticationStatus();
+        }
+    });
+
+    function updateUIAfterLogin() {
+        // Update authentication status in UI
+        const loginBtn = document.querySelector('.login-btn');
+        const profileBtn = document.querySelector('.profile-btn');
+        
+        if (loginBtn) {
+            loginBtn.style.display = 'none';
+        }
+        if (profileBtn) {
+            profileBtn.style.display = 'block';
+        }
+        
+        // You can add more UI updates here
+        console.log('UI updated after login');
+    }
+
+    function checkAuthenticationStatus() {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            // User is authenticated, update UI
+            updateUIAfterLogin();
+        }
+    }
+
     </script>
 </body>
 </html>
