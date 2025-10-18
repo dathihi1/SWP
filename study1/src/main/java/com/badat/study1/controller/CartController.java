@@ -12,9 +12,13 @@ public class CartController {
 
     private final CartService cartService;
 
+    /**
+     * Lấy thông tin giỏ hàng hiện tại của người dùng.
+     * SỬA: Gọi service với tham số true để sử dụng Fetch Join, tải đầy đủ CartItem và Product.
+     */
     @GetMapping
     public Cart getMyCart() {
-        return cartService.getOrCreateMyCart();
+        return cartService.getOrCreateMyCart(true);
     }
 
     @PostMapping("/add/{productId}")
@@ -37,6 +41,3 @@ public class CartController {
         return cartService.clearCart();
     }
 }
-
-
-
