@@ -1,10 +1,12 @@
 package com.badat.study1.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference; // <-- THÊM DÒNG NÀY
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.util.List; // Import List
+import java.util.List;
+import java.util.ArrayList;
 
 @Entity
 @Table(name = "cart")
@@ -20,7 +22,6 @@ public class Cart extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    // Khóa ngoại tới User
     @Column(name = "user_id", nullable = false, unique = true)
     Long userId;
 
@@ -28,14 +29,11 @@ public class Cart extends BaseEntity {
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
     User user;
 
-    // Quan hệ OneToMany tới CartItem. Dùng LAZY, sẽ dùng FETCH JOIN khi hiển thị.
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    List<CartItem> items;
+    @Builder.Default
+    @JsonManagedReference // <-- THÊM DÒNG NÀY
+    List<CartItem> items = new ArrayList<>();
 
-    /**
-     * Tính tổng giá trị của tất cả CartItem trong giỏ hàng.
-     * @return Tổng giá trị (double)
-     */
     public double getTotal() {
         if (items == null || items.isEmpty()) {
             return 0.0;
