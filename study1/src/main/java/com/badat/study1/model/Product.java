@@ -27,6 +27,13 @@ public class Product extends BaseEntity {
     @JoinColumn(name = "shop_id", insertable = false, updatable = false)
     Shop shop;
     
+    @Column(name = "stall_id", nullable = false)
+    Long stallId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stall_id", insertable = false, updatable = false)
+    Stall stall;
+    
     @Column(name = "type", nullable = false, length = 50)
     String type;
     
@@ -49,9 +56,9 @@ public class Product extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     @Builder.Default
-    Status status = Status.ACTIVE;
+    Status status = Status.UNAVAILABLE;
     
     public enum Status {
-        ACTIVE, SOLD, BANNED
+        AVAILABLE, UNAVAILABLE
     }
 }

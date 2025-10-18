@@ -25,9 +25,9 @@ public class ProductBrowseController {
         List<Product> products;
         if (query != null && !query.isBlank()) {
             products = productRepository.findByNameContainingIgnoreCaseAndIsDeleteFalseAndStatus(
-                    query.trim(), Product.Status.ACTIVE);
+                    query.trim(), Product.Status.AVAILABLE);
         } else {
-            products = productRepository.findByIsDeleteFalseAndStatus(Product.Status.ACTIVE);
+            products = productRepository.findByIsDeleteFalseAndStatus(Product.Status.AVAILABLE);
         }
         // Optional in-memory filter by type to avoid adding more repo methods
         if (type != null && !type.isBlank()) {
@@ -45,7 +45,7 @@ public class ProductBrowseController {
     @GetMapping("/products/{id}")
     public String productDetail(@PathVariable Long id, Model model) {
         Product product = productRepository.findById(id)
-                .filter(p -> Boolean.FALSE.equals(p.getIsDelete()) && p.getStatus() == Product.Status.ACTIVE)
+                .filter(p -> Boolean.FALSE.equals(p.getIsDelete()) && p.getStatus() == Product.Status.AVAILABLE)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
         model.addAttribute("product", product);
         return "products/detail";

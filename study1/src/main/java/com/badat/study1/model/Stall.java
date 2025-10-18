@@ -31,8 +31,9 @@ public class Stall {
     @Column(name = "detailed_description", columnDefinition = "TEXT")
     private String detailedDescription;
 
-    @Column(name = "stall_image_url", length = 500)
-    private String stallImageUrl;
+    @Lob
+    @Column(name = "stall_image_data", columnDefinition = "LONGBLOB")
+    private byte[] stallImageData;
 
     @Column(name = "status", length = 20, nullable = false)
     private String status = "OPEN";
@@ -43,12 +44,15 @@ public class Stall {
     @Column(name = "is_delete", nullable = false)
     private boolean isDelete = false;
 
+    @Transient
+    private int productCount = 0;
+
     // Constructors
     public Stall() {}
 
     public Stall(Long shopId, String stallName, String businessType, String stallCategory, 
                  Double discountPercentage, String shortDescription, String detailedDescription, 
-                 String stallImageUrl) {
+                 byte[] stallImageData) {
         this.shopId = shopId;
         this.stallName = stallName;
         this.businessType = businessType;
@@ -56,7 +60,7 @@ public class Stall {
         this.discountPercentage = discountPercentage;
         this.shortDescription = shortDescription;
         this.detailedDescription = detailedDescription;
-        this.stallImageUrl = stallImageUrl;
+        this.stallImageData = stallImageData;
         this.createdAt = Instant.now();
         this.isDelete = false;
     }
@@ -86,8 +90,8 @@ public class Stall {
     public String getDetailedDescription() { return detailedDescription; }
     public void setDetailedDescription(String detailedDescription) { this.detailedDescription = detailedDescription; }
 
-    public String getStallImageUrl() { return stallImageUrl; }
-    public void setStallImageUrl(String stallImageUrl) { this.stallImageUrl = stallImageUrl; }
+    public byte[] getStallImageData() { return stallImageData; }
+    public void setStallImageData(byte[] stallImageData) { this.stallImageData = stallImageData; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
@@ -97,4 +101,7 @@ public class Stall {
 
     public boolean isDelete() { return isDelete; }
     public void setDelete(boolean delete) { isDelete = delete; }
+
+    public int getProductCount() { return productCount; }
+    public void setProductCount(int productCount) { this.productCount = productCount; }
 }
