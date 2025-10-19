@@ -4,6 +4,7 @@ import com.badat.study1.model.Stall;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
+import com.badat.study1.model.Product;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
@@ -24,8 +25,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Base64;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
@@ -136,6 +142,82 @@ public class ViewController {
                 model.addAttribute("walletBalance", BigDecimal.ZERO);
             }
         }
+
+        // Load top 8 stalls with highest product counts for homepage preview
+        try {
+            var activeStalls = stallRepository.findByStatusAndIsDeleteFalse("OPEN");
+            List<Map<String, Object>> stallCards = new ArrayList<>();
+            
+            // Calculate product counts for all stalls
+            List<Map<String, Object>> stallsWithCounts = new ArrayList<>();
+            for (Stall stall : activeStalls) {
+                Map<String, Object> vm = new HashMap<>();
+                vm.put("stallId", stall.getId());
+                vm.put("stallName", stall.getStallName());
+                vm.put("stallCategory", stall.getStallCategory());
+
+                // Compute product count by summing quantities of products in the stall
+                var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
+                int totalStock = products.stream()
+                        .mapToInt(p -> p.getQuantity() != null ? p.getQuantity() : 0)
+                        .sum();
+                vm.put("productCount", totalStock);
+                
+                // Calculate price range from available products
+                if (!products.isEmpty()) {
+                    var availableProducts = products.stream()
+                            .filter(product -> product.getQuantity() != null && product.getQuantity() > 0)
+                            .collect(Collectors.toList());
+                    
+                    if (!availableProducts.isEmpty()) {
+                        BigDecimal minPrice = availableProducts.stream()
+                                .map(Product::getPrice)
+                                .min(BigDecimal::compareTo)
+                                .orElse(BigDecimal.ZERO);
+                        
+                        BigDecimal maxPrice = availableProducts.stream()
+                                .map(Product::getPrice)
+                                .max(BigDecimal::compareTo)
+                                .orElse(BigDecimal.ZERO);
+                        
+                        if (minPrice.equals(maxPrice)) {
+                            vm.put("priceRange", minPrice.setScale(0, RoundingMode.HALF_UP).toString() + " đ");
+                        } else {
+                            vm.put("priceRange", minPrice.setScale(0, RoundingMode.HALF_UP) + " đ - " + maxPrice.setScale(0, RoundingMode.HALF_UP) + " đ");
+                        }
+                    } else {
+                        vm.put("priceRange", "Hết hàng");
+                    }
+                } else {
+                    vm.put("priceRange", "Chưa có sản phẩm");
+                }
+
+                // Resolve shop name
+                shopRepository.findById(stall.getShopId())
+                        .ifPresent(shop -> vm.put("shopName", shop.getShopName()));
+                if (!vm.containsKey("shopName")) {
+                    vm.put("shopName", "Unknown Shop");
+                }
+
+                // Always set imageBase64 key, even if null
+                if (stall.getStallImageData() != null && stall.getStallImageData().length > 0) {
+                    String base64 = Base64.getEncoder().encodeToString(stall.getStallImageData());
+                    vm.put("imageBase64", base64);
+                } else {
+                    vm.put("imageBase64", null);
+                }
+
+                stallsWithCounts.add(vm);
+            }
+            
+            // Sort by product count descending and take top 8
+            stallCards = stallsWithCounts.stream()
+                    .sorted((a, b) -> Integer.compare((Integer) b.get("productCount"), (Integer) a.get("productCount")))
+                    .limit(8)
+                    .collect(Collectors.toList());
+                    
+            model.addAttribute("stalls", stallCards);
+        } catch (Exception ignored) {}
 
         return "home";
     }
@@ -539,7 +621,7 @@ public class ViewController {
         shopRepository.findByUserId(user.getId()).ifPresent(shop -> {
             var stalls = stallRepository.findByShopIdAndIsDeleteFalse(shop.getId());
 
-            // Tính tổng kho cho mỗi gian hàng
+            // Tính tổng kho và khoảng giá cho mỗi gian hàng
             stalls.forEach(stall -> {
                 // Lấy tất cả sản phẩm trong gian hàng này
                 var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
@@ -550,6 +632,35 @@ public class ViewController {
                         .sum();
 
                 stall.setProductCount(totalStock);
+                
+                // Tính khoảng giá từ sản phẩm còn hàng
+                if (!products.isEmpty()) {
+                    var availableProducts = products.stream()
+                            .filter(product -> product.getQuantity() != null && product.getQuantity() > 0)
+                            .collect(Collectors.toList());
+                    
+                    if (!availableProducts.isEmpty()) {
+                        BigDecimal minPrice = availableProducts.stream()
+                                .map(Product::getPrice)
+                                .min(BigDecimal::compareTo)
+                                .orElse(BigDecimal.ZERO);
+                        
+                        BigDecimal maxPrice = availableProducts.stream()
+                                .map(Product::getPrice)
+                                .max(BigDecimal::compareTo)
+                                .orElse(BigDecimal.ZERO);
+                        
+                        if (minPrice.equals(maxPrice)) {
+                            stall.setPriceRange(minPrice.setScale(0, RoundingMode.HALF_UP).toString() + " đ");
+                        } else {
+                            stall.setPriceRange(minPrice.setScale(0, RoundingMode.HALF_UP) + " đ - " + maxPrice.setScale(0, RoundingMode.HALF_UP) + " đ");
+                        }
+                    } else {
+                        stall.setPriceRange("Hết hàng");
+                    }
+                } else {
+                    stall.setPriceRange("Chưa có sản phẩm");
+                }
             });
 
             model.addAttribute("stalls", stalls);
