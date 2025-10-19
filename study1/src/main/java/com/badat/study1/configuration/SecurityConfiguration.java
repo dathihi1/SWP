@@ -40,6 +40,7 @@ public class SecurityConfiguration {
             "/terms", "/faqs", 
             "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico",
             "/oauth2/**", "/login/oauth2/**",
+            "/error", // Thêm /error vào whitelist để tránh authentication loop
             "/admin-simple", "/admin/test-withdraw", "/api/admin/withdraw/requests-simple", "/api/admin/withdraw/approve-simple/**", "/api/admin/withdraw/reject-simple/**"};
 
     private static final String[] API_PROTECTED_PATHS = {"/api/profile/**", "/api/auth/me", "/api/auth/logout", "/api/auth/refresh", "/api/cart/**"};

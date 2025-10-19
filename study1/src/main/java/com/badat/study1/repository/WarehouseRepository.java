@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
@@ -71,4 +72,9 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      */
     @Query(value = "SELECT * FROM warehouse WHERE product_id = :productId ORDER BY created_at DESC LIMIT 50", nativeQuery = true)
     List<Warehouse> findRecentByProductId(@Param("productId") Long productId);
+    
+    /**
+     * Find first available warehouse item for product (not locked, not deleted)
+     */
+    Optional<Warehouse> findFirstByProductIdAndLockedFalseAndIsDeleteFalse(Long productId);
 }

@@ -57,6 +57,16 @@ public class Warehouse {
     @Column(name = "deleted_by", length = 50)
     private String deletedBy;
     
+    @Column(name = "locked", nullable = false)
+    @Builder.Default
+    private Boolean locked = false;
+    
+    @Column(name = "locked_by")
+    private Long lockedBy;
+    
+    @Column(name = "locked_at")
+    private LocalDateTime lockedAt;
+    
     public enum ItemType {
         EMAIL, CARD, ACCOUNT, KEY
     }

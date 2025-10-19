@@ -18,7 +18,7 @@ import java.time.Instant;
 public class WalletHistory {
 
 	public enum Type {
-		DEPOSIT, WITHDRAW, PURCHASE, REFUND
+		DEPOSIT, WITHDRAW, PURCHASE, REFUND, SALE, COMMISSION
 	}
 
 	public enum Status {

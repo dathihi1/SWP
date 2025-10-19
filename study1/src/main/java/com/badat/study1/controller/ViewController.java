@@ -389,6 +389,30 @@ public class ViewController {
         return "customer/orders";
     }
 
+    @GetMapping("/payment-status")
+    public String paymentStatus(Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+
+        User user = (User) authentication.getPrincipal();
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+
+        return "customer/payment-status";
+    }
+
     @GetMapping("/profile")
     public String profilePage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -486,8 +510,7 @@ public class ViewController {
 
         User user = (User) authentication.getPrincipal();
 
-        // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
-        if (!user.getRole().equals(User.Role.ADMIN)) {
+        if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
 
@@ -571,8 +594,7 @@ public class ViewController {
 
         User user = (User) authentication.getPrincipal();
 
-        // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
-        if (!user.getRole().equals(User.Role.ADMIN)) {
+        if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
 
@@ -592,7 +614,7 @@ public class ViewController {
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
 
-        return "seller/shop";
+        return "seller/add-stall";
     }
 
     @GetMapping("/seller/edit-stall/{id}")
@@ -745,4 +767,7 @@ public class ViewController {
 
         return "seller/add-quantity";
     }
+
+
 }
+

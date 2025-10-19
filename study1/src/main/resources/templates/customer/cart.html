@@ -158,7 +158,7 @@
                             </div>
                             <div class="col-2">
                                 <img src="/images/products/default.jpg" alt="${item.product?.name}" 
-                                     class="product-image" onerror="this.src='/images/placeholder.jpg'">
+                                     class="product-image" onerror="this.src='/images/placeholder.svg'">
                             </div>
                             <div class="col-4">
                                 <div class="product-name">${item.product?.name || 'Sản phẩm không xác định'}</div>
@@ -443,18 +443,136 @@
             updateCheckoutBar();
         }
 
-        function checkout() {
+        async function checkout() {
             if (selectedItems.size === 0) {
                 showNotification('Vui lòng chọn ít nhất một sản phẩm để thanh toán', 'error');
                 return;
             }
             
-            // Store selected items in sessionStorage for checkout page
-            const selectedItemsArray = Array.from(selectedItems);
-            sessionStorage.setItem('selectedCartItems', JSON.stringify(selectedItemsArray));
+            try {
+                // Disable checkout button to prevent double-click
+                const checkoutBtn = document.getElementById('checkout-btn');
+                checkoutBtn.disabled = true;
+                checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang xử lý...';
+                
+                // Prepare cart data for improved payment system
+                const selectedCartItems = cartItems.filter(item => selectedItems.has(item.product?.id));
+                const cartData = selectedCartItems.map(item => ({
+                    productId: item.product?.id,
+                    quantity: item.quantity,
+                    price: item.product?.price,
+                    name: item.product?.name
+                }));
+                
+                const totalAmount = selectedCartItems.reduce((sum, item) => {
+                    const price = Number(item.product?.price || 0);
+                    const qty = Number(item.quantity || 1);
+                    return sum + (price * qty);
+                }, 0);
+                
+                // Call improved payment API
+                const response = await fetch('/api/improved-payment/process-cart', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        cartItems: cartData,
+                        totalAmount: totalAmount,
+                        paymentMethod: 'WALLET',
+                        notes: 'Thanh toán từ giỏ hàng'
+                    })
+                });
+                
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`API Error: ${response.status} - ${errorText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Đơn hàng đã được gửi vào hàng đợi xử lý! Tiền sẽ được giữ trong 1 phút.', 'success');
+                    
+                    // Clear selected items from cart
+                    selectedItems.clear();
+                    await loadCart();
+                    
+                    // Show payment status modal
+                    showPaymentStatusModal();
+                } else {
+                    throw new Error(result.message || 'Lỗi xử lý thanh toán');
+                }
+                
+            } catch (error) {
+                console.error('Checkout error:', error);
+                showNotification('Lỗi thanh toán: ' + error.message, 'error');
+            } finally {
+                // Re-enable checkout button
+                const checkoutBtn = document.getElementById('checkout-btn');
+                checkoutBtn.disabled = selectedItems.size === 0;
+                checkoutBtn.innerHTML = 'Mua hàng';
+            }
+        }
+        
+        function showPaymentStatusModal() {
+            // Create modal for payment status
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'paymentStatusModal';
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fa-solid fa-clock me-2 text-warning"></i>
+                                Đang xử lý thanh toán
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-info">
+                                <i class="fa-solid fa-info-circle me-2"></i>
+                                Đơn hàng của bạn đang được xử lý. Tiền sẽ được giữ trong ví trong 1 phút.
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span>Đang kiểm tra kho hàng và khóa sản phẩm...</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                                <i class="fa-solid fa-check me-2"></i>Đã hiểu
+                            </button>
+                            <a href="/orders" class="btn btn-outline-warning">
+                                <i class="fa-solid fa-clock me-2"></i>Xem trạng thái
+                            </a>
+                            <a href="/orders" class="btn btn-outline-primary">
+                                <i class="fa-solid fa-list me-2"></i>Xem đơn hàng
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
             
-            // Redirect to checkout page
-            window.location.href = '/payment';
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            // Auto close after 5 seconds
+            setTimeout(() => {
+                bsModal.hide();
+                modal.remove();
+            }, 5000);
         }
 
         async function updateQty(productId, quantity) {

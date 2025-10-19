@@ -1,13 +1,16 @@
 package com.badat.study1.service;
 
+import com.badat.study1.dto.request.CartPaymentRequest;
 import com.badat.study1.dto.request.PaymentRequest;
 import com.badat.study1.dto.response.PaymentResponse;
+import com.badat.study1.dto.response.PaymentStatusResponse;
+import com.badat.study1.model.PaymentQueue;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.repository.WalletRepository;
-import com.badat.study1.repository.WalletHistoryRepository;
 import com.badat.study1.util.VNPayUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -17,17 +20,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 
 @Service
+@RequiredArgsConstructor
 public class PaymentService {
     
     private final VNPayUtil vnPayUtil;
     private final WalletRepository walletRepository;
     private final WalletHistoryService walletHistoryService;
-    
-    public PaymentService(VNPayUtil vnPayUtil, WalletRepository walletRepository, WalletHistoryRepository walletHistoryRepository, WalletHistoryService walletHistoryService) {
-        this.vnPayUtil = vnPayUtil;
-        this.walletRepository = walletRepository;
-        this.walletHistoryService = walletHistoryService;
-    }
+    private final PaymentQueueService paymentQueueService;
     
     public PaymentResponse createPaymentUrl(PaymentRequest request) {
         return createPaymentUrl(request, null);
@@ -166,6 +165,65 @@ public class PaymentService {
             );
         } catch (Exception ex) {
             System.out.println("Warning: failed to record failed payment history: " + ex.getMessage());
+        }
+    }
+    
+    /**
+     * Xử lý thanh toán giỏ hàng với queue system
+     */
+    public PaymentResponse processCartPayment(CartPaymentRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            User user = (User) authentication.getPrincipal();
+            
+            // Validate cart items
+            if (request.getCartItems() == null || request.getCartItems().isEmpty()) {
+                return PaymentResponse.builder()
+                    .message("Cart is empty")
+                    .success(false)
+                    .build();
+            }
+            
+            // Validate total amount
+            if (request.getTotalAmount() == null || request.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                return PaymentResponse.builder()
+                    .message("Invalid total amount")
+                    .success(false)
+                    .build();
+            }
+            
+            // Enqueue payment for processing
+            paymentQueueService.enqueuePayment(
+                user.getId(), 
+                request.getCartItems(), 
+                request.getTotalAmount()
+            );
+            
+            return PaymentResponse.builder()
+                .message("Payment queued for processing")
+                .success(true)
+                .build();
+                
+        } catch (Exception e) {
+            return PaymentResponse.builder()
+                .message("Error processing cart payment: " + e.getMessage())
+                .success(false)
+                .build();
+        }
+    }
+    
+    /**
+     * Lấy trạng thái payment
+     */
+    public PaymentStatusResponse getPaymentStatus(Long paymentId) {
+        try {
+            PaymentQueue payment = paymentQueueService.getPaymentStatus(paymentId);
+            return PaymentStatusResponse.fromEntity(payment);
+        } catch (Exception e) {
+            return PaymentStatusResponse.builder()
+                .message("Error retrieving payment status: " + e.getMessage())
+                .success(false)
+                .build();
         }
     }
 }

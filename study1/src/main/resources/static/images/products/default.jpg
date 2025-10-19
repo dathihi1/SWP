@@ -1,0 +1,7 @@
+<svg width="150" height="150" xmlns="http://www.w3.org/2000/svg">
+  <rect width="150" height="150" fill="#e0e0e0" stroke="#999" stroke-width="1"/>
+  <text x="75" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#666">Product</text>
+  <text x="75" y="90" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#999">Image</text>
+</svg>
+
+
