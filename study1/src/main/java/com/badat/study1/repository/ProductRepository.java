@@ -2,8 +2,11 @@ package com.badat.study1.repository;
 
 import com.badat.study1.model.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,4 +23,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	// Filter helpers for browsing
 	List<Product> findByIsDeleteFalseAndStatus(Product.Status status);
 	List<Product> findByNameContainingIgnoreCaseAndIsDeleteFalseAndStatus(String name, Product.Status status);
+	
+	// Count methods
+	long countByShopIdAndIsDeleteFalse(Long shopId);
+	
+	// Stall methods
+	List<Product> findByStallIdAndIsDeleteFalse(Long stallId);
+	
+	// Recovery methods
+	Optional<Product> findByNameAndPriceAndShopIdAndIsDeleteTrue(String name, BigDecimal price, Long shopId);
+	
+	// Warehouse quantity methods
+	@Query("SELECT COUNT(w) FROM Warehouse w WHERE w.product.id = :productId")
+	long countWarehouseItemsByProductId(@Param("productId") Long productId);
+	
+	@Query("SELECT COUNT(w) FROM Warehouse w WHERE w.product.id = :productId AND w.itemType = :itemType")
+	long countWarehouseItemsByProductIdAndType(@Param("productId") Long productId, @Param("itemType") String itemType);
 }

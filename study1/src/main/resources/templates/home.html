@@ -29,7 +29,7 @@
             <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
             MMO Market
         </a>
-        
+
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -42,9 +42,8 @@
                     </div>
                 </form>
             </div>
-            
+
             <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
-                <!-- Guest user navigation -->
                 <div th:if="${!isAuthenticated}" class="d-flex align-items-center gap-2">
                     <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
                         <i class="fa-regular fa-user"></i>
@@ -55,15 +54,13 @@
                         <span>Giỏ hàng</span>
                     </a>
                 </div>
-                
-                <!-- Authenticated user navigation -->
+
                 <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
-                    <!-- Current Balance -->
                     <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                         <i class="fa-solid fa-wallet"></i>
                         <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
                     </div>
-                    
+
                     <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
                             <i class="fa-solid fa-user"></i>
@@ -81,7 +78,7 @@
                             <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
-                    
+
                     <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span>Giỏ hàng</span>
@@ -93,7 +90,6 @@
 </nav>
 
 <main class="container py-4 py-md-5">
-    <!-- Welcome section for authenticated users -->
     <div th:if="${isAuthenticated}" class="alert alert-success d-flex align-items-center mb-4" role="alert">
         <i class="fa-solid fa-circle-check me-3"></i>
         <div>
@@ -102,7 +98,6 @@
         </div>
     </div>
 
-    <!-- Call to action for guest users -->
     <div th:if="${!isAuthenticated}" class="hero mb-4 mb-md-5">
         <div class="text-center">
             <h1 class="display-5 fw-bold mb-3">Chào mừng đến với MMO Market</h1>
@@ -127,28 +122,28 @@
         <h5 class="text-center text-uppercase text-muted mb-3">Danh mục nổi bật</h5>
         <div class="row g-3 g-md-4">
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="card category-card p-3 text-center h-100">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('email')" style="cursor: pointer;">
                     <div class="category-icon bg-success-subtle text-success mb-2"><i class="fa-solid fa-envelope fa-lg"></i></div>
                     <div class="category-title">Email</div>
                     <div class="text-muted small">Gmail, Yahoo, Hotmail...</div>
                 </div>
             </div>
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="card category-card p-3 text-center h-100">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('software')" style="cursor: pointer;">
                     <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-compact-disc fa-lg"></i></div>
                     <div class="category-title">Phần mềm</div>
                     <div class="text-muted small">Các tool hỗ trợ MMO</div>
                 </div>
             </div>
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="card category-card p-3 text-center h-100">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('account')" style="cursor: pointer;">
                     <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-user fa-lg"></i></div>
                     <div class="category-title">Tài khoản</div>
                     <div class="text-muted small">FB, BM, key Windows...</div>
                 </div>
             </div>
             <div class="col-12 col-md-6 col-lg-3">
-                <div class="card category-card p-3 text-center h-100">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('other')" style="cursor: pointer;">
                     <div class="category-icon bg-info-subtle text-info mb-2"><i class="fa-solid fa-cube fa-lg"></i></div>
                     <div class="category-title">Khác</div>
                     <div class="text-muted small">Sản phẩm số khác</div>
@@ -157,7 +152,6 @@
         </div>
     </section>
 
-    <!-- User Dashboard for authenticated users -->
     <section th:if="${isAuthenticated}" class="mb-4 mb-md-5">
         <div class="row g-4">
             <div class="col-12">
@@ -214,7 +208,6 @@
         </div>
     </section>
 
-    <!-- Quick actions for authenticated users -->
     <section th:if="${isAuthenticated}" class="mb-4 mb-md-5">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white">
@@ -244,7 +237,7 @@
             </div>
         </div>
     </section>
-    
+
 </main>
 
 <section class="container pb-4 pb-md-5 intro">
@@ -319,7 +312,7 @@
 
 <footer class="border-top py-3">
     <div class="container d-flex justify-content-between align-items-center small">
-        <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
         <div class="text-muted">Liên hệ: support@example.com</div>
     </div>
 </footer>
@@ -355,8 +348,94 @@
         }
     });
 
-    </script>
+    // Handle OAuth2 login success
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const login = urlParams.get('login');
+
+        if (token && login === 'success') {
+            // Store JWT token in localStorage
+            localStorage.setItem('accessToken', token);
+
+            // Show success message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                <i class="fa-solid fa-check-circle me-2"></i>
+                Đăng nhập thành công!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+
+            // Auto remove alert after 3 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+
+            // Remove token from URL
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+
+            // Update UI without reloading page
+            updateUIAfterLogin();
+        } else {
+            // Check if user is already authenticated via localStorage
+            checkAuthenticationStatus();
+        }
+    });
+
+    function updateUIAfterLogin() {
+        // Update authentication status in UI
+        const loginBtn = document.querySelector('.login-btn');
+        const profileBtn = document.querySelector('.profile-btn');
+
+        if (loginBtn) {
+            loginBtn.style.display = 'none';
+        }
+        if (profileBtn) {
+            profileBtn.style.display = 'block';
+        }
+
+        // You can add more UI updates here
+        console.log('UI updated after login');
+    }
+
+    function checkAuthenticationStatus() {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+            // User is authenticated, update UI
+            updateUIAfterLogin();
+        }
+    }
+
+    // Function to handle category clicks
+    function viewCategory(category) {
+        let type = '';
+        switch(category) {
+            case 'email':
+                type = 'EMAIL'; // Ánh xạ tới type='EMAIL' trong DB
+                break;
+            case 'software':
+                type = 'BUFF'; // Ánh xạ 'Phần mềm' tới type='BUFF' (Dịch vụ hỗ trợ) trong DB
+                break;
+            case 'account':
+                type = 'FACEBOOK'; // Ánh xạ 'Tài khoản' tới type='FACEBOOK' (Loại phổ biến) trong DB
+                break;
+            case 'other':
+                type = 'COMBO'; // Ánh xạ 'Khác' tới type='COMBO' trong DB
+                break;
+            default:
+                type = '';
+        }
+
+        // Redirect to products page with category filter
+        window.location.href = `/products?type=${type}`;
+    }
+
+</script>
 </body>
 </html>
-
-

@@ -6,10 +6,13 @@ import com.badat.study1.service.AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.text.ParseException;
 import java.util.HashMap;
@@ -24,15 +27,27 @@ public class AuthenticationController {
     private final AuthenticationService authenticationService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         try {
             log.info("Login attempt for username: {}", loginRequest.getUsername());
             
     
             LoginResponse loginResponse = authenticationService.login(loginRequest);
             log.info("Login successful for username: {}", loginRequest.getUsername());
-            
-            return ResponseEntity.ok(loginResponse);
+
+            // Set HttpOnly access token cookie for browser navigation
+            boolean secure = request.isSecure();
+            ResponseCookie accessCookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
+                    .httpOnly(true)
+                    .secure(secure)
+                    .path("/")
+                    .sameSite("Lax")
+                    .maxAge(60L * 60L) // 1 hour, align with token expiry
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                    .body(loginResponse);
             
         } catch (Exception e) {
             log.error("Login failed for username: {}, error: {}", loginRequest.getUsername(), e.getMessage());
@@ -42,18 +57,41 @@ public class AuthenticationController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+    public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader, HttpServletRequest request) {
         try {
+            // Prefer header; if missing, try cookie via JwtAuthenticationFilter, but here we only need header token to blacklist
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Authorization header không hợp lệ"));
+                // Still clear cookie even if header missing
+                boolean secure = request.isSecure();
+                ResponseCookie clearCookie = ResponseCookie.from("accessToken", "")
+                        .httpOnly(true)
+                        .secure(secure)
+                        .path("/")
+                        .sameSite("Lax")
+                        .maxAge(0)
+                        .build();
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                        .body(Map.of("message", "Đăng xuất thành công"));
             }
-            
+
             String token = authHeader.replace("Bearer ", "");
             authenticationService.logout(token);
             
             log.info("Logout successful");
-            return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công"));
+            // Clear access token cookie
+            boolean secure = request.isSecure();
+            ResponseCookie clearCookie = ResponseCookie.from("accessToken", "")
+                    .httpOnly(true)
+                    .secure(secure)
+                    .path("/")
+                    .sameSite("Lax")
+                    .maxAge(0)
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                    .body(Map.of("message", "Đăng xuất thành công"));
             
         } catch (ParseException e) {
             log.error("Logout failed: {}", e.getMessage());

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thêm gian hàng - MMO Market</title>
+    <title>Chỉnh sửa gian hàng - MMO Market</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
@@ -201,6 +201,20 @@
             box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
         }
         
+        .form-control:read-only {
+            background-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+            border-color: #ced4da;
+        }
+        
+        .form-control:read-only:focus {
+            background-color: #e9ecef;
+            color: #6c757d;
+            border-color: #ced4da;
+            box-shadow: none;
+        }
+        
         .btn-submit {
             background: linear-gradient(135deg, #0d6efd, #0b5ed7);
             border: none;
@@ -219,21 +233,6 @@
             color: white;
         }
         
-        .btn-cancel {
-            background: #6c757d;
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-cancel:hover {
-            background: #5a6268;
-            color: white;
-        }
         
         .required {
             color: #dc3545;
@@ -314,7 +313,7 @@
                 <i class="fas fa-clipboard-list"></i>
                 Quản lý gian hàng
             </a>
-            <a href="/seller/add-stall" class="menu-item active">
+            <a href="/seller/add-stall" class="menu-item">
                 <i class="fas fa-plus"></i>
                 Thêm gian hàng
             </a>
@@ -381,10 +380,10 @@
             <div class="page-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h1 class="page-title">Thêm gian hàng mới</h1>
-                        <small class="text-muted">Giới hạn tối đa: 5 gian hàng</small>
+                        <h1 class="page-title">Chỉnh sửa gian hàng</h1>
+                        <small class="text-muted" th:text="'Gian hàng: ' + ${stall.stallName}">Gian hàng: Tên gian hàng</small>
                     </div>
-                    <a href="/seller/shop-management" class="btn-back">
+                    <a th:href="@{/seller/shop-management}" href="/seller/shop-management" class="btn-back">
                         <i class="fas fa-arrow-left me-2"></i>
                         Quay lại
                     </a>
@@ -393,7 +392,7 @@
             
             <!-- Form Container -->
             <div class="form-container">
-                <form th:action="@{/seller/add-stall}" method="post" enctype="multipart/form-data" id="addStallForm">
+                <form th:action="@{/seller/edit-stall/{id}(id=${stall.id})}" method="post" enctype="multipart/form-data" id="editStallForm">
                     <!-- Basic Information -->
                     <div class="form-section">
                         <h5 class="section-title">
@@ -403,33 +402,33 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="stallName" class="form-label">Tên gian hàng <span class="required">*</span></label>
-                                <input type="text" class="form-control" id="stallName" name="stallName" required>
+                                <input type="text" class="form-control" id="stallName" name="stallName" th:value="${stall.stallName}" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="businessType" class="form-label">Loại hình kinh doanh <span class="required">*</span></label>
-                                <select class="form-select" id="businessType" name="businessType" required>
-                                    <option value="">Chọn loại hình kinh doanh</option>
-                                    <option value="Bán sản phẩm">Bán sản phẩm</option>
+                                <label for="status" class="form-label">Trạng thái <span class="required">*</span></label>
+                                <select class="form-select" id="status" name="status" required>
+                                    <option value="OPEN" th:selected="${stall.status == 'OPEN'}">Mở</option>
+                                    <option value="CLOSED" th:selected="${stall.status == 'CLOSED'}">Đóng</option>
                                 </select>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="stallCategory" class="form-label">Loại gian hàng <span class="required">*</span></label>
-                                <select class="form-select" id="stallCategory" name="stallCategory" required>
-                                    <option value="">Chọn loại gian hàng</option>
-                                    <option value="Thẻ cào (Điện thoại, Game)">Thẻ Cào (Điện thoại, Game)</option>
-                                    <option value="Tài Khoản">Tài Khoản</option>
-                                    <option value="Key Game">Key Game</option>
-                                </select>
+                                <label class="form-label">Loại hình kinh doanh</label>
+                                <input type="text" class="form-control" th:value="${stall.businessType}" readonly>
+                                <div class="form-text">Không thể thay đổi</div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="discount" class="form-label">Chiết khấu cho sàn <span class="required">*</span></label>
-                                <select class="form-select" id="discount" name="discount" required>
-                                    <option value="">Chọn chiết khấu</option>
-                                    <option value="5">5%</option>
-                                </select>
-                                <div class="form-text">Phần trăm chiết khấu mà gian hàng sẽ trả cho sàn</div>
+                                <label class="form-label">Loại gian hàng</label>
+                                <input type="text" class="form-control" th:value="${stall.stallCategory}" readonly>
+                                <div class="form-text">Không thể thay đổi</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Chiết khấu</label>
+                                <input type="text" class="form-control" th:value="${stall.discountPercentage} + '%'" readonly>
+                                <div class="form-text">Không thể thay đổi</div>
                             </div>
                         </div>
                     </div>
@@ -442,12 +441,12 @@
                         </h5>
                         <div class="mb-3">
                             <label for="shortDescription" class="form-label">Mô tả ngắn <span class="required">*</span></label>
-                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" required placeholder="Nhập mô tả ngắn về gian hàng (tối đa 200 ký tự)"></textarea>
+                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" required th:text="${stall.shortDescription}"></textarea>
                             <div class="form-text">Mô tả ngắn gọn về gian hàng, sản phẩm chính</div>
                         </div>
                         <div class="mb-3">
                             <label for="detailedDescription" class="form-label">Mô tả chi tiết <span class="required">*</span></label>
-                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" required placeholder="• Giới thiệu sản phẩm&#10;• Lưu ý hoặc quy định của shop&#10;• Chính sách bảo hành"></textarea>
+                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" required th:text="${stall.detailedDescription}"></textarea>
                             <div class="form-text">Mô tả chi tiết về gian hàng, dịch vụ, chính sách bán hàng</div>
                         </div>
                     </div>
@@ -459,12 +458,18 @@
                             Hình ảnh gian hàng
                         </h5>
                         <div class="mb-3">
-                            <label for="stallImageFile" class="form-label">Tải lên hình ảnh gian hàng <span class="required">*</span></label>
-                            <input type="file" class="form-control" id="stallImageFile" name="stallImageFile" accept="image/*" required onchange="previewImage(this)">
-                            <div class="form-text">Chọn file hình ảnh đại diện cho gian hàng (JPG, PNG, GIF) - Bắt buộc</div>
+                            <label for="stallImageFile" class="form-label">Tải lên hình ảnh gian hàng mới</label>
+                            <input type="file" class="form-control" id="stallImageFile" name="stallImageFile" accept="image/*" onchange="previewImage(this)">
+                            <div class="form-text">Chọn file hình ảnh đại diện cho gian hàng (JPG, PNG, GIF). Để trống nếu không muốn thay đổi.</div>
+                        </div>
+                        <div th:if="${stall.stallImageData != null}" class="mb-3">
+                            <label class="form-label">Hình ảnh hiện tại:</label>
+                            <div class="text-center">
+                                <img th:src="@{/stall-image/{id}(id=${stall.id})}" alt="Current Image" style="max-width: 200px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            </div>
                         </div>
                         <div id="imagePreview" class="mb-3" style="display: none;">
-                            <label class="form-label">Cắt và xem trước hình ảnh:</label>
+                            <label class="form-label">Cắt và xem trước hình ảnh mới:</label>
                             <div class="row">
                                 <div class="col-md-8">
                                     <div class="cropper-container" style="max-height: 400px; overflow: hidden;">
@@ -491,24 +496,11 @@
                         </div>
                     </div>
                     
-                    <!-- Terms and Conditions -->
-                    <div class="form-section">
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="uniqueProducts" name="uniqueProducts" required>
-                                <label class="form-check-label" for="uniqueProducts">
-                                    <strong>Sản phẩm không trùng lặp:</strong> <span class="required"></span> (Cam kết sản phẩm chỉ được bán ra 1 lần và duy nhất trên hệ thống)
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <!-- Submit Buttons -->
-                    <div class="d-flex justify-content-end gap-3">
-                        <a href="/seller/shop-management" class="btn btn-cancel">Hủy</a>
+                    <div class="d-flex justify-content-end">
                         <button type="submit" class="btn btn-submit">
                             <i class="fas fa-save me-2"></i>
-                            Tạo gian hàng
+                            Cập nhật gian hàng
                         </button>
                     </div>
                 </form>
@@ -541,27 +533,15 @@
         let cropper = null;
         let croppedImageData = null;
 
-         // Image preview and cropping function
-         function previewImage(input) {
-             const file = input.files[0];
-             const preview = document.getElementById('imagePreview');
-             const previewImg = document.getElementById('previewImg');
-             const cropBtn = document.getElementById('cropBtn');
-             const confirmCropBtn = document.getElementById('confirmCropBtn');
-             
-             // Clean up any existing final previews first
-             const existingFinalPreviews = document.querySelectorAll('#finalCroppedImg');
-             existingFinalPreviews.forEach(img => {
-                 const previewContainer = img.closest('.mb-3');
-                 if (previewContainer) {
-                     previewContainer.remove();
-                 }
-             });
-             
-             // Reset cropped image data
-             croppedImageData = null;
-             
-             if (file) {
+        // Image preview and cropping function
+        function previewImage(input) {
+            const file = input.files[0];
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            const cropBtn = document.getElementById('cropBtn');
+            const confirmCropBtn = document.getElementById('confirmCropBtn');
+            
+            if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     previewImg.src = e.target.result;
@@ -629,80 +609,61 @@
             }
         });
 
-         // Confirm crop button functionality
-         document.getElementById('confirmCropBtn').addEventListener('click', function() {
-             // Remove any existing final previews first
-             const existingFinalPreviews = document.querySelectorAll('#finalCroppedImg');
-             existingFinalPreviews.forEach(img => {
-                 const previewContainer = img.closest('.mb-3');
-                 if (previewContainer) {
-                     previewContainer.remove();
-                 }
-             });
-             
-             // Hide cropping interface
-             document.getElementById('imagePreview').style.display = 'none';
-             
-             // Show final cropped image
-             const finalPreview = document.createElement('div');
-             finalPreview.className = 'mb-3';
-             finalPreview.innerHTML = `
-                 <label class="form-label">Hình ảnh đã cắt:</label>
-                 <div class="text-center">
-                     <img id="finalCroppedImg" src="${document.getElementById('croppedPreview').src}" 
-                          style="max-width: 200px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                 </div>
-                 <div class="text-center mt-2">
-                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetImageCrop()">
-                         <i class="fas fa-undo me-1"></i>Chọn lại ảnh
-                     </button>
-                 </div>
-             `;
-             
-             // Insert after the file input
-             const fileInput = document.getElementById('stallImageFile');
-             fileInput.parentNode.insertBefore(finalPreview, fileInput.nextSibling);
-         });
+        // Confirm crop button functionality
+        document.getElementById('confirmCropBtn').addEventListener('click', function() {
+            // Hide cropping interface
+            document.getElementById('imagePreview').style.display = 'none';
+            
+            // Show final cropped image
+            const finalPreview = document.createElement('div');
+            finalPreview.className = 'mb-3';
+            finalPreview.innerHTML = `
+                <label class="form-label">Hình ảnh mới đã cắt:</label>
+                <div class="text-center">
+                    <img id="finalCroppedImg" src="${document.getElementById('croppedPreview').src}" 
+                         style="max-width: 200px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                </div>
+                <div class="text-center mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetImageCrop()">
+                        <i class="fas fa-undo me-1"></i>Chọn lại ảnh
+                    </button>
+                </div>
+            `;
+            
+            // Insert after the file input
+            const fileInput = document.getElementById('stallImageFile');
+            fileInput.parentNode.insertBefore(finalPreview, fileInput.nextSibling);
+            
+            // Hide the cropping interface
+            document.getElementById('imagePreview').style.display = 'none';
+        });
 
-         // Reset image crop function
-         function resetImageCrop() {
-             // Clear file input
-             document.getElementById('stallImageFile').value = '';
-             
-             // Remove all final preview elements
-             const finalPreviews = document.querySelectorAll('#finalCroppedImg');
-             finalPreviews.forEach(img => {
-                 const previewContainer = img.closest('.mb-3');
-                 if (previewContainer) {
-                     previewContainer.remove();
-                 }
-             });
-             
-             // Reset variables
-             croppedImageData = null;
-             if (cropper) {
-                 cropper.destroy();
-                 cropper = null;
-             }
-             
-             // Hide image preview
-             document.getElementById('imagePreview').style.display = 'none';
-         }
+        // Reset image crop function
+        function resetImageCrop() {
+            // Clear file input
+            document.getElementById('stallImageFile').value = '';
+            
+            // Remove final preview
+            const finalPreview = document.querySelector('#finalCroppedImg').closest('.mb-3');
+            if (finalPreview) {
+                finalPreview.remove();
+            }
+            
+            // Reset variables
+            croppedImageData = null;
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            
+            // Hide image preview
+            document.getElementById('imagePreview').style.display = 'none';
+        }
         
         // Form validation and submission
-        document.getElementById('addStallForm').addEventListener('submit', function(e) {
+        document.getElementById('editStallForm').addEventListener('submit', function(e) {
             const shortDesc = document.getElementById('shortDescription').value.trim();
             const detailedDesc = document.getElementById('detailedDescription').value.trim();
-            const uniqueProducts = document.getElementById('uniqueProducts').checked;
-            const imageFile = document.getElementById('stallImageFile').files[0];
-            
-            // Validate image is required
-            if (!imageFile) {
-                e.preventDefault();
-                alert('Vui lòng tải lên hình ảnh gian hàng');
-                document.getElementById('stallImageFile').focus();
-                return;
-            }
             
             if (shortDesc.length === 0) {
                 e.preventDefault();
@@ -724,13 +685,6 @@
                 document.getElementById('shortDescription').focus();
                 return;
             }
-            
-            if (!uniqueProducts) {
-                e.preventDefault();
-                alert('Bạn phải đồng ý với cam kết "Sản phẩm không trùng lặp" để tạo gian hàng');
-                document.getElementById('uniqueProducts').focus();
-                return;
-            }
 
             // Handle cropped image data
             if (croppedImageData) {
@@ -739,12 +693,9 @@
                 
                 // Add all form fields
                 formData.append('stallName', document.getElementById('stallName').value);
-                formData.append('businessType', document.getElementById('businessType').value);
-                formData.append('stallCategory', document.getElementById('stallCategory').value);
-                formData.append('discount', document.getElementById('discount').value);
+                formData.append('status', document.getElementById('status').value);
                 formData.append('shortDescription', shortDesc);
                 formData.append('detailedDescription', detailedDesc);
-                formData.append('uniqueProducts', uniqueProducts);
                 
                 // Add cropped image as a file
                 formData.append('stallImageFile', croppedImageData, 'cropped-image.jpg');
@@ -753,7 +704,7 @@
                 e.preventDefault();
                 
                 // Submit via fetch
-                fetch('/seller/add-stall', {
+                fetch(window.location.href, {
                     method: 'POST',
                     body: formData
                 })
@@ -761,12 +712,12 @@
                     if (response.ok) {
                         window.location.href = '/seller/shop-management';
                     } else {
-                        alert('Có lỗi xảy ra khi tạo gian hàng. Vui lòng thử lại!');
+                        alert('Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Có lỗi xảy ra khi tạo gian hàng. Vui lòng thử lại!');
+                    alert('Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!');
                 });
             }
         });

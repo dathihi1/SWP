@@ -442,7 +442,7 @@
 
 <footer class="border-top py-3 mt-5">
     <div class="container d-flex justify-content-between align-items-center small">
-        <div>© <span th:text="${#dates.format(#dates.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
         <div class="text-muted">Liên hệ: support@example.com</div>
     </div>
 </footer>

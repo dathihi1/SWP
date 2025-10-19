@@ -20,61 +20,108 @@ public class CartService {
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
 
+    /**
+     * Lấy người dùng hiện tại từ Spring Security Context.
+     * @return Đối tượng User đã đăng nhập.
+     * @throws IllegalStateException nếu người dùng chưa xác thực hoặc Principal không đúng kiểu.
+     */
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        // Xử lý kiểm tra người dùng đã đăng nhập và cast đúng kiểu
+        if (auth == null || !auth.isAuthenticated() || !(auth.getPrincipal() instanceof User)) {
+            // Trong môi trường thực tế, có thể trả về một User mặc định hoặc xử lý lại
+            // Ở đây, ta ném ngoại lệ vì giỏ hàng yêu cầu người dùng đã xác thực.
+            throw new IllegalStateException("User not authenticated or principal type is incorrect.");
+        }
         return (User) auth.getPrincipal();
     }
 
+    /**
+     * Lấy hoặc tạo giỏ hàng cho người dùng hiện tại.
+     * @param fetchItems Nếu true, sử dụng Fetch Join để tải đầy đủ CartItems và Product eagerly (cho hiển thị/trả về API).
+     * @return Giỏ hàng đã tải hoặc mới tạo.
+     */
     @Transactional
-    public Cart getOrCreateMyCart() {
+    public Cart getOrCreateMyCart(boolean fetchItems) {
         User user = getCurrentUser();
-        Optional<Cart> existing = cartRepository.findByUser(user);
+        Optional<Cart> existing;
+
+        if (fetchItems) {
+            // Tải đầy đủ CartItem và Product cho việc hiển thị tối ưu (tránh N+1 problem)
+            existing = cartRepository.findByUserWithItems(user);
+        } else {
+            // Tải Cart cơ bản, không cần CartItem cho logic thêm/xóa/cập nhật
+            existing = cartRepository.findByUser(user);
+        }
+
         if (existing.isPresent()) {
             return existing.get();
         }
-        Cart cart = Cart.builder().user(user).build();
+
+        // Tạo giỏ hàng mới (đảm bảo userId và user được set)
+        Cart cart = Cart.builder().user(user).userId(user.getId()).build();
         return cartRepository.save(cart);
+    }
+
+    /**
+     * Overload cho các phương thức nội bộ không cần fetch items ngay lập tức (chỉ cần Cart object).
+     */
+    private Cart getOrCreateMyCart() {
+        return getOrCreateMyCart(false);
     }
 
     @Transactional
     public Cart addProduct(Long productId, int quantity) {
         if (quantity <= 0) {
-            quantity = 1;
+            quantity = 1; // Đảm bảo số lượng luôn dương khi thêm
         }
+
         Cart cart = getOrCreateMyCart();
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
 
-        Optional<CartItem> existing = cartItemRepository.findByCartAndProduct(cart, product);
-        if (existing.isPresent()) {
-            CartItem item = existing.get();
+        // Tìm CartItem hiện có
+        Optional<CartItem> existingItem = cartItemRepository.findByCartAndProduct(cart, product);
+
+        if (existingItem.isPresent()) {
+            // Cập nhật số lượng
+            CartItem item = existingItem.get();
             item.setQuantity(item.getQuantity() + quantity);
             cartItemRepository.save(item);
         } else {
-            CartItem item = CartItem.builder()
+            // Tạo CartItem mới
+            CartItem newItem = CartItem.builder()
                     .cart(cart)
                     .product(product)
                     .quantity(quantity)
                     .build();
-            cart.getItems().add(item);
-            cartItemRepository.save(item);
+            // Thêm vào list trong Cart để Hibernate biết và quản lý mối quan hệ
+            cart.getItems().add(newItem);
+            cartItemRepository.save(newItem);
         }
-        return cartRepository.findById(cart.getId()).orElse(cart);
+
+        // Trả về Cart đã được tải đầy đủ (Fetch Join) cho phản hồi API
+        return getOrCreateMyCart(true);
     }
 
     @Transactional
     public Cart updateQuantity(Long productId, int quantity) {
         if (quantity <= 0) {
+            // Nếu số lượng <= 0, coi như xóa sản phẩm
             return removeProduct(productId);
         }
+
         Cart cart = getOrCreateMyCart();
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
         CartItem item = cartItemRepository.findByCartAndProduct(cart, product)
                 .orElseThrow(() -> new IllegalArgumentException("Item not in cart"));
+
         item.setQuantity(quantity);
         cartItemRepository.save(item);
-        return cartRepository.findById(cart.getId()).orElse(cart);
+
+        // Trả về Cart đã được tải đầy đủ (Fetch Join)
+        return getOrCreateMyCart(true);
     }
 
     @Transactional
@@ -84,19 +131,28 @@ public class CartService {
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
         CartItem item = cartItemRepository.findByCartAndProduct(cart, product)
                 .orElseThrow(() -> new IllegalArgumentException("Item not in cart"));
-        cart.getItems().remove(item);
+
+        // Xóa item khỏi list trong Cart trước khi xóa entity
+        if (cart.getItems() != null) {
+            cart.getItems().remove(item);
+        }
         cartItemRepository.delete(item);
-        return cartRepository.findById(cart.getId()).orElse(cart);
+
+        // Trả về Cart đã được tải đầy đủ (Fetch Join)
+        return getOrCreateMyCart(true);
     }
 
     @Transactional
     public Cart clearCart() {
         Cart cart = getOrCreateMyCart();
-        cart.getItems().forEach(cartItemRepository::delete);
-        cart.getItems().clear();
-        return cartRepository.save(cart);
+
+        // Xóa tất cả CartItems liên kết với Cart này
+        if (cart.getItems() != null) {
+            cart.getItems().forEach(cartItemRepository::delete);
+            cart.getItems().clear(); // Dọn dẹp list trong đối tượng Cart
+        }
+
+        // Trả về Cart đã được tải đầy đủ (Fetch Join) (hiện tại sẽ là giỏ hàng rỗng)
+        return getOrCreateMyCart(true);
     }
 }
-
-
-
