@@ -1,5 +1,6 @@
 package com.badat.study1.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference; // <-- THÊM DÒNG NÀY
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,6 +18,7 @@ public class CartItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", nullable = false)
+    @JsonBackReference // <-- THÊM DÒNG NÀY
     private Cart cart;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -33,6 +35,3 @@ public class CartItem {
         return price.multiply(java.math.BigDecimal.valueOf(quantity)).doubleValue();
     }
 }
-
-
-

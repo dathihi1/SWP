@@ -21,6 +21,8 @@ public class DataInitializer implements CommandLineRunner {
     private final ShopRepository shopRepository;
     private final ProductRepository productRepository;
     private final BankAccountRepository bankAccountRepository;
+    private final StallRepository stallRepository;
+    private final WalletRepository walletRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -30,6 +32,9 @@ public class DataInitializer implements CommandLineRunner {
             createSampleUsers();
         }
         
+        // Create wallets for all users if not exists
+        createWalletsForUsers();
+        
         // Create sample bank accounts if not exists
         if (bankAccountRepository.count() == 0) {
             createSampleBankAccounts();
@@ -38,6 +43,11 @@ public class DataInitializer implements CommandLineRunner {
         // Create sample shops if not exists
         if (shopRepository.count() == 0) {
             createSampleShops();
+        }
+        
+        // Create sample stalls if not exists
+        if (stallRepository.count() == 0) {
+            createSampleStalls();
         }
         
         // Create sample products if not exists
@@ -77,6 +87,20 @@ public class DataInitializer implements CommandLineRunner {
         userRepository.save(customer);
     }
 
+    private void createWalletsForUsers() {
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            if (!walletRepository.findByUserId(user.getId()).isPresent()) {
+                Wallet wallet = Wallet.builder()
+                        .userId(user.getId())
+                        .balance(BigDecimal.ZERO)
+                        .build();
+                walletRepository.save(wallet);
+                log.info("Created wallet for user: {}", user.getUsername());
+            }
+        }
+    }
+
     private void createSampleBankAccounts() {
         User seller = userRepository.findByUsername("seller1").orElse(null);
         if (seller != null) {
@@ -106,13 +130,34 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
+    private void createSampleStalls() {
+        Shop shop = shopRepository.findAll().get(0);
+        if (shop != null) {
+            Stall stall = new Stall();
+            stall.setShopId(shop.getId());
+            stall.setStallName("Digital Products Stall");
+            stall.setBusinessType("Digital Services");
+            stall.setStallCategory("Technology");
+            stall.setDiscountPercentage(10.0);
+            stall.setShortDescription("Premium digital products and services");
+            stall.setDetailedDescription("We offer high-quality digital products including software licenses, email accounts, and digital certificates.");
+            stall.setStatus("OPEN");
+            stall.setCreatedAt(Instant.now());
+            stall.setDelete(false);
+            stallRepository.save(stall);
+        }
+    }
+
     private void createSampleProducts() {
         Shop shop = shopRepository.findAll().get(0);
+        Stall stall = stallRepository.findAll().get(0);
         
         // Email products
         List<Product> emailProducts = List.of(
                 Product.builder()
                         .shopId(shop.getId())
+                        .stallId(stall.getId())
+                        .stallId(stall.getId())
                         .type("email")
                         .name("Gmail Premium 2024")
                         .description("Tài khoản Gmail premium với 15GB dung lượng")
@@ -122,6 +167,8 @@ public class DataInitializer implements CommandLineRunner {
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
+                        .stallId(stall.getId())
+                        .stallId(stall.getId())
                         .type("email")
                         .name("Yahoo Mail Pro")
                         .description("Tài khoản Yahoo Mail chuyên nghiệp")
@@ -135,6 +182,7 @@ public class DataInitializer implements CommandLineRunner {
         List<Product> softwareProducts = List.of(
                 Product.builder()
                         .shopId(shop.getId())
+                        .stallId(stall.getId())
                         .type("software")
                         .name("Windows 11 Pro Key")
                         .description("Key bản quyền Windows 11 Professional")
@@ -144,6 +192,7 @@ public class DataInitializer implements CommandLineRunner {
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
+                        .stallId(stall.getId())
                         .type("software")
                         .name("Office 365 License")
                         .description("Giấy phép Office 365 1 năm")
@@ -157,6 +206,7 @@ public class DataInitializer implements CommandLineRunner {
         List<Product> accountProducts = List.of(
                 Product.builder()
                         .shopId(shop.getId())
+                        .stallId(stall.getId())
                         .type("account")
                         .name("Facebook Business Account")
                         .description("Tài khoản Facebook Business đã xác thực")
@@ -166,6 +216,7 @@ public class DataInitializer implements CommandLineRunner {
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
+                        .stallId(stall.getId())
                         .type("account")
                         .name("Instagram Verified Account")
                         .description("Tài khoản Instagram đã được xác thực")
@@ -179,6 +230,7 @@ public class DataInitializer implements CommandLineRunner {
         List<Product> otherProducts = List.of(
                 Product.builder()
                         .shopId(shop.getId())
+                        .stallId(stall.getId())
                         .type("other")
                         .name("Domain .com Premium")
                         .description("Tên miền .com cao cấp")
@@ -188,6 +240,7 @@ public class DataInitializer implements CommandLineRunner {
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
+                        .stallId(stall.getId())
                         .type("other")
                         .name("SSL Certificate")
                         .description("Chứng chỉ SSL bảo mật")

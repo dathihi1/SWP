@@ -19,6 +19,7 @@ public class WithdrawRequestResponse {
     
     private Long id;
     private Long shopId;
+    private String shopName;
     private BigDecimal amount;
     private WithdrawRequest.Status status;
     private String bankAccountNumber;
