@@ -406,6 +406,7 @@
                                 <th>Loại</th>
                                 <th>Hoa hồng</th>
                                 <th>Kho</th>
+                                <th>Giá</th>
                                 <th>Ngày tạo</th>
                                 <th>Trạng thái</th>
                                 <th>Thao tác</th>
@@ -419,6 +420,7 @@
                                 <td>
                                     <span th:text="${stall.productCount ?: 0}">0</span>
                                 </td>
+                                <td th:text="${stall.priceRange}">Giá</td>
                                 <td th:text="${#temporals.format(stall.createdAt, 'dd/MM/yyyy')}">Ngày tạo</td>
                                 <td>
                                     <span class="status-badge" 
@@ -441,7 +443,7 @@
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(stalls)}">
-                                <td colspan="7" class="text-center text-muted py-4">
+                                <td colspan="8" class="text-center text-muted py-4">
                                     <i class="fas fa-inbox fa-2x mb-2"></i><br>
                                     Chưa có gian hàng nào.
                                 </td>

@@ -544,8 +544,8 @@ public class ShopController {
                         continue;
                     }
                     
-                    // Kiểm tra xem có warehouse item đã tồn tại với cùng unique key không
-                    List<Warehouse> existingItems = warehouseRepository.findByProductIdAndItemTypeOrderByCreatedAtDesc(productId, type);
+                    // Kiểm tra xem có warehouse item đã tồn tại với cùng unique key trong toàn bộ hệ thống không
+                    List<Warehouse> existingItems = warehouseRepository.findByItemTypeOrderByCreatedAtDesc(type);
                     Warehouse existingItem = null;
                     boolean isItemAlreadyPurchased = false;
                     
@@ -596,16 +596,16 @@ public class ShopController {
                     // Kiểm tra các điều kiện không được phép lưu
                     if (isItemAlreadyPurchased) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại và đã được mua (").append(itemType).append(")\n");
+                        resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong hệ thống và đã được mua (").append(itemType).append(")\n");
                         continue;
                     }
                     
                     if (existingItem != null && !existingItem.getIsDelete()) {
                         failureCount++;
                         if (itemKey != null) {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong DB (").append(itemType).append(" với ").append(itemKey).append(")\n");
+                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong hệ thống (").append(itemType).append(" với ").append(itemKey).append(")\n");
                         } else {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong DB (").append(itemType).append(")\n");
+                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong hệ thống (").append(itemType).append(")\n");
                         }
                         continue;
                     }
