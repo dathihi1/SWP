@@ -13,7 +13,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -138,7 +137,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
         
-        // Skip JWT filter for static resources and public endpoints
+        // Skip JWT filter for static resources and public endpoints only
         return path.startsWith("/static/") ||
                path.startsWith("/css/") ||
                path.startsWith("/js/") ||
@@ -156,13 +155,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.equals("/register") ||
                path.equals("/verify-otp") ||
                path.equals("/forgot-password") ||
-               path.equals("/profile") ||
-               path.equals("/orders") ||
-               path.equals("/payment") ||
-               path.equals("/payment-history") ||
-               path.equals("/change-password") ||
-               path.equals("/withdraw") ||
-               path.startsWith("/api/withdraw/") ||
                path.equals("/admin/withdraw-requests") ||
                path.startsWith("/api/admin/withdraw/");
     }

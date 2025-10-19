@@ -257,7 +257,7 @@
 
         async function loadWithdrawRequests() {
             try {
-                const response = await fetch('/api/admin/withdraw/requests');
+                const response = await fetch('/api/admin/withdraw/requests-simple');
                 const requests = await response.json();
                 
                 if (response.ok) {
@@ -358,7 +358,7 @@
         async function approveRequest(requestId) {
             if (confirm(`Bạn có chắc chắn muốn duyệt yêu cầu rút tiền #${requestId} này không?`)) {
                 try {
-                    const response = await fetch(`/api/admin/withdraw/approve/${requestId}`, {
+                    const response = await fetch(`/api/admin/withdraw/approve-simple/${requestId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -382,7 +382,7 @@
         async function rejectRequest(requestId) {
             if (confirm(`Bạn có chắc chắn muốn từ chối yêu cầu rút tiền #${requestId} này không?`)) {
                 try {
-                    const response = await fetch(`/api/admin/withdraw/reject/${requestId}`, {
+                    const response = await fetch(`/api/admin/withdraw/reject-simple/${requestId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'

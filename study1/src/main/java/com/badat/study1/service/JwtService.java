@@ -81,6 +81,12 @@ public class JwtService {
         Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
         String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
         
+        // Check if token is expired first (more efficient)
+        if (expirationTime.before(new Date())) {
+            log.debug("Token has expired: {}", jwtId);
+            return false; // Token has expired
+        }
+        
         // Check if token is blacklisted (logged out) - with fallback if Redis is unavailable
         try {
             if (redisTokenRepository.existsById(jwtId)) {
@@ -90,12 +96,6 @@ public class JwtService {
         } catch (Exception e) {
             log.warn("Redis unavailable, skipping blacklist check: {}", e.getMessage());
             // Continue without blacklist check if Redis is unavailable
-        }
-        
-        // Check if token is expired
-        if (expirationTime.before(new Date())) {
-            log.debug("Token has expired: {}", jwtId);
-            return false; // Token has expired
         }
         
         // Verify token signature

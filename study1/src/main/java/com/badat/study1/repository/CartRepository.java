@@ -11,15 +11,18 @@ import java.util.Optional;
 @Repository
 public interface CartRepository extends JpaRepository<Cart, Long> {
 
-    // Phương thức tiêu chuẩn: Tìm Cart theo User, chỉ dùng cho logic tạo/kiểm tra
+    // Phương thức tiêu chuẩn: Tìm Cart theo User.
+    // Dùng cho logic kiểm tra và tạo giỏ hàng (CartService)
     Optional<Cart> findByUser(User user);
 
     /**
-     * Phương thức tối ưu cho việc hiển thị giỏ hàng.
+     * Phương thức tối ưu cho việc hiển thị giỏ hàng (Controller).
      * Sử dụng LEFT JOIN FETCH để tải CartItems (ci) và Product (p) trong một truy vấn duy nhất.
+     * Tránh lỗi N+1 Selects.
      */
     @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items ci LEFT JOIN FETCH ci.product p WHERE c.user = :user")
     Optional<Cart> findByUserWithItems(User user);
 
-    // Lưu ý: Đã xóa các phương thức cũ không phù hợp với cấu trúc 1 Cart / 1 User
+    // ĐÃ XÓA: findByUserIdAndProductId và deleteByUserIdAndProductId
+    // vì cấu trúc Cart mới không còn chứa productId trực tiếp.
 }
