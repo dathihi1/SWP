@@ -50,15 +50,15 @@ public class ViewController {
     }
 
     private void addUserAttributes(Model model, Authentication authentication) {
-        if (authentication != null && authentication.isAuthenticated() && 
-            !authentication.getName().equals("anonymousUser")) {
-            
+        if (authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser")) {
+
             Object principal = authentication.getPrincipal();
             if (principal instanceof User) {
                 User user = (User) principal;
                 model.addAttribute("username", user.getUsername());
                 model.addAttribute("userRole", user.getRole().name());
-                
+
                 BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                         .map(Wallet::getBalance)
                         .orElse(BigDecimal.ZERO);
@@ -104,24 +104,24 @@ public class ViewController {
     @GetMapping("/")
     public String homePage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         model.addAttribute("isAuthenticated", isAuthenticated);
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
-        
+
         if (isAuthenticated) {
             // Get User object from authentication principal
             Object principal = authentication.getPrincipal();
             if (principal instanceof User) {
                 User user = (User) principal;
-                
+
                 model.addAttribute("username", user.getUsername());
                 model.addAttribute("authorities", authentication.getAuthorities());
                 model.addAttribute("userRole", user.getRole().name());
                 // Default submitSuccess to false to avoid null in template conditions
                 model.addAttribute("submitSuccess", false);
-                
+
                 // Lấy số dư ví
                 BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                         .map(Wallet::getBalance)
@@ -136,7 +136,7 @@ public class ViewController {
                 model.addAttribute("walletBalance", BigDecimal.ZERO);
             }
         }
-        
+
         return "home";
     }
 
@@ -171,8 +171,8 @@ public class ViewController {
     @GetMapping("/seller/register")
     public String sellerRegisterPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
 
         if (!isAuthenticated) {
             return "redirect:/login?required=1";
@@ -199,57 +199,57 @@ public class ViewController {
         boolean isSeller = user.getRole() == User.Role.SELLER;
         model.addAttribute("pendingReview", hasShop && !isSeller);
         model.addAttribute("alreadySeller", isSeller);
-        
+
         return "seller/register";
     }
 
     @GetMapping("/terms")
     public String termsPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         model.addAttribute("isAuthenticated", isAuthenticated);
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
-        
+
         if (isAuthenticated) {
             User user = (User) authentication.getPrincipal();
             model.addAttribute("username", user.getUsername());
             model.addAttribute("authorities", authentication.getAuthorities());
             model.addAttribute("userRole", user.getRole().name());
-            
+
             // Lấy số dư ví
             BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                     .map(Wallet::getBalance)
                     .orElse(BigDecimal.ZERO);
             model.addAttribute("walletBalance", walletBalance);
         }
-        
+
         return "terms";
     }
 
     @GetMapping("/faqs")
     public String faqsPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         model.addAttribute("isAuthenticated", isAuthenticated);
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
-        
+
         if (isAuthenticated) {
             User user = (User) authentication.getPrincipal();
             model.addAttribute("username", user.getUsername());
             model.addAttribute("authorities", authentication.getAuthorities());
             model.addAttribute("userRole", user.getRole().name());
-            
+
             // Lấy số dư ví
             BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                     .map(Wallet::getBalance)
                     .orElse(BigDecimal.ZERO);
             model.addAttribute("walletBalance", walletBalance);
         }
-        
+
         return "faqs";
     }
 
@@ -262,60 +262,60 @@ public class ViewController {
                                      @RequestParam(required = false) String transactionType,
                                      @RequestParam(required = false) String transactionStatus) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         // Load wallet history for current user, apply filters and pagination
         final int currentPageParam = page;
         walletRepository.findByUserId(user.getId()).ifPresent(wallet -> {
             List<WalletHistory> all = walletHistoryService.getWalletHistoryByWalletId(wallet.getId());
 
             List<WalletHistory> filtered = all.stream()
-                .filter(h -> {
-                    // fromDate (HTML5 yyyy-MM-dd)
-                    if (fromDate != null && !fromDate.trim().isEmpty()) {
-                        try {
-                            LocalDate fd = LocalDate.parse(fromDate);
-                            if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isBefore(fd)) {
-                                return false;
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                    // toDate
-                    if (toDate != null && !toDate.trim().isEmpty()) {
-                        try {
-                            LocalDate td = LocalDate.parse(toDate);
-                            if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isAfter(td)) {
-                                return false;
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                    // type
-                    if (transactionType != null && !transactionType.trim().isEmpty() && !"ALL".equals(transactionType)) {
-                        if (!h.getType().name().equals(transactionType)) return false;
-                    }
-                    // status
-                    if (transactionStatus != null && !transactionStatus.trim().isEmpty() && !"ALL".equals(transactionStatus)) {
-                        if (!h.getStatus().name().equals(transactionStatus)) return false;
-                    }
-                    return true;
-                })
-                .collect(Collectors.toList());
+                    .filter(h -> {
+                        // fromDate (HTML5 yyyy-MM-dd)
+                        if (fromDate != null && !fromDate.trim().isEmpty()) {
+                            try {
+                                LocalDate fd = LocalDate.parse(fromDate);
+                                if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isBefore(fd)) {
+                                    return false;
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        // toDate
+                        if (toDate != null && !toDate.trim().isEmpty()) {
+                            try {
+                                LocalDate td = LocalDate.parse(toDate);
+                                if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isAfter(td)) {
+                                    return false;
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        // type
+                        if (transactionType != null && !transactionType.trim().isEmpty() && !"ALL".equals(transactionType)) {
+                            if (!h.getType().name().equals(transactionType)) return false;
+                        }
+                        // status
+                        if (transactionStatus != null && !transactionStatus.trim().isEmpty() && !"ALL".equals(transactionStatus)) {
+                            if (!h.getStatus().name().equals(transactionStatus)) return false;
+                        }
+                        return true;
+                    })
+                    .collect(Collectors.toList());
 
             int pageSize = 5;
             int totalPages = (int) Math.ceil((double) filtered.size() / pageSize);
@@ -347,78 +347,78 @@ public class ViewController {
     @GetMapping("/change-password")
     public String changePasswordPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         return "customer/change-password";
     }
 
     @GetMapping("/orders")
     public String ordersPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         return "customer/orders";
     }
 
     @GetMapping("/profile")
     public String profilePage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         // Thêm thông tin ngày đăng ký
         model.addAttribute("userCreatedAt", user.getCreatedAt());
-        
+
         // Thêm thông tin đơn hàng (tạm thời set 0, có thể cập nhật sau)
         model.addAttribute("totalOrders", 0);
-        
+
         return "customer/profile";
     }
 
@@ -426,7 +426,7 @@ public class ViewController {
     public String cartPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
-                                !authentication.getName().equals("anonymousUser");
+                !authentication.getName().equals("anonymousUser");
 
         if (!isAuthenticated) {
             return "redirect:/login";
@@ -450,13 +450,13 @@ public class ViewController {
     @GetMapping("/seller/shop")
     public String sellerShopPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
 
         // Check if user has SELLER role
@@ -467,13 +467,13 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         return "seller/shop";
     }
 
@@ -481,7 +481,7 @@ public class ViewController {
     public String sellerProductsPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
-                                !authentication.getName().equals("anonymousUser");
+                !authentication.getName().equals("anonymousUser");
 
         if (!isAuthenticated) {
             return "redirect:/login";
@@ -511,13 +511,13 @@ public class ViewController {
     @GetMapping("/seller/shop-management")
     public String sellerShopManagementPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
 
         // Check if user has SELLER role
@@ -528,32 +528,32 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         // Lấy danh sách gian hàng của user và tính tổng kho
         shopRepository.findByUserId(user.getId()).ifPresent(shop -> {
             var stalls = stallRepository.findByShopIdAndIsDeleteFalse(shop.getId());
-            
+
             // Tính tổng kho cho mỗi gian hàng
             stalls.forEach(stall -> {
                 // Lấy tất cả sản phẩm trong gian hàng này
                 var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
-                
+
                 // Tính tổng quantity của tất cả sản phẩm trong gian hàng
                 int totalStock = products.stream()
-                    .mapToInt(product -> product.getQuantity() != null ? product.getQuantity() : 0)
-                    .sum();
-                
+                        .mapToInt(product -> product.getQuantity() != null ? product.getQuantity() : 0)
+                        .sum();
+
                 stall.setProductCount(totalStock);
             });
-            
+
             model.addAttribute("stalls", stalls);
-            
+
             // Lấy tổng số sản phẩm trong shop
             long totalProducts = productRepository.countByShopIdAndIsDeleteFalse(shop.getId());
             model.addAttribute("totalProducts", totalProducts);
@@ -565,20 +565,20 @@ public class ViewController {
     @GetMapping("/seller/add-stall")
     public String sellerAddStallPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
-        
+
         // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
-        
+
         // Check if user has a shop
         boolean hasShop = shopRepository.findByUserId(user.getId()).isPresent();
         if (!hasShop) {
@@ -588,7 +588,7 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
@@ -601,95 +601,95 @@ public class ViewController {
     @GetMapping("/seller/edit-stall/{id}")
     public String sellerEditStallPage(@PathVariable Long id, Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
-        
+
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
-        
+
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         // Lấy thông tin gian hàng
         var stall = stallRepository.findById(id);
         if (stall.isEmpty()) {
             return "redirect:/seller/shop-management";
         }
-        
+
         // Kiểm tra quyền sở hữu gian hàng
         shopRepository.findByUserId(user.getId()).ifPresent(shop -> {
             if (!stall.get().getShopId().equals(shop.getId())) {
                 return; // Không có quyền sửa gian hàng này
             }
         });
-        
+
         model.addAttribute("stall", stall.get());
-        
+
         return "seller/edit-stall";
     }
 
     @GetMapping("/seller/product-management/{stallId}")
     public String sellerProductManagementPage(@PathVariable Long stallId, Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
-        
+
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
-        
+
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         // Lấy thông tin gian hàng
         var stallOptional = stallRepository.findById(stallId);
         if (stallOptional.isEmpty()) {
             return "redirect:/seller/shop-management";
         }
-        
+
         Stall stall = stallOptional.get();
-        
+
         // Kiểm tra quyền sở hữu gian hàng
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
             return "redirect:/seller/shop-management";
         }
-        
+
         model.addAttribute("stall", stall);
-        
+
         // Lấy danh sách sản phẩm của gian hàng
         var products = productRepository.findByStallIdAndIsDeleteFalse(stallId);
         model.addAttribute("products", products);
-        
+
         return "seller/product-management";
     }
 
@@ -698,49 +698,49 @@ public class ViewController {
                                        @RequestParam(defaultValue = "0") int page,
                                        Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
         if (!isAuthenticated) {
             return "redirect:/login";
         }
-        
+
         User user = (User) authentication.getPrincipal();
-        
+
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
-        
+
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        
+
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         // Lấy thông tin sản phẩm
         var productOptional = productRepository.findById(productId);
         if (productOptional.isEmpty()) {
             return "redirect:/seller/shop-management";
         }
-        
+
         var product = productOptional.get();
-        
+
         // Kiểm tra quyền sở hữu sản phẩm
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
             return "redirect:/seller/shop-management";
         }
-        
+
         var stallOptional = stallRepository.findById(product.getStallId());
         if (stallOptional.isEmpty() || !stallOptional.get().getShopId().equals(userShop.get().getId())) {
             return "redirect:/seller/shop-management";
         }
-        
+
         model.addAttribute("product", product);
         model.addAttribute("stall", stallOptional.get());
         

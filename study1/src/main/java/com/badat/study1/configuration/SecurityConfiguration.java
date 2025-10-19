@@ -33,6 +33,7 @@ public class SecurityConfiguration {
             "/cart", 
             "/auth/**", 
             "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp",
+            "/api/cart/test", // Thêm test endpoint vào whitelist
             "/users/**", 
             "/login", "/register", "/verify-otp", "/forgot-password", 
             "/seller/register", 
@@ -41,7 +42,7 @@ public class SecurityConfiguration {
             "/oauth2/**", "/login/oauth2/**",
             "/admin-simple", "/admin/test-withdraw", "/api/admin/withdraw/requests-simple", "/api/admin/withdraw/approve-simple/**", "/api/admin/withdraw/reject-simple/**"};
 
-    private static final String[] API_PROTECTED_PATHS = {"/api/profile/**", "/api/auth/me", "/api/auth/logout", "/api/auth/refresh"};
+    private static final String[] API_PROTECTED_PATHS = {"/api/profile/**", "/api/auth/me", "/api/auth/logout", "/api/auth/refresh", "/api/cart/**"};
 
     private final UserDetailServiceCustomizer userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
