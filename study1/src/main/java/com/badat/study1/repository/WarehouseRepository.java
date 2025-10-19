@@ -68,6 +68,11 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<Warehouse> findByProductIdAndItemTypeOrderByCreatedAtDesc(Long productId, Warehouse.ItemType itemType);
     
     /**
+     * Find warehouse items by shop ID and item type
+     */
+    List<Warehouse> findByShopIdAndItemTypeOrderByCreatedAtDesc(Long shopId, Warehouse.ItemType itemType);
+    
+    /**
      * Find recent warehouse items for a specific product (last 50 records)
      */
     @Query(value = "SELECT * FROM warehouse WHERE product_id = :productId ORDER BY created_at DESC LIMIT 50", nativeQuery = true)

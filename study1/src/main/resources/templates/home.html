@@ -18,8 +18,10 @@
         .intro h2 { font-size: 1.25rem; }
         .intro h3 { font-size: 1.1rem; }
         .preview-track { overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
-        .preview-card { display:inline-block; width: 220px; border-radius: .75rem; box-shadow:0 6px 20px rgba(0,0,0,.06); border:1px solid #eee; }
-        .preview-card img { width:100%; height:120px; object-fit:cover; border-top-left-radius:.75rem; border-top-right-radius:.75rem; }
+        .preview-card { display:inline-block; width: 260px; border-radius: .75rem; box-shadow:0 6px 20px rgba(0,0,0,.06); border:1px solid #eee; }
+        .preview-img-frame { background:#fff; padding:16px; border-top-left-radius:.75rem; border-top-right-radius:.75rem; }
+        .preview-card img { width:100%; height:200px; object-fit:cover; border-radius:.5rem; }
+        .preview-sep { height:2px; background: var(--bs-primary); margin: 0 16px; }
     </style>
 </head>
 <body>
@@ -93,8 +95,8 @@
 
     <div th:if="${!isAuthenticated}" class="hero mb-4 mb-md-5">
         <div class="text-center">
-            <h1 class="display-5 fw-bold mb-3">Chào mừng đến với MMO Market</h1>
-            <p class="lead mb-4">Nền tảng giao dịch sản phẩm số uy tín và an toàn cho cộng đồng MMO</p>
+            <h1 class="display-5 fw-bold mb-3 text-primary">Chào mừng đến với MMO Market</h1>
+            <p class="lead mb-4 text-secondary">Nền tảng giao dịch sản phẩm số uy tín và an toàn cho cộng đồng MMO</p>
             <div class="d-flex gap-3 justify-content-center">
                 <a class="btn btn-primary btn-lg" th:href="@{/register}" href="/register">
                     <i class="fa-solid fa-user-plus me-2"></i>Đăng ký ngay
@@ -106,13 +108,65 @@
         </div>
     </div>
 
+    <div th:if="${isAuthenticated}" class="alert d-flex align-items-center mb-4 bg-success-subtle border-success-subtle text-success-emphasis" role="alert" style="border-radius:.5rem;">
+        <i class="fa-solid fa-circle-check me-2"></i>
+        <div>
+            Xin chào <strong th:text="${username}">User</strong>. Bạn đã đăng nhập thành công – sẵn sàng mua sắm thôi!
+        </div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
     <section class="mb-4 mb-md-5">
+        <div class="text-center mb-2">
+            <h5 class="text-primary mb-0">-- Gian hàng nổi bật --</h5>
+        </div>
+        <br>
         <div class="d-flex justify-content-between align-items-center mb-2">
             <button id="prevPreview" class="btn btn-outline-secondary btn-sm" type="button"><i class="fa-solid fa-chevron-left"></i></button>
+            <div id="previewTrack" class="preview-track flex-grow-1 mx-2">
+                <a th:if="${stalls}" th:each="s : ${stalls}"
+                   th:href="@{'/products?stallId=' + ${s.stallId}}"
+                   class="text-decoration-none text-dark">
+                    <div class="preview-card me-2">
+                        <div class="preview-img-frame">
+                            <img th:if="${s.imageBase64 != null}" th:src="${'data:image/jpeg;base64,' + s.imageBase64}" alt="stall">
+                            <div th:if="${s.imageBase64 == null}" class="bg-light d-flex align-items-center justify-content-center" style="height:200px;border-radius:.5rem;">
+                                <i class="fa-solid fa-store text-secondary" style="font-size:34px;"></i>
+                            </div>
+                        </div>
+                        <div class="preview-sep"></div>
+                        <div class="p-3" style="line-height:1.5;">
+                            <div class="fw-semibold text-truncate" th:text="${s.stallName}">Tên gian hàng</div>
+                            <div class="small mt-1">
+                                <div class="text-muted">Sản phẩm</div>
+                                <div class="text-truncate" th:text="${s.stallCategory != null ? s.stallCategory : 'Khác'}">Loại</div>
+                            </div>
+                            <div class="small mt-1">
+                                <div class="text-muted">Tên shop</div>
+                                <div class="text-truncate" th:text="${s.shopName}">Shop</div>
+                            </div>
+                            <div class="small mt-1">
+                                <div class="text-muted">Giá</div>
+                                <div class="text-truncate fw-semibold text-success" th:text="${s.priceRange}">Giá</div>
+                            </div>
+                            <div class="small mt-2">
+                                <span class="badge bg-primary-subtle text-primary">
+                                    <i class="fa-solid fa-box-open me-1"></i>
+                                    <span th:text="${s.productCount}">0</span> sản phẩm
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
             <button id="nextPreview" class="btn btn-outline-secondary btn-sm" type="button"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
-        <div id="previewTrack" class="preview-track mb-4"></div>
-        <h5 class="text-center text-uppercase text-muted mb-3">Danh mục nổi bật</h5>
+        <br>
+        <br>
+        <div class="text-center my-3">
+            <h5 class="text-primary mb-0">-- Danh mục nổi bật --</h5>
+        </div>
+        <br>
         <div class="row g-3 g-md-4">
             <div class="col-12 col-md-6 col-lg-3">
                 <div class="card category-card p-3 text-center h-100" onclick="viewCategory('email')" style="cursor: pointer;">
@@ -251,7 +305,7 @@
         var prev = document.getElementById('prevPreview');
         var next = document.getElementById('nextPreview');
         if (track && prev && next) {
-            var step = 240; // width ~ card width + gap
+            var step = 280; // width ~ card width + gap
             prev.addEventListener('click', function () { track.scrollLeft -= step; });
             next.addEventListener('click', function () { track.scrollLeft += step; });
         }

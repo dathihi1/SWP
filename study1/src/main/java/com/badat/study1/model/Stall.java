@@ -46,6 +46,9 @@ public class Stall {
 
     @Transient
     private int productCount = 0;
+    
+    @Transient
+    private String priceRange = "";
 
     // Constructors
     public Stall() {}
@@ -104,4 +107,7 @@ public class Stall {
 
     public int getProductCount() { return productCount; }
     public void setProductCount(int productCount) { this.productCount = productCount; }
+
+    public String getPriceRange() { return priceRange; }
+    public void setPriceRange(String priceRange) { this.priceRange = priceRange; }
 }
