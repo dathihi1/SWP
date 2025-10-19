@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -487,7 +490,7 @@ public class ViewController {
         User user = (User) authentication.getPrincipal();
 
         // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
-        if (!user.getRole().equals(User.Role.ADMIN)) {
+        if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
 
@@ -572,7 +575,7 @@ public class ViewController {
         User user = (User) authentication.getPrincipal();
         
         // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
-        if (!user.getRole().equals(User.Role.ADMIN)) {
+        if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
         
@@ -592,7 +595,167 @@ public class ViewController {
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
         
-        return "seller/shop";
+        return "seller/add-stall";
+    }
+
+    @GetMapping("/seller/edit-stall/{id}")
+    public String sellerEditStallPage(@PathVariable Long id, Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+        
+        // Lấy thông tin gian hàng
+        var stall = stallRepository.findById(id);
+        if (stall.isEmpty()) {
+            return "redirect:/seller/shop-management";
+        }
+        
+        // Kiểm tra quyền sở hữu gian hàng
+        shopRepository.findByUserId(user.getId()).ifPresent(shop -> {
+            if (!stall.get().getShopId().equals(shop.getId())) {
+                return; // Không có quyền sửa gian hàng này
+            }
+        });
+        
+        model.addAttribute("stall", stall.get());
+        
+        return "seller/edit-stall";
+    }
+
+    @GetMapping("/seller/product-management/{stallId}")
+    public String sellerProductManagementPage(@PathVariable Long stallId, Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+        
+        // Lấy thông tin gian hàng
+        var stallOptional = stallRepository.findById(stallId);
+        if (stallOptional.isEmpty()) {
+            return "redirect:/seller/shop-management";
+        }
+        
+        Stall stall = stallOptional.get();
+        
+        // Kiểm tra quyền sở hữu gian hàng
+        var userShop = shopRepository.findByUserId(user.getId());
+        if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
+            return "redirect:/seller/shop-management";
+        }
+        
+        model.addAttribute("stall", stall);
+        
+        // Lấy danh sách sản phẩm của gian hàng
+        var products = productRepository.findByStallIdAndIsDeleteFalse(stallId);
+        model.addAttribute("products", products);
+        
+        return "seller/product-management";
+    }
+
+    @GetMapping("/seller/add-quantity/{productId}")
+    public String sellerAddQuantityPage(@PathVariable Long productId, 
+                                       @RequestParam(defaultValue = "0") int page,
+                                       Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
+        model.addAttribute("username", user.getUsername());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("userRole", user.getRole().name());
+        
+        // Lấy số dư ví
+        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                .map(Wallet::getBalance)
+                .orElse(BigDecimal.ZERO);
+        model.addAttribute("walletBalance", walletBalance);
+        
+        // Lấy thông tin sản phẩm
+        var productOptional = productRepository.findById(productId);
+        if (productOptional.isEmpty()) {
+            return "redirect:/seller/shop-management";
+        }
+        
+        var product = productOptional.get();
+        
+        // Kiểm tra quyền sở hữu sản phẩm
+        var userShop = shopRepository.findByUserId(user.getId());
+        if (userShop.isEmpty()) {
+            return "redirect:/seller/shop-management";
+        }
+        
+        var stallOptional = stallRepository.findById(product.getStallId());
+        if (stallOptional.isEmpty() || !stallOptional.get().getShopId().equals(userShop.get().getId())) {
+            return "redirect:/seller/shop-management";
+        }
+        
+        model.addAttribute("product", product);
+        model.addAttribute("stall", stallOptional.get());
+        
+        // Lấy lịch sử upload gần nhất cho sản phẩm này với pagination (5 bản ghi mỗi trang)
+        Pageable pageable = PageRequest.of(page, 5);
+        Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
+        
+        model.addAttribute("recentUploads", uploadHistoryPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", uploadHistoryPage.getTotalPages());
+        model.addAttribute("totalElements", uploadHistoryPage.getTotalElements());
+        model.addAttribute("hasNext", uploadHistoryPage.hasNext());
+        model.addAttribute("hasPrevious", uploadHistoryPage.hasPrevious());
+        
+        return "seller/add-quantity";
     }
 
     @GetMapping("/seller/edit-stall/{id}")

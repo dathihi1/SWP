@@ -9,6 +9,7 @@ import com.badat.study1.model.Warehouse;
 import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
+import com.badat.study1.repository.TransactionRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.WarehouseRepository;
 import org.springframework.security.core.Authentication;
@@ -29,6 +30,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Controller
 public class ShopController {
@@ -37,13 +41,15 @@ public class ShopController {
     private final ProductRepository productRepository;
     private final UploadHistoryRepository uploadHistoryRepository;
     private final WarehouseRepository warehouseRepository;
+    private final TransactionRepository transactionRepository;
 
-    public ShopController(ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WarehouseRepository warehouseRepository) {
+    public ShopController(ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WarehouseRepository warehouseRepository, TransactionRepository transactionRepository) {
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
         this.productRepository = productRepository;
         this.uploadHistoryRepository = uploadHistoryRepository;
         this.warehouseRepository = warehouseRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     @PostMapping("/seller/add-stall")
@@ -124,14 +130,14 @@ public class ShopController {
                 }
             }
             
-            stall.setStatus("OPEN");
+            stall.setStatus("CLOSED");
             stall.setCreatedAt(Instant.now());
             stall.setDelete(false);
             
             // Save to database
             stallRepository.save(stall);
             
-            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được tạo thành công và đang chờ duyệt!");
+            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được tạo thành công với trạng thái Đóng!");
             return "redirect:/seller/shop-management";
             
         } catch (Exception e) {
@@ -198,6 +204,20 @@ public class ShopController {
             if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền sửa gian hàng này!");
                 return "redirect:/seller/shop-management";
+            }
+            
+            // Validate: Chỉ cho phép mở gian hàng khi có hàng trong kho
+            if ("OPEN".equals(status)) {
+                // Kiểm tra xem gian hàng có sản phẩm nào trong kho không
+                var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
+                boolean hasStock = products.stream().anyMatch(product -> 
+                    product.getQuantity() != null && product.getQuantity() > 0);
+                
+                if (!hasStock) {
+                    redirectAttributes.addFlashAttribute("errorMessage", 
+                        "Không thể mở gian hàng! Gian hàng phải có ít nhất 1 sản phẩm trong kho.");
+                    return "redirect:/seller/edit-stall/" + id;
+                }
             }
             
             // Cập nhật thông tin gian hàng
@@ -443,11 +463,14 @@ public class ShopController {
             Warehouse.ItemType expectedType = determineItemTypeFromStall(stall.getStallCategory());
             boolean isAccountStall = (expectedType == null); // Tài khoản gian hàng có thể chứa EMAIL hoặc ACCOUNT
             
+            // Track processed items in this file to avoid duplicates
+            Set<String> processedItemsInFile = new HashSet<>();
+            Set<String> processedItemKeys = new HashSet<>(); // Track unique item keys (e.g., CVV codes)
+            
             // Process each line
             for (int i = 0; i < lines.length; i++) {
                 String line = lines[i].trim();
                 if (line.isEmpty()) continue;
-                
                 
                 try {
                     // Parse line format: TYPE|data1|data2|data3
@@ -460,6 +483,40 @@ public class ShopController {
                     
                     String itemType = parts[0].toUpperCase();
                     String itemData = line; // Store the full line as item data
+                    
+                    // Check for duplicates within the file (exact line match)
+                    if (processedItemsInFile.contains(itemData)) {
+                        failureCount++;
+                        resultDetails.append("Dòng ").append(i + 1).append(": Item trùng lặp trong file (").append(itemType).append(")\n");
+                        continue;
+                    }
+                    
+                    // Check for duplicate item keys within the file
+                    String itemKey = null;
+                    if (parts.length >= 2) {
+                        // For CARD: check Serial code (3rd part)
+                        if ("CARD".equals(itemType) && parts.length >= 3) {
+                            itemKey = parts[2]; // Serial code
+                        }
+                        // For EMAIL: check email address (2nd part)
+                        else if ("EMAIL".equals(itemType)) {
+                            itemKey = parts[1]; // Email address
+                        }
+                        // For ACCOUNT: check username (2nd part)
+                        else if ("ACCOUNT".equals(itemType)) {
+                            itemKey = parts[1]; // Username
+                        }
+                        // For KEY: check key value (2nd part)
+                        else if ("KEY".equals(itemType)) {
+                            itemKey = parts[1]; // Key value
+                        }
+                    }
+                    
+                    if (itemKey != null && processedItemKeys.contains(itemKey)) {
+                        failureCount++;
+                        resultDetails.append("Dòng ").append(i + 1).append(": ").append(itemType).append(" với ").append(itemKey).append(" đã tồn tại trong file\n");
+                        continue;
+                    }
                     
                     // Validate item type matches expected type
                     Warehouse.ItemType type;
@@ -487,20 +544,107 @@ public class ShopController {
                         continue;
                     }
                     
-                    // Create warehouse item
-                    Warehouse warehouseItem = Warehouse.builder()
-                            .itemType(type)
-                            .itemData(itemData)
-                            .product(product)
-                            .shop(shop)
-                            .stall(stall)
-                            .user(user)
-                            .build();
+                    // Kiểm tra xem có warehouse item đã tồn tại với cùng unique key không
+                    List<Warehouse> existingItems = warehouseRepository.findByProductIdAndItemTypeOrderByCreatedAtDesc(productId, type);
+                    Warehouse existingItem = null;
+                    boolean isItemAlreadyPurchased = false;
                     
+                    for (Warehouse item : existingItems) {
+                        // Check by unique key instead of full line match
+                        boolean isDuplicate = false;
+                        if (itemKey != null) {
+                            // Extract key from existing item
+                            String[] existingParts = item.getItemData().split("\\|");
+                            String existingKey = null;
+                            
+                            if ("CARD".equals(itemType) && existingParts.length >= 3) {
+                                existingKey = existingParts[2]; // Serial code
+                            } else if ("EMAIL".equals(itemType) && existingParts.length >= 2) {
+                                existingKey = existingParts[1]; // Email address
+                            } else if ("ACCOUNT".equals(itemType) && existingParts.length >= 2) {
+                                existingKey = existingParts[1]; // Username
+                            } else if ("KEY".equals(itemType) && existingParts.length >= 2) {
+                                existingKey = existingParts[1]; // Key value
+                            }
+                            
+                            isDuplicate = (existingKey != null && existingKey.equals(itemKey));
+                        } else {
+                            // Fallback to full line match if no key available
+                            isDuplicate = item.getItemData().equals(itemData);
+                        }
+                        
+                        if (isDuplicate) {
+                            // Kiểm tra xem item này đã được mua chưa
+                            boolean isItemPurchased = transactionRepository.findSuccessfulTransactionByWarehouseItem(item.getId()).isPresent();
+                            
+                            if (isItemPurchased) {
+                                // Item đã tồn tại và đã được mua - không thể thêm
+                                isItemAlreadyPurchased = true;
+                                break;
+                            } else if (item.getIsDelete()) {
+                                // Item đã bị xóa mềm và chưa được mua - có thể restore
+                                existingItem = item;
+                                break;
+                            } else {
+                                // Item đã tồn tại và chưa được mua - không thể thêm duplicate
+                                existingItem = item;
+                                break;
+                            }
+                        }
+                    }
                     
-                    warehouseRepository.save(warehouseItem);
+                    // Kiểm tra các điều kiện không được phép lưu
+                    if (isItemAlreadyPurchased) {
+                        failureCount++;
+                        resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại và đã được mua (").append(itemType).append(")\n");
+                        continue;
+                    }
+                    
+                    if (existingItem != null && !existingItem.getIsDelete()) {
+                        failureCount++;
+                        if (itemKey != null) {
+                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong DB (").append(itemType).append(" với ").append(itemKey).append(")\n");
+                        } else {
+                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong DB (").append(itemType).append(")\n");
+                        }
+                        continue;
+                    }
+                    
+                    // Thêm item vào danh sách đã xử lý để tránh duplicate trong file
+                    processedItemsInFile.add(itemData);
+                    if (itemKey != null) {
+                        processedItemKeys.add(itemKey);
+                    }
+                    
+                    if (existingItem != null && existingItem.getIsDelete()) {
+                        // Restore warehouse item đã bị xóa mềm
+                        existingItem.setIsDelete(false);
+                        existingItem.setDeletedBy(null);
+                        warehouseRepository.save(existingItem);
+                        if (itemKey != null) {
+                            resultDetails.append("Dòng ").append(i + 1).append(": Khôi phục item (").append(itemType).append(" với ").append(itemKey).append(")\n");
+                        } else {
+                            resultDetails.append("Dòng ").append(i + 1).append(": Khôi phục item (").append(itemType).append(")\n");
+                        }
+                    } else {
+                        // Tạo warehouse item mới
+                        Warehouse warehouseItem = Warehouse.builder()
+                                .itemType(type)
+                                .itemData(itemData)
+                                .product(product)
+                                .shop(shop)
+                                .stall(stall)
+                                .user(user)
+                                .build();
+                        
+                        warehouseRepository.save(warehouseItem);
+                        if (itemKey != null) {
+                            resultDetails.append("Dòng ").append(i + 1).append(": Thêm mới item (").append(itemType).append(" với ").append(itemKey).append(")\n");
+                        } else {
+                            resultDetails.append("Dòng ").append(i + 1).append(": Thêm mới item (").append(itemType).append(")\n");
+                        }
+                    }
                     successCount++;
-                    resultDetails.append("Dòng ").append(i + 1).append(": Thêm thành công (").append(itemType).append(")\n");
                     
                 } catch (Exception e) {
                     failureCount++;
@@ -683,6 +827,14 @@ public class ShopController {
             // Lưu vào database
             productRepository.save(product);
             
+            // Soft delete tất cả warehouse items liên quan đến product này
+            List<Warehouse> warehouseItems = warehouseRepository.findByProductIdOrderByCreatedAtDesc(productId);
+            for (Warehouse warehouseItem : warehouseItems) {
+                warehouseItem.setIsDelete(true);
+                warehouseItem.setDeletedBy(user.getUsername());
+                warehouseRepository.save(warehouseItem);
+            }
+            
             redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được xóa thành công!");
             
         } catch (Exception e) {
@@ -692,6 +844,61 @@ public class ShopController {
         return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
     }
 
+    @PostMapping("/seller/restore-product/{productId}")
+    public String restoreProduct(@PathVariable Long productId,
+                                RedirectAttributes redirectAttributes) {
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+        
+        try {
+            // Lấy thông tin sản phẩm
+            var productOptional = productRepository.findById(productId);
+            if (productOptional.isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
+                return "redirect:/seller/shop-management";
+            }
+            
+            Product product = productOptional.get();
+            
+            // Kiểm tra quyền sở hữu sản phẩm
+            var userShop = shopRepository.findByUserId(user.getId());
+            if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền hồi phục sản phẩm này!");
+                return "redirect:/seller/shop-management";
+            }
+            
+            // Restore product - chỉ cập nhật is_delete = false
+            product.setIsDelete(false);
+            product.setDeletedBy(null);
+            product.setUpdatedAt(java.time.LocalDateTime.now());
+            
+            // Lưu vào database
+            productRepository.save(product);
+            
+            // KHÔNG tự động restore warehouse items - chỉ restore khi user add lại item đó
+            // (với điều kiện item đó chưa được mua)
+            
+            redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được hồi phục thành công!");
+            
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi hồi phục sản phẩm. Vui lòng thử lại!");
+        }
+        
+        return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
+    }
 
     @PostMapping("/seller/update-product/{productId}")
     public String updateProduct(@PathVariable Long productId,

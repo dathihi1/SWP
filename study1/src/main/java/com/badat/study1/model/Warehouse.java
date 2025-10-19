@@ -50,6 +50,13 @@ public class Warehouse {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     
+    @Column(name = "is_delete", nullable = false)
+    @Builder.Default
+    private Boolean isDelete = false;
+    
+    @Column(name = "deleted_by", length = 50)
+    private String deletedBy;
+    
     public enum ItemType {
         EMAIL, CARD, ACCOUNT, KEY
     }
