@@ -118,7 +118,7 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Tài khoản Gmail premium với 15GB dung lượng")
                         .price(new BigDecimal("50000"))
                         .uniqueKey("gmail-premium-001")
-                        .status(Product.Status.ACTIVE)
+                        .status(Product.Status.AVAILABLE)
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
@@ -127,7 +127,7 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Tài khoản Yahoo Mail chuyên nghiệp")
                         .price(new BigDecimal("30000"))
                         .uniqueKey("yahoo-pro-001")
-                        .status(Product.Status.ACTIVE)
+                        .status(Product.Status.AVAILABLE)
                         .build()
         );
 
@@ -140,7 +140,7 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Key bản quyền Windows 11 Professional")
                         .price(new BigDecimal("200000"))
                         .uniqueKey("win11-pro-001")
-                        .status(Product.Status.ACTIVE)
+                        .status(Product.Status.AVAILABLE)
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
@@ -149,7 +149,7 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Giấy phép Office 365 1 năm")
                         .price(new BigDecimal("150000"))
                         .uniqueKey("office365-001")
-                        .status(Product.Status.ACTIVE)
+                        .status(Product.Status.AVAILABLE)
                         .build()
         );
 
@@ -162,7 +162,7 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Tài khoản Facebook Business đã xác thực")
                         .price(new BigDecimal("100000"))
                         .uniqueKey("fb-business-001")
-                        .status(Product.Status.ACTIVE)
+                        .status(Product.Status.AVAILABLE)
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
@@ -171,7 +171,7 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Tài khoản Instagram đã được xác thực")
                         .price(new BigDecimal("80000"))
                         .uniqueKey("ig-verified-001")
-                        .status(Product.Status.ACTIVE)
+                        .status(Product.Status.AVAILABLE)
                         .build()
         );
 
@@ -184,7 +184,7 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Tên miền .com cao cấp")
                         .price(new BigDecimal("500000"))
                         .uniqueKey("domain-com-001")
-                        .status(Product.Status.ACTIVE)
+                        .status(Product.Status.AVAILABLE)
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
@@ -193,7 +193,7 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Chứng chỉ SSL bảo mật")
                         .price(new BigDecimal("200000"))
                         .uniqueKey("ssl-cert-001")
-                        .status(Product.Status.ACTIVE)
+                        .status(Product.Status.AVAILABLE)
                         .build()
         );
 

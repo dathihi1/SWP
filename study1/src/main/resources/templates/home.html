@@ -29,7 +29,7 @@
             <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
             MMO Market
         </a>
-        
+
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -42,9 +42,8 @@
                     </div>
                 </form>
             </div>
-            
+
             <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
-                <!-- Guest user navigation -->
                 <div th:if="${!isAuthenticated}" class="d-flex align-items-center gap-2">
                     <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
                         <i class="fa-regular fa-user"></i>
@@ -55,15 +54,13 @@
                         <span>Giỏ hàng</span>
                     </a>
                 </div>
-                
-                <!-- Authenticated user navigation -->
+
                 <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
-                    <!-- Current Balance -->
                     <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                         <i class="fa-solid fa-wallet"></i>
                         <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
                     </div>
-                    
+
                     <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
                             <i class="fa-solid fa-user"></i>
@@ -81,7 +78,7 @@
                             <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
-                    
+
                     <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span>Giỏ hàng</span>
@@ -93,16 +90,7 @@
 </nav>
 
 <main class="container py-4 py-md-5">
-    <!-- Welcome section for authenticated users -->
-    <div th:if="${isAuthenticated}" class="alert alert-success d-flex align-items-center mb-4" role="alert">
-        <i class="fa-solid fa-circle-check me-3"></i>
-        <div>
-            <h6 class="alert-heading mb-1">Chào mừng trở lại!</h6>
-            <p class="mb-0">Xin chào <strong th:text="${username}">User</strong>, chúc bạn có những trải nghiệm mua sắm tuyệt vời!</p>
-        </div>
-    </div>
 
-    <!-- Call to action for guest users -->
     <div th:if="${!isAuthenticated}" class="hero mb-4 mb-md-5">
         <div class="text-center">
             <h1 class="display-5 fw-bold mb-3">Chào mừng đến với MMO Market</h1>
@@ -157,94 +145,8 @@
         </div>
     </section>
 
-    <!-- User Dashboard for authenticated users -->
-    <section th:if="${isAuthenticated}" class="mb-4 mb-md-5">
-        <div class="row g-4">
-            <div class="col-12">
-                <h4 class="fw-bold mb-3">Bảng điều khiển của bạn</h4>
-            </div>
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="fa-solid fa-shopping-bag fa-lg text-primary"></i>
-                        </div>
-                        <h6 class="card-title">Đơn hàng</h6>
-                        <p class="text-muted small mb-3">Theo dõi đơn hàng của bạn</p>
-                        <a href="#" class="btn btn-outline-primary btn-sm">Xem tất cả</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="fa-solid fa-heart fa-lg text-success"></i>
-                        </div>
-                        <h6 class="card-title">Yêu thích</h6>
-                        <p class="text-muted small mb-3">Sản phẩm đã lưu</p>
-                        <a href="#" class="btn btn-outline-success btn-sm">Xem danh sách</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="fa-solid fa-chart-line fa-lg text-warning"></i>
-                        </div>
-                        <h6 class="card-title">Thống kê</h6>
-                        <p class="text-muted small mb-3">Hoạt động gần đây</p>
-                        <a href="#" class="btn btn-outline-warning btn-sm">Xem chi tiết</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="fa-solid fa-cog fa-lg text-info"></i>
-                        </div>
-                        <h6 class="card-title">Cài đặt</h6>
-                        <p class="text-muted small mb-3">Quản lý tài khoản</p>
-                        <a href="#" class="btn btn-outline-info btn-sm">Cấu hình</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Quick actions for authenticated users -->
-    <section th:if="${isAuthenticated}" class="mb-4 mb-md-5">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Hành động nhanh</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-12 col-md-4">
-                        <a href="#" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2">
-                            <i class="fa-solid fa-search"></i>
-                            <span>Tìm kiếm sản phẩm</span>
-                        </a>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <a href="#" class="btn btn-outline-success w-100 d-flex align-items-center justify-content-center gap-2">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>Thêm vào giỏ hàng</span>
-                        </a>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <a href="#" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-2">
-                            <i class="fa-solid fa-star"></i>
-                            <span>Đánh giá sản phẩm</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-    
+
 </main>
 
 <section class="container pb-4 pb-md-5 intro">
@@ -360,11 +262,11 @@
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const login = urlParams.get('login');
-        
+
         if (token && login === 'success') {
             // Store JWT token in localStorage
             localStorage.setItem('accessToken', token);
-            
+
             // Show success message
             const alertDiv = document.createElement('div');
             alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
@@ -375,18 +277,18 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             document.body.appendChild(alertDiv);
-            
+
             // Auto remove alert after 3 seconds
             setTimeout(() => {
                 if (alertDiv.parentNode) {
                     alertDiv.remove();
                 }
             }, 3000);
-            
+
             // Remove token from URL
             const newUrl = window.location.pathname;
             window.history.replaceState({}, document.title, newUrl);
-            
+
             // Update UI without reloading page
             updateUIAfterLogin();
         } else {
@@ -399,14 +301,14 @@
         // Update authentication status in UI
         const loginBtn = document.querySelector('.login-btn');
         const profileBtn = document.querySelector('.profile-btn');
-        
+
         if (loginBtn) {
             loginBtn.style.display = 'none';
         }
         if (profileBtn) {
             profileBtn.style.display = 'block';
         }
-        
+
         // You can add more UI updates here
         console.log('UI updated after login');
     }
@@ -424,25 +326,26 @@
         let type = '';
         switch(category) {
             case 'email':
-                type = 'email';
+                type = 'EMAIL'; // Ánh xạ tới type='EMAIL' trong DB
                 break;
             case 'software':
-                type = 'software';
+                type = 'BUFF'; // Ánh xạ 'Phần mềm' tới type='BUFF' (Dịch vụ hỗ trợ) trong DB
                 break;
             case 'account':
-                type = 'account';
+                type = 'FACEBOOK'; // Ánh xạ 'Tài khoản' tới type='FACEBOOK' (Loại phổ biến) trong DB
                 break;
             case 'other':
-                type = 'other';
+                type = 'COMBO'; // Ánh xạ 'Khác' tới type='COMBO' trong DB
                 break;
+            default:
+                type = '';
         }
-        
+
         // Redirect to products page with category filter
         window.location.href = `/products?type=${type}`;
     }
 
-    </script>
+
+</script>
 </body>
 </html>
-
-
