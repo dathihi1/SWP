@@ -100,7 +100,12 @@ public class AuthenticationService {
         String jwtId = jwtInfo.getJwtId();
         Date issueTime = jwtInfo.getIssueTime();
         Date expireTime = jwtInfo.getExpireTime();
-        if(expireTime.before(new Date())) return;
+        
+        // Don't blacklist already expired tokens
+        if(expireTime.before(new Date())) {
+            log.debug("Token already expired, skipping blacklist: {}", jwtId);
+            return;
+        }
         
         RedisToken redisToken = RedisToken.builder()
                 .jwtID(jwtId)
@@ -109,7 +114,7 @@ public class AuthenticationService {
         
         try {
             redisTokenRepository.save(redisToken);
-            log.debug("Token blacklisted successfully: {}", jwtId);
+            log.debug("Token blacklisted successfully: {} (expires in {}ms)", jwtId, expireTime.getTime() - new Date().getTime());
         } catch (Exception e) {
             log.warn("Failed to blacklist token (Redis unavailable): {}", e.getMessage());
             // Continue without throwing exception - logout should still work

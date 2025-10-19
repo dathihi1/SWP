@@ -4,7 +4,10 @@ import com.badat.study1.dto.request.WithdrawRequestDto;
 import com.badat.study1.dto.response.WithdrawRequestResponse;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
+import com.badat.study1.model.WithdrawRequest;
 import com.badat.study1.repository.WalletRepository;
+import com.badat.study1.repository.WithdrawRequestRepository;
+import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.service.WithdrawService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,10 +30,101 @@ public class WithdrawController {
     
     private final WithdrawService withdrawService;
     private final WalletRepository walletRepository;
+    private final WithdrawRequestRepository withdrawRequestRepository;
+    private final ShopRepository shopRepository;
     
     @GetMapping("/admin-simple")
     public String adminSimplePage() {
         return "admin-simple";
+    }
+    
+    @GetMapping("/admin/test-withdraw")
+    @ResponseBody
+    public String testWithdraw() {
+        try {
+            // Create a test withdraw request
+            WithdrawRequestDto testRequest = WithdrawRequestDto.builder()
+                    .amount(new java.math.BigDecimal("100000"))
+                    .bankAccountNumber("1234567890")
+                    .bankAccountName("Test User")
+                    .bankName("Vietcombank")
+                    .note("Test withdraw request")
+                    .build();
+            
+            // Find a shop to use for testing
+            var shops = shopRepository.findAll();
+            if (shops.isEmpty()) {
+                return "No shops found. Please create a shop first.";
+            }
+            
+            var shop = shops.get(0);
+            
+            // Create withdraw request manually
+            WithdrawRequest withdrawRequest = WithdrawRequest.builder()
+                    .shopId(shop.getId())
+                    .amount(testRequest.getAmount())
+                    .bankAccountNumber(testRequest.getBankAccountNumber())
+                    .bankAccountName(testRequest.getBankAccountName())
+                    .bankName(testRequest.getBankName())
+                    .note(testRequest.getNote())
+                    .status(WithdrawRequest.Status.PENDING)
+                    .build();
+            
+            withdrawRequest = withdrawRequestRepository.save(withdrawRequest);
+            
+            return "Test withdraw request created with ID: " + withdrawRequest.getId() + 
+                   "<br><a href='/admin-simple'>Go to Admin Simple Page</a>";
+                   
+        } catch (Exception e) {
+            return "Error creating test withdraw request: " + e.getMessage();
+        }
+    }
+    
+    @GetMapping("/api/admin/withdraw/requests-simple")
+    @ResponseBody
+    public ResponseEntity<?> getAllPendingWithdrawRequestsSimple() {
+        try {
+            // Bypass authentication for simple admin page
+            List<WithdrawRequestResponse> requests = withdrawService.getAllPendingWithdrawRequestsSimple();
+            return ResponseEntity.ok(requests);
+        } catch (Exception e) {
+            log.error("Error getting pending withdraw requests: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+    
+    @PostMapping("/api/admin/withdraw/approve-simple/{requestId}")
+    @ResponseBody
+    public ResponseEntity<?> approveWithdrawRequestSimple(@PathVariable Long requestId) {
+        try {
+            withdrawService.approveWithdrawRequestSimple(requestId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Duyệt yêu cầu rút tiền thành công");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error approving withdraw request: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+    
+    @PostMapping("/api/admin/withdraw/reject-simple/{requestId}")
+    @ResponseBody
+    public ResponseEntity<?> rejectWithdrawRequestSimple(@PathVariable Long requestId) {
+        try {
+            withdrawService.rejectWithdrawRequestSimple(requestId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Từ chối yêu cầu rút tiền thành công");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error rejecting withdraw request: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
     
     @GetMapping("/withdraw")
