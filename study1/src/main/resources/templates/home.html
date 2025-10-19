@@ -90,13 +90,6 @@
 </nav>
 
 <main class="container py-4 py-md-5">
-    <div th:if="${isAuthenticated}" class="alert alert-success d-flex align-items-center mb-4" role="alert">
-        <i class="fa-solid fa-circle-check me-3"></i>
-        <div>
-            <h6 class="alert-heading mb-1">Chào mừng trở lại!</h6>
-            <p class="mb-0">Xin chào <strong th:text="${username}">User</strong>, chúc bạn có những trải nghiệm mua sắm tuyệt vời!</p>
-        </div>
-    </div>
 
     <div th:if="${!isAuthenticated}" class="hero mb-4 mb-md-5">
         <div class="text-center">
@@ -152,91 +145,7 @@
         </div>
     </section>
 
-    <section th:if="${isAuthenticated}" class="mb-4 mb-md-5">
-        <div class="row g-4">
-            <div class="col-12">
-                <h4 class="fw-bold mb-3">Bảng điều khiển của bạn</h4>
-            </div>
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="fa-solid fa-shopping-bag fa-lg text-primary"></i>
-                        </div>
-                        <h6 class="card-title">Đơn hàng</h6>
-                        <p class="text-muted small mb-3">Theo dõi đơn hàng của bạn</p>
-                        <a href="#" class="btn btn-outline-primary btn-sm">Xem tất cả</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="fa-solid fa-heart fa-lg text-success"></i>
-                        </div>
-                        <h6 class="card-title">Yêu thích</h6>
-                        <p class="text-muted small mb-3">Sản phẩm đã lưu</p>
-                        <a href="#" class="btn btn-outline-success btn-sm">Xem danh sách</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="fa-solid fa-chart-line fa-lg text-warning"></i>
-                        </div>
-                        <h6 class="card-title">Thống kê</h6>
-                        <p class="text-muted small mb-3">Hoạt động gần đây</p>
-                        <a href="#" class="btn btn-outline-warning btn-sm">Xem chi tiết</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="fa-solid fa-cog fa-lg text-info"></i>
-                        </div>
-                        <h6 class="card-title">Cài đặt</h6>
-                        <p class="text-muted small mb-3">Quản lý tài khoản</p>
-                        <a href="#" class="btn btn-outline-info btn-sm">Cấu hình</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <section th:if="${isAuthenticated}" class="mb-4 mb-md-5">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">Hành động nhanh</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-12 col-md-4">
-                        <a href="#" class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2">
-                            <i class="fa-solid fa-search"></i>
-                            <span>Tìm kiếm sản phẩm</span>
-                        </a>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <a href="#" class="btn btn-outline-success w-100 d-flex align-items-center justify-content-center gap-2">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>Thêm vào giỏ hàng</span>
-                        </a>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <a href="#" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-2">
-                            <i class="fa-solid fa-star"></i>
-                            <span>Đánh giá sản phẩm</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
 </main>
 
@@ -435,6 +344,7 @@
         // Redirect to products page with category filter
         window.location.href = `/products?type=${type}`;
     }
+
 
 </script>
 </body>

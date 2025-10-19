@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -487,7 +490,7 @@ public class ViewController {
         User user = (User) authentication.getPrincipal();
 
         // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
-        if (!user.getRole().equals(User.Role.ADMIN)) {
+        if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
 
@@ -572,7 +575,7 @@ public class ViewController {
         User user = (User) authentication.getPrincipal();
         
         // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
-        if (!user.getRole().equals(User.Role.ADMIN)) {
+        if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
         
@@ -592,7 +595,7 @@ public class ViewController {
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
         
-        return "seller/shop";
+        return "seller/add-stall";
     }
 
     @GetMapping("/seller/edit-stall/{id}")
@@ -691,7 +694,9 @@ public class ViewController {
     }
 
     @GetMapping("/seller/add-quantity/{productId}")
-    public String sellerAddQuantityPage(@PathVariable Long productId, Model model) {
+    public String sellerAddQuantityPage(@PathVariable Long productId, 
+                                       @RequestParam(defaultValue = "0") int page,
+                                       Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
@@ -739,10 +744,18 @@ public class ViewController {
         model.addAttribute("product", product);
         model.addAttribute("stall", stallOptional.get());
         
-        // Lấy lịch sử upload gần nhất cho sản phẩm này (tối đa 10 bản ghi)
-        var recentUploads = uploadHistoryRepository.findRecentByProductIdSimple(productId);
-        model.addAttribute("recentUploads", recentUploads);
+        // Lấy lịch sử upload gần nhất cho sản phẩm này với pagination (5 bản ghi mỗi trang)
+        Pageable pageable = PageRequest.of(page, 5);
+        Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
+        
+        model.addAttribute("recentUploads", uploadHistoryPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", uploadHistoryPage.getTotalPages());
+        model.addAttribute("totalElements", uploadHistoryPage.getTotalElements());
+        model.addAttribute("hasNext", uploadHistoryPage.hasNext());
+        model.addAttribute("hasPrevious", uploadHistoryPage.hasPrevious());
         
         return "seller/add-quantity";
     }
+
 }

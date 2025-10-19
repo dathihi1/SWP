@@ -234,6 +234,10 @@
                 <i class="fas fa-clipboard-list"></i>
                 Quản lý gian hàng
             </a>
+            <a href="/seller/add-stall" class="menu-item">
+                <i class="fas fa-plus"></i>
+                Thêm gian hàng
+            </a>
             <a href="#" class="menu-item">
                 <i class="fas fa-file-invoice-dollar"></i>
                 Đơn hàng sản phẩm
@@ -320,6 +324,12 @@
             </div>
             
             <!-- Sales Chart -->
+            <!-- Doanh số cửa hàng -->
+            <div class="mb-3 text-center position-relative">
+                <hr class="border-primary border-2">
+                <h5 class="text-primary mb-0 position-absolute top-50 start-50 translate-middle bg-light px-3">Doanh số cửa hàng</h5>
+            </div>
+            
             <div class="chart-container">
                 <div class="chart-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 d-flex align-items-center gap-2">
@@ -330,6 +340,30 @@
                 </div>
                 <div class="chart-body">
                     <canvas id="salesChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+            
+            <!-- Doanh số gian hàng -->
+            <div class="mb-3 mt-5 text-center position-relative">
+                <hr class="border-primary border-2">
+                <h5 class="text-primary mb-0 position-absolute top-50 start-50 translate-middle bg-light px-3">Doanh số gian hàng</h5>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-chart-bar text-primary"></i>
+                        <span>30 ngày gần nhất</span>
+                    </h6>
+                    <div class="d-flex gap-2">
+                        <select id="stallFilter" class="form-select form-select-sm" style="width: 200px;" aria-label="Chọn gian hàng">
+                            <option value="">Tất cả gian hàng</option>
+                        </select>
+                        <input type="month" id="stallMonthPicker" class="form-control form-control-sm" style="width: 150px;" aria-label="Chọn tháng/năm">
+                    </div>
+                </div>
+                <div class="chart-body">
+                    <canvas id="stallSalesChart" width="400" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -406,6 +440,88 @@
 
              // initial
              loadAndRender();
+             
+             // Stall Sales Chart
+             let stallChart;
+             
+            async function loadAndRenderStallSales(monthParam, stallIdParam) {
+                let url = '/api/seller/stall-sales';
+                const params = new URLSearchParams();
+                if (monthParam) params.append('month', monthParam);
+                if (stallIdParam) params.append('stallId', stallIdParam);
+                if (params.toString()) url += `?${params.toString()}`;
+                 const res = await fetch(url);
+                 const json = await res.json();
+                 const labels = json.labels.map(d => new Date(d).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }));
+                 const data = json.totals;
+                 
+                 const ctx = document.getElementById('stallSalesChart').getContext('2d');
+                 if (stallChart) stallChart.destroy();
+                 
+                 const stallSalesData = {
+                     labels: labels,
+                     datasets: [{
+                         label: 'Doanh số gian hàng (VNĐ)',
+                         data: data,
+                         borderColor: '#0d6efd',
+                         backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                         borderWidth: 2,
+                         fill: true,
+                         tension: 0.4
+                     }]
+                 };
+                 
+                 stallChart = new Chart(ctx, {
+                     type: 'line',
+                     data: stallSalesData,
+                     options: {
+                         responsive: true,
+                         maintainAspectRatio: false,
+                         plugins: { legend: { display: false } },
+                         scales: {
+                             y: {
+                                 beginAtZero: true,
+                                 ticks: { callback: v => v.toLocaleString('vi-VN') + ' VNĐ' }
+                             }
+                         },
+                         elements: { point: { radius: 4, hoverRadius: 6 } }
+                     }
+                 });
+             }
+             
+            // Load stalls for filter
+            async function loadStalls() {
+                try {
+                    const response = await fetch('/api/seller/stalls');
+                    const stalls = await response.json();
+                    
+                    const stallFilter = document.getElementById('stallFilter');
+                    stallFilter.innerHTML = '<option value="">Tất cả gian hàng</option>';
+                    
+                    stalls.forEach(stall => {
+                        const option = document.createElement('option');
+                        option.value = stall.id;
+                        option.textContent = stall.name;
+                        stallFilter.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error loading stalls:', error);
+                }
+            }
+            
+            // Stall filter event
+            document.getElementById('stallFilter').addEventListener('change', function() {
+                loadAndRenderStallSales(document.getElementById('stallMonthPicker').value, this.value);
+            });
+            
+            // Stall month picker event
+            document.getElementById('stallMonthPicker').addEventListener('change', function() {
+                loadAndRenderStallSales(this.value, document.getElementById('stallFilter').value);
+            });
+            
+            // Load stalls and initial stall sales
+            loadStalls();
+            loadAndRenderStallSales();
 
              // filter by month/year: when changed, refetch (server currently returns last 30 days; extend later)
              const monthPicker = document.getElementById('monthPicker');

@@ -34,6 +34,11 @@ public interface UploadHistoryRepository extends JpaRepository<UploadHistory, Lo
     List<UploadHistory> findByProductIdOrderByCreatedAtDesc(Long productId);
     
     /**
+     * Find upload history by product ID with pagination, ordered by creation date descending
+     */
+    Page<UploadHistory> findByProductIdOrderByCreatedAtDesc(Long productId, Pageable pageable);
+    
+    /**
      * Find recent upload history for a specific product (last 10 records)
      */
     @Query("SELECT uh FROM UploadHistory uh WHERE uh.product.id = :productId ORDER BY uh.createdAt DESC")
