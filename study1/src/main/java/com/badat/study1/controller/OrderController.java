@@ -161,4 +161,33 @@ public class OrderController {
             return ResponseEntity.internalServerError().build();
         }
     }
+    
+    /**
+     * Cập nhật trạng thái tất cả orders theo orderCode (cho testing)
+     */
+    @PostMapping("/update-status-by-code")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updateOrderStatusByCode(
+            @RequestBody Map<String, String> request) {
+        
+        try {
+            String orderCode = request.get("orderCode");
+            String statusStr = request.get("status");
+            Order.Status status = Order.Status.valueOf(statusStr.toUpperCase());
+            
+            orderService.updateOrderStatusByOrderCode(orderCode, status);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "All orders with orderCode " + orderCode + " updated to " + status);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error updating order status by code", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Failed to update order status: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
 }

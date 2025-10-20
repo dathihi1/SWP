@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,6 +96,30 @@ public class OrderService {
         
         log.info("Order {} status updated to {}", orderId, status);
         return updatedOrder;
+    }
+    
+    /**
+     * Cập nhật trạng thái tất cả orders trong một order group (cùng orderCode)
+     */
+    @Transactional
+    public void updateOrderStatusByOrderCode(String orderCode, Order.Status status) {
+        log.info("Updating all orders with orderCode {} to status {}", orderCode, status);
+        
+        // Tìm tất cả orders có orderCode chứa chuỗi này (vì có thể có nhiều orders cùng group)
+        List<Order> orders = orderRepository.findByOrderCodeContaining(orderCode);
+        
+        if (orders.isEmpty()) {
+            log.warn("No orders found with orderCode containing: {}", orderCode);
+            return;
+        }
+        
+        for (Order order : orders) {
+            order.setStatus(status);
+            log.info("Updating order {} (ID: {}) status to {}", order.getOrderCode(), order.getId(), status);
+        }
+        
+        orderRepository.saveAll(orders);
+        log.info("Successfully updated {} orders with orderCode containing {} to status {}", orders.size(), orderCode, status);
     }
     
     /**

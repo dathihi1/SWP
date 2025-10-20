@@ -28,6 +28,7 @@ public class WalletHoldService {
     private final WalletRepository walletRepository;
     private final WalletHistoryService walletHistoryService;
     private final OrderRepository orderRepository;
+    private final OrderService orderService;
     
     /**
      * Hold money trong ví user với thời gian 1 phút (để test)
@@ -299,6 +300,14 @@ public class WalletHoldService {
             );
         } catch (Exception e) {
             log.warn("Failed to create wallet history for buyer: {}", e.getMessage());
+        }
+        
+        // 5. Cập nhật trạng thái tất cả orders thành COMPLETED
+        try {
+            orderService.updateOrderStatusByOrderCode(hold.getOrderId(), Order.Status.COMPLETED);
+            log.info("Successfully updated all orders with orderCode {} to COMPLETED status", hold.getOrderId());
+        } catch (Exception e) {
+            log.error("Failed to update order status to COMPLETED for orderCode {}: {}", hold.getOrderId(), e.getMessage());
         }
         
         log.info("Payment distribution completed for hold {}: {} VND total", hold.getId(), totalAmount);
