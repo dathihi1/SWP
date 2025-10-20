@@ -67,7 +67,7 @@ public class OrderService {
                 .commissionRate(commissionRate)
                 .commissionAmount(commissionAmount)
                 .sellerAmount(sellerAmount)
-                .status(Order.Status.PENDING)
+                .status(Order.Status.COMPLETED)
                 .paymentMethod(paymentMethod)
                 .orderCode(orderCode)
                 .notes(notes)

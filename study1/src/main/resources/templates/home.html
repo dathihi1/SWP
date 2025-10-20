@@ -129,8 +129,8 @@
                    class="text-decoration-none text-dark">
                     <div class="preview-card me-2">
                         <div class="preview-img-frame">
-                            <img th:if="${s.imageBase64 != null}" th:src="${'data:image/jpeg;base64,' + s.imageBase64}" alt="stall">
-                            <div th:if="${s.imageBase64 == null}" class="bg-light d-flex align-items-center justify-content-center" style="height:200px;border-radius:.5rem;">
+                            <img th:if="${s.stallId != null}" th:src="@{'/stall-image/' + ${s.stallId}}" alt="stall">
+                            <div th:if="${s.stallId == null}" class="bg-light d-flex align-items-center justify-content-center" style="height:200px;border-radius:.5rem;">
                                 <i class="fa-solid fa-store text-secondary" style="font-size:34px;"></i>
                             </div>
                         </div>

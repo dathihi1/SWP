@@ -9,6 +9,7 @@ import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.repository.WalletRepository;
+import com.badat.study1.repository.WarehouseRepository;
 import com.badat.study1.util.VNPayUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -18,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +31,7 @@ public class PaymentService {
     private final WalletRepository walletRepository;
     private final WalletHistoryService walletHistoryService;
     private final PaymentQueueService paymentQueueService;
+    private final WarehouseRepository warehouseRepository;
     
     public PaymentResponse createPaymentUrl(PaymentRequest request) {
         return createPaymentUrl(request, null);
@@ -192,6 +197,25 @@ public class PaymentService {
                     .build();
             }
             
+            // Fast-fail: Check wallet balance BEFORE enqueueing payment
+            Wallet wallet = walletRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + user.getId()));
+            if (wallet.getBalance() == null || wallet.getBalance().compareTo(request.getTotalAmount()) < 0) {
+                return PaymentResponse.builder()
+                    .message("Số dư ví không đủ để thanh toán")
+                    .success(false)
+                    .build();
+            }
+            
+            // Fast-fail: Check stock availability BEFORE enqueueing payment
+            List<String> outOfStockProducts = checkStockAvailability(request.getCartItems());
+            if (!outOfStockProducts.isEmpty()) {
+                return PaymentResponse.builder()
+                    .message("Sản phẩm hết hàng: " + String.join(", ", outOfStockProducts))
+                    .success(false)
+                    .build();
+            }
+            
             // Enqueue payment for processing
             paymentQueueService.enqueuePayment(
                 user.getId(), 
@@ -225,5 +249,32 @@ public class PaymentService {
                 .success(false)
                 .build();
         }
+    }
+    
+    /**
+     * Kiểm tra tình trạng tồn kho cho các sản phẩm trong giỏ hàng
+     */
+    private List<String> checkStockAvailability(List<Map<String, Object>> cartItems) {
+        List<String> outOfStockProducts = new ArrayList<>();
+        
+        for (Map<String, Object> cartItem : cartItems) {
+            try {
+                Long productId = Long.valueOf(cartItem.get("productId").toString());
+                Integer requestedQuantity = Integer.valueOf(cartItem.get("quantity").toString());
+                String productName = cartItem.get("name").toString();
+                
+                // Đếm số lượng warehouse items có sẵn cho sản phẩm này
+                long availableStock = warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(productId);
+                
+                if (availableStock < requestedQuantity) {
+                    outOfStockProducts.add(productName + " (cần " + requestedQuantity + ", còn " + availableStock + ")");
+                }
+                
+            } catch (Exception e) {
+                outOfStockProducts.add("Lỗi kiểm tra tồn kho cho sản phẩm: " + cartItem.get("name"));
+            }
+        }
+        
+        return outOfStockProducts;
     }
 }

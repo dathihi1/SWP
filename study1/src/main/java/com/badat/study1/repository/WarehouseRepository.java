@@ -1,6 +1,7 @@
 package com.badat.study1.repository;
 
 import com.badat.study1.model.Warehouse;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -82,4 +83,14 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      * Find first available warehouse item for product (not locked, not deleted)
      */
     Optional<Warehouse> findFirstByProductIdAndLockedFalseAndIsDeleteFalse(Long productId);
+    
+    /**
+     * Find top N warehouse items by product ID (not locked, not deleted) - for batch locking
+     */
+    List<Warehouse> findTopByProductIdAndLockedFalseAndIsDeleteFalse(Long productId, Pageable pageable);
+    
+    /**
+     * Count available warehouse items for product (not locked, not deleted)
+     */
+    long countByProductIdAndLockedFalseAndIsDeleteFalse(Long productId);
 }

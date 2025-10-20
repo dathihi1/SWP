@@ -5,6 +5,7 @@ import com.badat.study1.model.Warehouse;
 import com.badat.study1.model.Order;
 import com.badat.study1.model.WalletHold;
 import com.badat.study1.repository.PaymentQueueRepository;
+import org.springframework.integration.redis.util.RedisLockRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class PaymentQueueService {
     private final WarehouseLockService warehouseLockService;
     private final OrderService orderService;
     private final ObjectMapper objectMapper;
+    private final RedisLockRegistry redisLockRegistry;
     
     /**
      * Thêm payment request vào queue
@@ -57,28 +60,50 @@ public class PaymentQueueService {
     }
     
     /**
-     * Cron job xử lý payment queue mỗi 10 giây - đơn giản hóa
+     * Cron job xử lý payment queue mỗi 10 giây - với distributed lock để tránh race condition
      */
     @Scheduled(fixedRate = 10000) // Mỗi 10 giây
     public void processPaymentQueue() {
-        log.info("Processing payment queue...");
+        String lockKey = "payment-queue:process";
+        Lock lock = redisLockRegistry.obtain(lockKey);
         
         try {
-            List<PaymentQueue> pendingPayments = paymentQueueRepository
-                .findByStatusOrderByCreatedAtAsc(PaymentQueue.Status.PENDING);
+            if (lock.tryLock(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                log.info("Processing payment queue with distributed lock...");
                 
-            log.info("Found {} pending payments", pendingPayments.size());
-            
-            for (PaymentQueue payment : pendingPayments) {
                 try {
-                    processPaymentItem(payment);
+                    List<PaymentQueue> pendingPayments = paymentQueueRepository
+                        .findByStatusOrderByCreatedAtAsc(PaymentQueue.Status.PENDING);
+                        
+                    log.info("Found {} pending payments", pendingPayments.size());
+                    
+                    // Xử lý từng payment một cách tuần tự để tránh race condition
+                    for (PaymentQueue payment : pendingPayments) {
+                        try {
+                            // Kiểm tra lại status trước khi xử lý để tránh double processing
+                            PaymentQueue currentPayment = paymentQueueRepository.findById(payment.getId()).orElse(null);
+                            if (currentPayment == null || currentPayment.getStatus() != PaymentQueue.Status.PENDING) {
+                                log.info("Payment {} already processed or deleted, skipping", payment.getId());
+                                continue;
+                            }
+                            
+                            processPaymentItem(payment);
+                        } catch (Exception e) {
+                            log.error("Failed to process payment {}: {}", payment.getId(), e.getMessage());
+                            // Error handling đã được xử lý trong processPaymentItem
+                        }
+                    }
                 } catch (Exception e) {
-                    log.error("Failed to process payment {}: {}", payment.getId(), e.getMessage());
-                    // Error handling đã được xử lý trong processPaymentItem
+                    log.error("Error in payment queue processing: {}", e.getMessage());
                 }
+            } else {
+                log.info("Another instance is processing payment queue, skipping...");
             }
-        } catch (Exception e) {
-            log.error("Error in payment queue processing: {}", e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrupted while waiting for payment queue lock", e);
+        } finally {
+            lock.unlock();
         }
     }
     
@@ -89,47 +114,87 @@ public class PaymentQueueService {
     public void processPaymentItem(PaymentQueue payment) {
         log.info("Processing payment item: {} for user: {}", payment.getId(), payment.getUserId());
         
+        // Distributed lock cho payment item để tránh double processing
+        String paymentLockKey = "payment:process:" + payment.getId();
+        Lock paymentLock = redisLockRegistry.obtain(paymentLockKey);
+        
         try {
-            // 1. Mark as processing
-            payment.setStatus(PaymentQueue.Status.PROCESSING);
-            payment.setProcessedAt(Instant.now());
-            paymentQueueRepository.save(payment);
-            
-            // 2. Parse cart data
-            List<Map<String, Object>> cartItems = parseCartData(payment.getCartData());
-            
-            // 3. Lock warehouse items TRƯỚC (kiểm tra availability)
-            List<Long> productIds = cartItems.stream()
-                .map(item -> Long.valueOf(item.get("productId").toString()))
-                .toList();
+            if (paymentLock.tryLock(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                log.info("Acquired lock for payment: {}", payment.getId());
                 
-            List<Warehouse> lockedItems = warehouseLockService.lockWarehouseItems(productIds);
+                try {
+                    // 1. Mark as processing
+                    payment.setStatus(PaymentQueue.Status.PROCESSING);
+                    payment.setProcessedAt(Instant.now());
+                    paymentQueueRepository.save(payment);
             
-            // 4. Tạo orders đơn giản - không truy cập relationships
-            String orderId = "ORDER_" + payment.getUserId() + "_" + System.currentTimeMillis();
-            createSimpleOrders(payment.getUserId(), cartItems, lockedItems, orderId);
-            
-            // 5. CHỈ SAU KHI THÀNH CÔNG mới hold money
-            walletHoldService.holdMoney(payment.getUserId(), payment.getTotalAmount(), orderId);
-            
-            // 6. Mark as completed
-            payment.setStatus(PaymentQueue.Status.COMPLETED);
-            paymentQueueRepository.save(payment);
-            
-            log.info("Payment processed successfully: {} - Money held, buyer can receive items immediately", payment.getId());
-            
-        } catch (Exception e) {
-            log.error("Error processing payment {}: {}", payment.getId(), e.getMessage());
-            
-            // Nếu lỗi → KHÔNG hold tiền, chỉ unlock warehouse và báo lỗi
-            try {
-                handlePaymentErrorWithoutHold(payment, e.getMessage());
-                markPaymentAsFailed(payment.getId(), "Payment failed - no money held");
-                log.info("Payment failed for payment {} - no money was held", payment.getId());
-            } catch (Exception errorHandlingException) {
-                log.error("Failed to handle payment error for payment {}: {}", payment.getId(), errorHandlingException.getMessage());
-                markPaymentAsFailed(payment.getId(), "Payment failed - error handling failed");
+                    // 2. Parse cart data
+                    List<Map<String, Object>> cartItems = parseCartData(payment.getCartData());
+
+                    // 3. Generate order id and HOLD MONEY (stock already validated before enqueueing)
+                    String orderId = "ORDER_" + payment.getUserId() + "_" + System.currentTimeMillis();
+                    walletHoldService.holdMoney(payment.getUserId(), payment.getTotalAmount(), orderId);
+
+                    // 4. Lock warehouse items AFTER holding funds - tính theo số lượng
+                    Map<Long, Integer> productQuantities = new java.util.HashMap<>();
+                    for (Map<String, Object> cartItem : cartItems) {
+                        Long productId = Long.valueOf(cartItem.get("productId").toString());
+                        Integer quantity = Integer.valueOf(cartItem.get("quantity").toString());
+                        productQuantities.put(productId, productQuantities.getOrDefault(productId, 0) + quantity);
+                    }
+
+                    List<Warehouse> lockedItems = warehouseLockService.lockWarehouseItemsWithQuantities(productQuantities);
+                    
+                    // 4.5. Kiểm tra lại sau khi lock - tính tổng số lượng cần thiết
+                    int totalRequiredQuantity = productQuantities.values().stream().mapToInt(Integer::intValue).sum();
+                    if (lockedItems.isEmpty() || lockedItems.size() < totalRequiredQuantity) {
+                        log.warn("Failed to lock enough warehouse items for user: {} (required: {}, locked: {}), refunding money", 
+                            payment.getUserId(), totalRequiredQuantity, lockedItems.size());
+                        // Release hold trước khi throw exception - tìm hold theo orderId
+                        try {
+                            List<WalletHold> userHolds = walletHoldService.getActiveHolds(payment.getUserId());
+                            for (WalletHold hold : userHolds) {
+                                if (hold.getOrderId().equals(orderId) && hold.getStatus() == WalletHold.Status.PENDING) {
+                                    walletHoldService.releaseHold(hold.getId());
+                                    break;
+                                }
+                            }
+                        } catch (Exception releaseError) {
+                            log.error("Failed to release hold during warehouse lock failure: {}", releaseError.getMessage());
+                        }
+                        throw new RuntimeException("Không thể khóa đủ số lượng hàng trong kho - có thể đã có người khác mua trước");
+                    }
+
+                    // 5. Create orders
+                    createSimpleOrders(payment.getUserId(), cartItems, lockedItems, orderId);
+
+                    // 6. Mark as completed
+                    payment.setStatus(PaymentQueue.Status.COMPLETED);
+                    paymentQueueRepository.save(payment);
+                    
+                    log.info("Payment processed successfully: {} - Money held, buyer can receive items immediately", payment.getId());
+                    
+                } catch (Exception e) {
+                    log.error("Error processing payment {}: {}", payment.getId(), e.getMessage());
+                    
+                    // Nếu lỗi → unlock warehouse và hoàn tiền nếu đã hold
+                    try {
+                        handlePaymentError(payment, e.getMessage());
+                        markPaymentAsFailed(payment.getId(), "Payment failed - reverted changes");
+                        log.info("Payment failed for payment {} - reverted holds and locks where applicable", payment.getId());
+                    } catch (Exception errorHandlingException) {
+                        log.error("Failed to handle payment error for payment {}: {}", payment.getId(), errorHandlingException.getMessage());
+                        markPaymentAsFailed(payment.getId(), "Payment failed - error handling failed");
+                    }
+                }
+            } else {
+                log.warn("Could not acquire lock for payment: {}, another instance might be processing", payment.getId());
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrupted while waiting for payment lock: {}", payment.getId(), e);
+        } finally {
+            paymentLock.unlock();
         }
     }
     
@@ -140,17 +205,28 @@ public class PaymentQueueService {
     private void createSimpleOrders(Long userId, List<Map<String, Object>> cartItems, List<Warehouse> lockedItems, String orderId) {
         log.info("Creating simple orders for user: {} with {} items", userId, cartItems.size());
         
-        for (int i = 0; i < cartItems.size() && i < lockedItems.size(); i++) {
+        // Tạo map để lưu thông tin product từ cart
+        Map<Long, Map<String, Object>> productInfo = new java.util.HashMap<>();
+        for (Map<String, Object> cartItem : cartItems) {
+            Long productId = Long.valueOf(cartItem.get("productId").toString());
+            productInfo.put(productId, cartItem);
+        }
+        
+        // Tạo 1 order cho mỗi warehouse item đã lock
+        for (Warehouse lockedItem : lockedItems) {
             try {
-                Map<String, Object> cartItem = cartItems.get(i);
-                Warehouse lockedItem = lockedItems.get(i);
+                Long productId = lockedItem.getProduct().getId();
                 
-                // Lấy thông tin từ cart data và warehouse ID trực tiếp
-                Long productId = Long.valueOf(cartItem.get("productId").toString());
-                BigDecimal unitPrice = new BigDecimal(cartItem.get("price").toString());
-                Integer quantity = Integer.valueOf(cartItem.get("quantity").toString());
+                // Lấy thông tin product từ cart
+                Map<String, Object> productData = productInfo.get(productId);
+                if (productData == null) {
+                    log.error("Product data not found for productId: {}", productId);
+                    continue;
+                }
                 
-                // Sử dụng ID trực tiếp thay vì truy cập relationships
+                BigDecimal unitPrice = new BigDecimal(productData.get("price").toString());
+                
+                // Tạo order cho từng warehouse item
                 Order order = orderService.createOrder(
                     userId,                    // buyerId
                     lockedItem.getUser().getId(),   // sellerId (từ warehouse.user)
@@ -158,21 +234,21 @@ public class PaymentQueueService {
                     lockedItem.getStall().getId(),  // stallId (từ warehouse.stall)
                     productId,               // productId
                     lockedItem.getId(),      // warehouseId
-                    quantity,                // quantity
+                    1,                       // quantity (mỗi warehouse item = 1 sản phẩm)
                     unitPrice,               // unitPrice
                     "WALLET",               // paymentMethod
                     "Order from cart payment", // notes
                     orderId                  // customOrderCode
                 );
                 
-                log.info("Order created for user {}: Order ID {} for product {} (warehouse {})", 
-                    userId, order.getId(), productId, lockedItem.getId());
+                log.info("Created order {} for user {}: product {}, warehouse {}, quantity 1, price {}", 
+                    order.getId(), userId, productId, lockedItem.getId(), unitPrice);
                 
                 // Mark warehouse item as delivered
                 warehouseLockService.markAsDelivered(lockedItem.getId());
                 
             } catch (Exception e) {
-                log.error("Failed to create order for user {}: cart item {}", userId, cartItems.get(i), e);
+                log.error("Failed to create order for user {}: warehouse item {}", userId, lockedItem.getId(), e);
                 throw e;
             }
         }
@@ -308,4 +384,5 @@ public class PaymentQueueService {
     public List<PaymentQueue> getUserPayments(Long userId) {
         return paymentQueueRepository.findByUserIdAndStatus(userId, PaymentQueue.Status.PENDING);
     }
+    
 }

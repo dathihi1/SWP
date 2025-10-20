@@ -127,7 +127,7 @@ public class WalletHoldService {
     }
     
     /**
-     * Complete hold - chuyển tiền cho seller
+     * Complete hold - chuyển tiền cho seller và admin
      */
     @Transactional
     public void completeHold(Long holdId) {
@@ -145,7 +145,7 @@ public class WalletHoldService {
         hold.setStatus(WalletHold.Status.COMPLETED);
         walletHoldRepository.save(hold);
         
-        // 2. Tạo wallet history cho việc hoàn tất giao dịch
+        // 2. Tạo wallet history cho buyer (chi tiêu)
         try {
             Wallet wallet = walletRepository.findByUserId(hold.getUserId())
                 .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + hold.getUserId()));
@@ -160,7 +160,21 @@ public class WalletHoldService {
                 "Payment completed - Order: " + hold.getOrderId()
             );
         } catch (Exception e) {
-            log.warn("Failed to create wallet history for completion: {}", e.getMessage());
+            log.warn("Failed to create wallet history for buyer: {}", e.getMessage());
+        }
+        
+        // 3. Phân phối tiền cho seller và admin
+        try {
+            Optional<Order> orderOpt = orderRepository.findByOrderCode(hold.getOrderId());
+            List<Order> orders = orderOpt.map(List::of).orElse(List.of());
+            
+            if (!orders.isEmpty()) {
+                distributePaymentToSellerAndAdmin(hold, orders);
+            } else {
+                log.warn("No orders found for hold {}, cannot distribute payment", hold.getId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to distribute payment for hold {}: {}", hold.getId(), e.getMessage());
         }
         
         log.info("Hold completed successfully for user {}: {} VND", hold.getUserId(), hold.getAmount());
@@ -244,7 +258,7 @@ public class WalletHoldService {
                     totalSellerAmount,
                     hold.getOrderId(),
                     null,
-                    WalletHistory.Type.SALE,
+                    WalletHistory.Type.SALE_SUCCESS,
                     WalletHistory.Status.SUCCESS,
                     "Payment received from order: " + hold.getOrderId()
                 );

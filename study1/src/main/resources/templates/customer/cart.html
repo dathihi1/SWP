@@ -497,7 +497,7 @@
                 }
                 
                 const result = await response.json();
-                
+
                 if (result.success) {
                     showNotification('Đơn hàng đã được gửi vào hàng đợi xử lý! Tiền sẽ được giữ trong 1 phút.', 'success');
                     
@@ -508,6 +508,23 @@
                     // Show payment status modal
                     showPaymentStatusModal();
                 } else {
+                    // Hiển thị thông báo cụ thể khi không đủ số dư ví
+                    if (result.message && result.message.includes('Số dư ví không đủ')) {
+                        showNotification('Số dư ví không đủ để thanh toán. Vui lòng nạp tiền trước khi tiếp tục.', 'error');
+                        return;
+                    }
+                    // Hiển thị thông báo cụ thể khi hết hàng
+                    if (result.message && result.message.includes('Sản phẩm hết hàng')) {
+                        showNotification(result.message, 'error');
+                        return;
+                    }
+                    // Hiển thị thông báo khi có người khác mua trước (race condition)
+                    if (result.message && (result.message.includes('có thể đã có người khác mua trước') || 
+                                          result.message.includes('không thể khóa đủ số lượng'))) {
+                        showNotification('Xin lỗi! Có người khác đã mua sản phẩm này trước bạn. Vui lòng kiểm tra lại giỏ hàng.', 'error');
+                        await loadCart(); // Reload cart để cập nhật trạng thái
+                        return;
+                    }
                     throw new Error(result.message || 'Lỗi xử lý thanh toán');
                 }
                 
