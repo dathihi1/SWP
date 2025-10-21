@@ -84,7 +84,7 @@
                     <!-- Current Balance -->
                     <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                         <i class="fa-solid fa-wallet"></i>
-                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
+                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'POINT', 0, 'COMMA')}">0</span>
                     </div>
                     
                     <div class="dropdown">
@@ -180,7 +180,7 @@
             </div>
 
             <!-- Price -->
-            <div class="h4 text-danger mb-4" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</div>
+            <div class="h4 text-danger mb-4" th:text="${#numbers.formatDecimal(product.price, 0, 'POINT', 0, 'COMMA')} + ' VND'">0 VND</div>
 
             <!-- Product Variants -->
             <div class="mb-4">
