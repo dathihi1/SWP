@@ -20,7 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -77,15 +76,6 @@ public class SecurityConfiguration {
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) -> {
                             log.info("Authentication entry point triggered for: {}", req.getRequestURI());
-                            
-                            // For API requests, return JSON error instead of redirect
-                            if (req.getRequestURI().startsWith("/api/")) {
-                                res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                                res.setContentType("application/json");
-                                res.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Authentication required\"}");
-                                return;
-                            }
-                            
                             res.sendRedirect("/login");
                         })
                 )

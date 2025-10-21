@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +19,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     List<Order> findBySellerIdOrderByCreatedAtDesc(Long sellerId);
     
+    Page<Order> findBySellerIdOrderByCreatedAtDesc(Long sellerId, Pageable pageable);
+    
     List<Order> findByShopIdOrderByCreatedAtDesc(Long shopId);
     
     List<Order> findByStallIdOrderByCreatedAtDesc(Long stallId);
@@ -26,6 +30,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByBuyerIdAndStatusOrderByCreatedAtDesc(Long buyerId, Order.Status status);
     
     List<Order> findBySellerIdAndStatusOrderByCreatedAtDesc(Long sellerId, Order.Status status);
+    
+    Page<Order> findBySellerIdAndStatusOrderByCreatedAtDesc(Long sellerId, Order.Status status, Pageable pageable);
+    
+    // Secure seller order methods - validate both seller and shop
+    List<Order> findBySellerIdAndShopIdOrderByCreatedAtDesc(Long sellerId, Long shopId);
+    Page<Order> findBySellerIdAndShopIdOrderByCreatedAtDesc(Long sellerId, Long shopId, Pageable pageable);
+    List<Order> findBySellerIdAndShopIdAndStatusOrderByCreatedAtDesc(Long sellerId, Long shopId, Order.Status status);
+    Page<Order> findBySellerIdAndShopIdAndStatusOrderByCreatedAtDesc(Long sellerId, Long shopId, Order.Status status, Pageable pageable);
     
     Optional<Order> findByOrderCode(String orderCode);
     

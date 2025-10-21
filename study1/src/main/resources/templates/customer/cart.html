@@ -57,7 +57,7 @@
             try {
                 console.log('Đang tải giỏ hàng...');
                 
-                const res = await window.authManager.fetchWithAuth('/api/cart', {
+                const res = await fetch('/api/cart', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -277,7 +277,7 @@
 
         async function addItem(productId, quantity = 1) {
             try {
-                const res = await window.authManager.fetchWithAuth(`/api/cart/add/${productId}?quantity=${quantity}`, { 
+                const res = await fetch(`/api/cart/add/${productId}?quantity=${quantity}`, { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -311,7 +311,7 @@
         async function updateQty(productId, quantity) {
             try {
                 const q = Math.max(1, parseInt(quantity || '1', 10));
-                const res = await window.authManager.fetchWithAuth(`/api/cart/update/${productId}?quantity=${q}`, { 
+                const res = await fetch(`/api/cart/update/${productId}?quantity=${q}`, { 
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -344,7 +344,7 @@
 
         async function removeItem(productId) {
             try {
-                const res = await window.authManager.fetchWithAuth(`/api/cart/remove/${productId}`, { 
+                const res = await fetch(`/api/cart/remove/${productId}`, { 
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -377,7 +377,7 @@
 
         async function clearCart() {
             try {
-                const res = await window.authManager.fetchWithAuth(`/api/cart/clear`, { 
+                const res = await fetch(`/api/cart/clear`, { 
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -471,7 +471,7 @@
                 }, 0);
                 
                 // Call improved payment API
-                const response = await window.authManager.fetchWithAuth('/api/improved-payment/process-cart', {
+                const response = await fetch('/api/improved-payment/process-cart', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -611,7 +611,7 @@
 
         async function removeItem(productId) {
             try {
-                const res = await window.authManager.fetchWithAuth(`/api/cart/remove/${productId}`, { 
+                const res = await fetch(`/api/cart/remove/${productId}`, { 
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -762,7 +762,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>

@@ -53,9 +53,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         if (token != null) {
             log.info("JWT Filter - Token: {}", token.substring(0, Math.min(50, token.length())) + "...");
-            log.info("JWT Filter - Token length: {}", token.length());
-        } else {
-            log.warn("JWT Filter - No token found for request: {}", request.getRequestURI());
         }
         
         if (token != null) {
@@ -71,21 +68,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         
                         // For Google users, create authentication directly without password validation
                         if ("GOOGLE".equals(user.getProvider())) {
-                            try {
-                                if (jwtService.verifyToken(token)) {
-                                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                            user,
-                                            null,
-                                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-                                    );
-                                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                                    log.info("JWT Filter - Google user {} authenticated successfully", username);
-                                } else {
-                                    log.warn("JWT Filter - Token validation failed for Google user: {}", username);
-                                }
-                            } catch (Exception e) {
-                                log.warn("JWT Filter - Token validation exception for Google user {}: {}", username, e.getMessage());
+                            if (jwtService.verifyToken(token)) {
+                                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                        user,
+                                        null,
+                                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                                );
+                                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                                SecurityContextHolder.getContext().setAuthentication(authentication);
+                                log.info("JWT Filter - Google user {} authenticated successfully", username);
+                            } else {
+                                log.warn("JWT Filter - Token validation failed for Google user: {}", username);
                             }
                         } else {
                             // For LOCAL users, use UserDetailsService
@@ -119,24 +112,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Try Authorization header first
         String auth = request.getHeader("Authorization");
         if (auth != null && auth.startsWith("Bearer ")) {
-            log.info("Token found in Authorization header");
+            log.debug("Token found in Authorization header");
             return auth.substring(7);
         }
         
         // Try cookie as fallback
         Cookie[] cookies = request.getCookies();
-        log.info("Cookies count: {}", cookies != null ? cookies.length : 0);
+        log.debug("Cookies: {}", cookies != null ? cookies.length : 0);
         if (cookies != null) {
             for (Cookie cookie : cookies) {
-                log.info("Cookie: {} = {}", cookie.getName(), cookie.getValue() != null ? cookie.getValue().substring(0, Math.min(20, cookie.getValue().length())) + "..." : "null");
+                log.debug("Cookie: {} = {}", cookie.getName(), cookie.getValue() != null ? cookie.getValue().substring(0, Math.min(20, cookie.getValue().length())) + "..." : "null");
                 if ("accessToken".equals(cookie.getName())) {
-                    log.info("Token found in cookie");
+                    log.debug("Token found in cookie");
                     return cookie.getValue();
                 }
             }
         }
         
-        log.warn("No token found in Authorization header or cookies");
+        log.debug("No token found");
         return null;
     }
 

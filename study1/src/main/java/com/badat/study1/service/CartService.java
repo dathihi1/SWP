@@ -28,18 +28,12 @@ public class CartService {
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         // Xử lý kiểm tra người dùng đã đăng nhập và cast đúng kiểu
-        if (auth == null || !auth.isAuthenticated()) {
-            throw new IllegalStateException("User not authenticated.");
+        if (auth == null || !auth.isAuthenticated() || !(auth.getPrincipal() instanceof User)) {
+            // Trong môi trường thực tế, có thể trả về một User mặc định hoặc xử lý lại
+            // Ở đây, ta ném ngoại lệ vì giỏ hàng yêu cầu người dùng đã xác thực.
+            throw new IllegalStateException("User not authenticated or principal type is incorrect.");
         }
-        
-        Object principal = auth.getPrincipal();
-        if (principal instanceof User) {
-            return (User) principal;
-        } else {
-            // Log the actual principal type for debugging
-            System.out.println("DEBUG: Principal type is " + principal.getClass().getName());
-            throw new IllegalStateException("Principal type is incorrect. Expected User, got: " + principal.getClass().getName());
-        }
+        return (User) auth.getPrincipal();
     }
 
     /**

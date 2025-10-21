@@ -302,7 +302,7 @@
         
         <div class="menu-section">
             <div class="section-title">SALE</div>
-            <a href="/seller/shop" class="menu-item">
+            <a href="/seller/gross-sales" class="menu-item">
                 <i class="fas fa-shopping-cart"></i>
                 Doanh số
             </a>
@@ -310,7 +310,7 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/shop-management" class="menu-item">
+            <a href="/seller/stall-management" class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
                 Quản lý gian hàng
             </a>
@@ -318,11 +318,11 @@
                 <i class="fas fa-plus"></i>
                 Thêm gian hàng
             </a>
-            <a href="#" class="menu-item">
+            <a href="/seller/orders" class="menu-item">
                 <i class="fas fa-file-invoice-dollar"></i>
                 Đơn hàng sản phẩm
             </a>
-            <a href="#" class="menu-item">
+            <a href="/seller/reviews" class="menu-item">
                 <i class="fas fa-comment"></i>
                 Đánh giá
             </a>
@@ -384,7 +384,7 @@
                         <h1 class="page-title">Thêm gian hàng mới</h1>
                         <small class="text-muted">Giới hạn tối đa: 5 gian hàng</small>
                     </div>
-                    <a href="/seller/shop-management" class="btn-back">
+                    <a href="/seller/stall-management" class="btn-back">
                         <i class="fas fa-arrow-left me-2"></i>
                         Quay lại
                     </a>
@@ -419,7 +419,7 @@
                                 <select class="form-select" id="stallCategory" name="stallCategory" required>
                                     <option value="">Chọn loại gian hàng</option>
                                     <option value="Thẻ cào (Điện thoại, Game)">Thẻ Cào (Điện thoại, Game)</option>
-                                    <option value="Tài Khoản">Tài Khoản</option>
+                                    <option value="Tài khoản Email">Tài khoản Email</option>
                                     <option value="Key Game">Key Game</option>
                                 </select>
                             </div>
@@ -505,7 +505,7 @@
                     
                     <!-- Submit Buttons -->
                     <div class="d-flex justify-content-end gap-3">
-                        <a href="/seller/shop-management" class="btn btn-cancel">Hủy</a>
+                        <a href="/seller/stall-management" class="btn btn-cancel">Hủy</a>
                         <button type="submit" class="btn btn-submit">
                             <i class="fas fa-save me-2"></i>
                             Tạo gian hàng
@@ -759,7 +759,7 @@
                 })
                 .then(response => {
                     if (response.ok) {
-                        window.location.href = '/seller/shop-management';
+                        window.location.href = '/seller/stall-management';
                     } else {
                         alert('Có lỗi xảy ra khi tạo gian hàng. Vui lòng thử lại!');
                     }
