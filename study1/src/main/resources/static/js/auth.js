@@ -10,7 +10,22 @@ class AuthManager {
     }
 
     getAccessToken() {
-        return localStorage.getItem('accessToken');
+        // First try localStorage
+        let token = localStorage.getItem('accessToken');
+        if (token) {
+            return token;
+        }
+        
+        // If not found in localStorage, try to get from cookie
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'accessToken' && value) {
+                return value;
+            }
+        }
+        
+        return null;
     }
 
     getRefreshToken() {

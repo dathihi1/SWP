@@ -10,7 +10,10 @@ import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
+import com.badat.study1.repository.UserRepository;
 import com.badat.study1.service.WalletHistoryService;
+import com.badat.study1.service.AuditLogService;
+import com.badat.study1.dto.response.AuditLogResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,38 +46,20 @@ public class ViewController {
     private final StallRepository stallRepository;
     private final ProductRepository productRepository;
     private final UploadHistoryRepository uploadHistoryRepository;
+    private final UserRepository userRepository;
 
     private final WalletHistoryService walletHistoryService;
+    private final AuditLogService auditLogService;
 
-    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService) {
+    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository) {
         this.walletRepository = walletRepository;
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
         this.productRepository = productRepository;
         this.uploadHistoryRepository = uploadHistoryRepository;
         this.walletHistoryService = walletHistoryService;
-    }
-
-    private void addUserAttributes(Model model, Authentication authentication) {
-        if (authentication != null && authentication.isAuthenticated() &&
-                !authentication.getName().equals("anonymousUser")) {
-
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof User) {
-                User user = (User) principal;
-                model.addAttribute("username", user.getUsername());
-                model.addAttribute("userRole", user.getRole().name());
-
-                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                        .map(Wallet::getBalance)
-                        .orElse(BigDecimal.ZERO);
-                model.addAttribute("walletBalance", walletBalance);
-            } else {
-                model.addAttribute("username", authentication.getName());
-                model.addAttribute("userRole", "USER");
-                model.addAttribute("walletBalance", BigDecimal.ZERO);
-            }
-        }
+        this.auditLogService = auditLogService;
+        this.userRepository = userRepository;
     }
 
     // Inject common attributes (auth info and wallet balance) for all views
@@ -109,38 +94,53 @@ public class ViewController {
 
     @GetMapping("/")
     public String homePage(Model model) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
-                !authentication.getName().equals("anonymousUser");
+        log.info("Homepage requested");
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                    !authentication.getName().equals("anonymousUser");
 
-        model.addAttribute("isAuthenticated", isAuthenticated);
-        model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
+            model.addAttribute("isAuthenticated", isAuthenticated);
+            model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
 
-        if (isAuthenticated) {
-            // Get User object from authentication principal
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof User) {
-                User user = (User) principal;
+            if (isAuthenticated) {
+                // Get User object from authentication principal
+                Object principal = authentication.getPrincipal();
+                if (principal instanceof User) {
+                    User user = (User) principal;
 
-                model.addAttribute("username", user.getUsername());
-                model.addAttribute("authorities", authentication.getAuthorities());
-                model.addAttribute("userRole", user.getRole().name());
-                // Default submitSuccess to false to avoid null in template conditions
-                model.addAttribute("submitSuccess", false);
+                    model.addAttribute("username", user.getUsername());
+                    model.addAttribute("authorities", authentication.getAuthorities());
+                    model.addAttribute("userRole", user.getRole().name());
+                    // Default submitSuccess to false to avoid null in template conditions
+                    model.addAttribute("submitSuccess", false);
 
-                // Lấy số dư ví
-                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                        .map(Wallet::getBalance)
-                        .orElse(BigDecimal.ZERO);
-                model.addAttribute("walletBalance", walletBalance);
-            } else {
-                // Fallback for other types of principals
-                model.addAttribute("username", authentication.getName());
-                model.addAttribute("authorities", authentication.getAuthorities());
-                model.addAttribute("userRole", "USER");
-                model.addAttribute("submitSuccess", false);
-                model.addAttribute("walletBalance", BigDecimal.ZERO);
+                    // Lấy số dư ví
+                    try {
+                        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                                .map(Wallet::getBalance)
+                                .orElse(BigDecimal.ZERO);
+                        model.addAttribute("walletBalance", walletBalance);
+                    } catch (Exception e) {
+                        log.error("Error getting wallet balance for user {}: {}", user.getId(), e.getMessage());
+                        model.addAttribute("walletBalance", BigDecimal.ZERO);
+                    }
+                } else {
+                    // Fallback for other types of principals
+                    model.addAttribute("username", authentication.getName());
+                    model.addAttribute("authorities", authentication.getAuthorities());
+                    model.addAttribute("userRole", "USER");
+                    model.addAttribute("submitSuccess", false);
+                    model.addAttribute("walletBalance", BigDecimal.ZERO);
+                }
             }
+        } catch (Exception e) {
+            log.error("Error in homePage method: {}", e.getMessage(), e);
+            // Set default values to prevent template errors
+            model.addAttribute("isAuthenticated", false);
+            model.addAttribute("walletBalance", BigDecimal.ZERO);
+            model.addAttribute("username", "Guest");
+            model.addAttribute("userRole", "USER");
         }
 
         // Load top 8 stalls with highest product counts for homepage preview
@@ -219,6 +219,7 @@ public class ViewController {
             model.addAttribute("stalls", stallCards);
         } catch (Exception ignored) {}
 
+        log.info("Returning home template");
         return "home";
     }
 
@@ -248,6 +249,19 @@ public class ViewController {
             model.addAttribute("email", email);
         }
         return "verify-otp";
+    }
+
+    @GetMapping("/reset-password")
+    public String resetPasswordPage(@RequestParam(value = "email", required = false) String email,
+                                   @RequestParam(value = "otp", required = false) String otp,
+                                   Model model) {
+        if (email != null) {
+            model.addAttribute("email", email);
+        }
+        if (otp != null) {
+            model.addAttribute("otp", otp);
+        }
+        return "reset-password";
     }
 
     @GetMapping("/seller/register")
@@ -355,6 +369,7 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
+        model.addAttribute("user", user); // Thêm object user vào model
 
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
@@ -440,6 +455,7 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
+        model.addAttribute("user", user); // Thêm object user vào model
 
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
@@ -464,6 +480,7 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
+        model.addAttribute("user", user); // Thêm object user vào model
 
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
@@ -485,23 +502,147 @@ public class ViewController {
         }
 
         User user = (User) authentication.getPrincipal();
-        model.addAttribute("username", user.getUsername());
+        // Refresh user from database to get latest avatarUrl
+        User freshUser = userRepository.findById(user.getId()).orElse(user);
+        model.addAttribute("username", freshUser.getUsername());
         model.addAttribute("isAuthenticated", true);
-        model.addAttribute("userRole", user.getRole().name());
+        model.addAttribute("userRole", freshUser.getRole().name());
+        model.addAttribute("user", freshUser); // Thêm object user vào model
 
         // Lấy số dư ví
-        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+        BigDecimal walletBalance = walletRepository.findByUserId(freshUser.getId())
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
 
         // Thêm thông tin ngày đăng ký
-        model.addAttribute("userCreatedAt", user.getCreatedAt());
+        model.addAttribute("userCreatedAt", freshUser.getCreatedAt());
 
         // Thêm thông tin đơn hàng (tạm thời set 0, có thể cập nhật sau)
         model.addAttribute("totalOrders", 0);
 
+        // Lấy lịch sử hoạt động gần đây (5 hoạt động mới nhất)
+        model.addAttribute("recentActivities", auditLogService.getRecentUserAuditLogs(freshUser.getId(), 5));
+
         return "customer/profile";
+    }
+
+    @GetMapping("/activity-history")
+    public String activityHistoryPage(Model model, 
+                                    @RequestParam(defaultValue = "1") int page,
+                                    @RequestParam(required = false) String action,
+                                    @RequestParam(required = false) Boolean success,
+                                    @RequestParam(required = false) String fromDate,
+                                    @RequestParam(required = false) String toDate,
+                                    @RequestParam(required = false) String technicalAction,
+                                    @RequestParam(required = false) String ipFilter) {
+        try {
+            log.info("Activity history page requested for page: {}, action: {}, success: {}", page, action, success);
+            
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                    !authentication.getName().equals("anonymousUser");
+
+            if (!isAuthenticated) {
+                log.warn("Unauthenticated access to activity history page");
+                return "redirect:/login";
+            }
+
+            User user = (User) authentication.getPrincipal();
+            log.info("Loading activity history for user: {}", user.getUsername());
+            
+            model.addAttribute("username", user.getUsername());
+            model.addAttribute("isAuthenticated", true);
+            model.addAttribute("userRole", user.getRole().name());
+            model.addAttribute("user", user);
+
+            // Lấy số dư ví với error handling
+            try {
+                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
+                        .map(Wallet::getBalance)
+                        .orElse(BigDecimal.ZERO);
+                model.addAttribute("walletBalance", walletBalance);
+                log.debug("Wallet balance for user {}: {}", user.getId(), walletBalance);
+            } catch (Exception e) {
+                log.error("Error getting wallet balance for user {}: {}", user.getId(), e.getMessage());
+                model.addAttribute("walletBalance", BigDecimal.ZERO);
+            }
+
+            // Use technicalAction if provided, otherwise use action
+            String finalAction = (technicalAction != null && !technicalAction.isEmpty()) ? technicalAction : action;
+            
+            // Lấy lịch sử hoạt động với retry logic và error handling
+            Page<AuditLogResponse> activities = null;
+            int maxRetries = 3;
+            int retryCount = 0;
+            
+            while (activities == null && retryCount < maxRetries) {
+                try {
+                    log.info("Attempting to get audit logs for user {} (attempt {})", user.getId(), retryCount + 1);
+                    activities = auditLogService.getUserAuditLogsWithFilters(
+                            user.getId(), page, 5, finalAction, success, fromDate, toDate);
+                    
+                    if (activities != null) {
+                        log.info("Successfully retrieved {} activities for user {}", activities.getTotalElements(), user.getId());
+                    }
+                    break;
+                } catch (Exception e) {
+                    retryCount++;
+                    log.error("Attempt {} failed to get audit logs for user {}: {}", retryCount, user.getId(), e.getMessage());
+                    
+                    if (retryCount >= maxRetries) {
+                        log.error("All retry attempts failed for user {}", user.getId());
+                        activities = Page.empty();
+                    } else {
+                        // Wait before retry
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            log.error("Thread interrupted while retrying for user {}", user.getId());
+                            activities = Page.empty();
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (activities == null) {
+                activities = Page.empty();
+            }
+            
+            model.addAttribute("activities", activities);
+            model.addAttribute("currentPage", page);
+            
+            // Filter parameters
+            model.addAttribute("selectedAction", finalAction);
+            model.addAttribute("selectedSuccess", success);
+            model.addAttribute("selectedFromDate", fromDate);
+            model.addAttribute("selectedToDate", toDate);
+            model.addAttribute("selectedIp", ipFilter);
+            
+            // Available actions for filter with user-friendly names
+            Map<String, String> actionMappings = new HashMap<>();
+            actionMappings.put("LOGIN", "Đăng nhập");
+            actionMappings.put("LOGOUT", "Đăng xuất");
+            actionMappings.put("ACCOUNT_LOCKED", "Khóa tài khoản");
+            actionMappings.put("ACCOUNT_UNLOCKED", "Mở khóa tài khoản");
+            actionMappings.put("PASSWORD_CHANGE", "Đổi mật khẩu");
+            actionMappings.put("PROFILE_UPDATE", "Cập nhật thông tin");
+            actionMappings.put("REGISTER", "Đăng ký tài khoản");
+            actionMappings.put("OTP_VERIFY", "Xác minh OTP");
+            
+            model.addAttribute("actionMappings", actionMappings);
+            model.addAttribute("availableActions", actionMappings.keySet());
+
+            log.info("Activity history page loaded successfully for user {}", user.getUsername());
+            return "customer/activity-history";
+            
+        } catch (Exception e) {
+            log.error("Critical error in activityHistoryPage: {}", e.getMessage(), e);
+            // Return error page or redirect to home
+            return "redirect:/";
+        }
     }
 
     @GetMapping("/cart")
@@ -518,6 +659,7 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
+        model.addAttribute("user", user); // Thêm object user vào model
 
         // Lấy số dư ví
         BigDecimal walletBalance = walletRepository.findByUserId(user.getId())

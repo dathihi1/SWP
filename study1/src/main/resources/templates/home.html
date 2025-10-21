@@ -65,7 +65,10 @@
 
                     <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-user"></i>
+                            <img src="/images/default-avatar.svg" 
+                                 class="rounded-circle" 
+                                 style="width: 24px; height: 24px; object-fit: cover;"
+                                 alt="Avatar">
                             <span th:text="${username}">User</span>
                         </button>
                         <ul class="dropdown-menu">
@@ -395,10 +398,43 @@
                 type = '';
         }
 
-        // Redirect to products page with category filter
-        window.location.href = `/products?type=${type}`;
+    // Redirect to products page with category filter
+    window.location.href = `/products?type=${type}`;
     }
 
+    // Handle OAuth2 login success (no auto-reload to avoid loops)
+    function handleOAuth2LoginSuccess() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('login') === 'success') {
+            showSuccessMessage('Đăng nhập Google thành công!');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+    
+    function showSuccessMessage(message) {
+        // Create a temporary success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            <i class="fa-solid fa-check-circle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        }, 3000);
+    }
+
+    // Initialize OAuth2 login success handler
+    document.addEventListener('DOMContentLoaded', function() {
+        handleOAuth2LoginSuccess();
+    });
 
 </script>
 </body>

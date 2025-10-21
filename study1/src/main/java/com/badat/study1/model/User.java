@@ -85,6 +85,13 @@ public class User extends BaseEntity implements UserDetails {
     @Column(name = "provider_id", length = 100)
     String providerId;
     
+    @Lob
+    @Column(name = "avatar_data", columnDefinition = "LONGBLOB")
+    byte[] avatarData;
+    
+    @Column(name = "avatar_url", length = 500)
+    String avatarUrl; // Cho trường hợp lấy từ Google OAuth
+    
     public enum Role {
         USER, ADMIN, SELLER
     }

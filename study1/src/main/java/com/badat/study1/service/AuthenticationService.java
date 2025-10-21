@@ -25,26 +25,42 @@ public class AuthenticationService {
     private final RedisTokenRepository redisTokenRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
+    private final LoginAttemptService loginAttemptService;
 
-    public LoginResponse login(LoginRequest request){
+    public LoginResponse login(LoginRequest request, String ipAddress, String deviceInfo){
         // Find user by username
         Optional<User> userOpt = userRepository.findByUsername(request.getUsername());
         if (userOpt.isEmpty()) {
+            // Log failed attempt for non-existent user
+            auditLogService.logLoginAttempt(null, ipAddress, false, "Tên đăng nhập không tồn tại", deviceInfo);
             throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
         }
         
         User user = userOpt.get();
         
-        
+        // Check if account is locked
+        if (loginAttemptService.isAccountLocked(user.getUsername())) {
+            auditLogService.logLoginAttempt(user, ipAddress, false, "Tài khoản đã bị khóa", deviceInfo);
+            throw new RuntimeException("Tài khoản đã bị khóa do quá nhiều lần đăng nhập sai. Vui lòng thử lại sau 15 phút.");
+        }
         
         if (user.getStatus() == User.Status.LOCKED) {
+            auditLogService.logLoginAttempt(user, ipAddress, false, "Tài khoản đã bị khóa", deviceInfo);
             throw new RuntimeException("Tài khoản đã bị khóa");
         }
         
         // Verify password
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            // Record failed attempt
+            loginAttemptService.recordFailedLoginAttempt(user.getUsername(), ipAddress);
+            auditLogService.logLoginAttempt(user, ipAddress, false, "Mật khẩu không đúng", deviceInfo);
             throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
         }
+        
+        // Record successful login
+        loginAttemptService.recordSuccessfulLogin(user.getUsername(), ipAddress);
+        auditLogService.logLoginAttempt(user, ipAddress, true, null, deviceInfo);
         
         // Generate tokens
         String accessToken = jwtService.generateAccessToken(user);

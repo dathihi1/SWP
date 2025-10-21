@@ -1,92 +1,88 @@
 package com.badat.study1.controller;
 
-import com.badat.study1.dto.request.ProfileUpdateRequest;
-import com.badat.study1.dto.request.ChangePasswordRequest;
-import com.badat.study1.dto.response.ApiResponse;
-import com.badat.study1.dto.response.ProfileResponse;
+import com.badat.study1.dto.request.UpdateProfileRequest;
+import com.badat.study1.model.User;
+import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/profile")
+@RequestMapping("/api")
 @RequiredArgsConstructor
+@Validated
 public class ProfileController {
-
+    
     private final UserService userService;
-
-    @GetMapping
-    public ResponseEntity<ApiResponse<ProfileResponse>> getProfile(Authentication authentication) {
+    private final AuditLogService auditLogService;
+    
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@Valid @RequestBody UpdateProfileRequest request, 
+                                        HttpServletRequest httpRequest) {
         try {
-            String username = authentication.getName();
-            ProfileResponse profile = userService.getProfile(username);
-            return ResponseEntity.ok(ApiResponse.success("Profile retrieved successfully", profile));
-        } catch (Exception e) {
-            log.error("Error getting profile: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Failed to get profile: " + e.getMessage()));
-        }
-    }
-
-    @PutMapping
-    public ResponseEntity<ApiResponse<ProfileResponse>> updateProfile(
-            @RequestBody ProfileUpdateRequest request,
-            Authentication authentication) {
-        try {
-            String username = authentication.getName();
-            ProfileResponse updatedProfile = userService.updateProfile(username, request);
-            return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updatedProfile));
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() || 
+                authentication.getName().equals("anonymousUser")) {
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+            }
+            
+            User currentUser = (User) authentication.getPrincipal();
+            String ipAddress = getClientIpAddress(httpRequest);
+            
+            log.info("Profile update request for user: {}, IP: {}", currentUser.getUsername(), ipAddress);
+            
+            // Update user profile
+            User updatedUser = userService.updateProfile(currentUser.getId(), request);
+            
+            // Log the profile update
+            auditLogService.logProfileUpdate(updatedUser, ipAddress, "Cập nhật thông tin cá nhân");
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Cập nhật thông tin thành công");
+            response.put("data", Map.of(
+                "id", updatedUser.getId(),
+                "username", updatedUser.getUsername(),
+                "email", updatedUser.getEmail(),
+                "fullName", updatedUser.getFullName(),
+                "phone", updatedUser.getPhone(),
+                "role", updatedUser.getRole().name(),
+                "status", updatedUser.getStatus().name()
+            ));
+            
+            return ResponseEntity.ok(response);
+            
         } catch (Exception e) {
             log.error("Error updating profile: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Failed to update profile: " + e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "error", "Có lỗi xảy ra khi cập nhật thông tin: " + e.getMessage()
+            ));
         }
     }
-
-    @DeleteMapping
-    public ResponseEntity<ApiResponse<Void>> deleteProfile(Authentication authentication) {
-        try {
-            String username = authentication.getName();
-            userService.deleteProfile(username);
-            return ResponseEntity.ok(ApiResponse.success("Profile deactivated successfully", null));
-        } catch (Exception e) {
-            log.error("Error deleting profile: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Failed to delete profile: " + e.getMessage()));
+    
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
         }
-    }
-
-    @GetMapping("/{username}")
-    public ResponseEntity<ApiResponse<ProfileResponse>> getProfileByUsername(@PathVariable String username) {
-        try {
-            ProfileResponse profile = userService.getProfile(username);
-            return ResponseEntity.ok(ApiResponse.success("Profile retrieved successfully", profile));
-        } catch (Exception e) {
-            log.error("Error getting profile by username: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Failed to get profile: " + e.getMessage()));
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
         }
-    }
-
-    @PostMapping("/change-password")
-    public ResponseEntity<ApiResponse<Void>> changePassword(
-            @RequestBody ChangePasswordRequest request,
-            Authentication authentication) {
-        try {
-            String username = authentication.getName();
-            userService.changePassword(username, request.getCurrentPassword(), request.getNewPassword());
-            return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công", null));
-        } catch (RuntimeException e) {
-            if ("Mật khẩu không đúng".equals(e.getMessage())) {
-                return ResponseEntity.badRequest().body(ApiResponse.error("Mật khẩu không đúng"));
-            }
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Lỗi đổi mật khẩu"));
-        }
+        
+        return request.getRemoteAddr();
     }
 }
