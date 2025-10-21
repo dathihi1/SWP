@@ -1,10 +1,8 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.Order;
-import com.badat.study1.model.Warehouse;
 import com.badat.study1.model.User;
 import com.badat.study1.service.OrderService;
-import com.badat.study1.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -25,10 +23,9 @@ import java.util.stream.Collectors;
 public class OrderController {
     
     private final OrderService orderService;
-    private final WarehouseRepository warehouseRepository;
     
     /**
-     * Lấy danh sách orders của user hiện tại với thông tin warehouse
+     * Lấy danh sách orders của user hiện tại với thông tin OrderItem
      */
     @GetMapping("/my-orders")
     public ResponseEntity<List<Map<String, Object>>> getMyOrders() {
@@ -38,35 +35,56 @@ public class OrderController {
             
             List<Order> orders = orderService.getOrdersByBuyer(user.getId());
             
-            // Chuyển đổi orders thành format mới với thông tin warehouse
+            // Chuyển đổi orders thành format mới với thông tin OrderItem
             List<Map<String, Object>> orderDetails = orders.stream().map(order -> {
-                try {
-                    Warehouse warehouse = warehouseRepository.findById(order.getWarehouseId()).orElse(null);
-                    Map<String, Object> orderMap = new HashMap<>();
-                    orderMap.put("id", order.getId());
-                    orderMap.put("orderCode", order.getOrderCode());
-                    orderMap.put("status", order.getStatus().name());
-                    orderMap.put("totalAmount", order.getTotalAmount());
-                    orderMap.put("unitPrice", order.getUnitPrice());
-                    orderMap.put("quantity", order.getQuantity());
-                    orderMap.put("createdAt", order.getCreatedAt());
-                    orderMap.put("itemData", warehouse != null ? warehouse.getItemData() : "N/A");
-                    orderMap.put("warehouseId", order.getWarehouseId());
-                    return orderMap;
-                } catch (Exception e) {
-                    log.error("Error processing order {}: {}", order.getId(), e.getMessage());
-                    Map<String, Object> orderMap = new HashMap<>();
-                    orderMap.put("id", order.getId());
-                    orderMap.put("orderCode", order.getOrderCode());
-                    orderMap.put("status", order.getStatus().name());
-                    orderMap.put("totalAmount", order.getTotalAmount());
-                    orderMap.put("unitPrice", order.getUnitPrice());
-                    orderMap.put("quantity", order.getQuantity());
-                    orderMap.put("createdAt", order.getCreatedAt());
-                    orderMap.put("itemData", "Error loading data");
-                    orderMap.put("warehouseId", order.getWarehouseId());
-                    return orderMap;
+                Map<String, Object> orderMap = new HashMap<>();
+                orderMap.put("id", order.getId());
+                orderMap.put("orderCode", order.getOrderCode());
+                orderMap.put("status", order.getStatus().name());
+                orderMap.put("totalAmount", order.getTotalAmount());
+                orderMap.put("totalCommissionAmount", order.getTotalCommissionAmount());
+                orderMap.put("totalSellerAmount", order.getTotalSellerAmount());
+                orderMap.put("paymentMethod", order.getPaymentMethod());
+                orderMap.put("createdAt", order.getCreatedAt());
+                orderMap.put("notes", order.getNotes());
+                
+                // Thêm thông tin OrderItem nếu có
+                if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+                    List<Map<String, Object>> orderItems = order.getOrderItems().stream().map(item -> {
+                        Map<String, Object> itemMap = new HashMap<>();
+                        itemMap.put("id", item.getId());
+                        itemMap.put("productId", item.getProductId());
+                        itemMap.put("productName", item.getProduct() != null ? item.getProduct().getName() : "N/A");
+                        itemMap.put("warehouseId", item.getWarehouseId());
+                        itemMap.put("quantity", item.getQuantity());
+                        itemMap.put("unitPrice", item.getUnitPrice());
+                        itemMap.put("totalAmount", item.getTotalAmount());
+                        itemMap.put("commissionAmount", item.getCommissionAmount());
+                        itemMap.put("sellerAmount", item.getSellerAmount());
+                        itemMap.put("status", item.getStatus().name());
+                        
+                        // Thêm thông tin warehouse với itemData
+                        if (item.getWarehouse() != null) {
+                            Map<String, Object> warehouseInfo = new HashMap<>();
+                            warehouseInfo.put("id", item.getWarehouse().getId());
+                            warehouseInfo.put("itemData", item.getWarehouse().getItemData());
+                            warehouseInfo.put("sellerId", item.getWarehouse().getUser() != null ? item.getWarehouse().getUser().getId() : null);
+                            warehouseInfo.put("sellerName", item.getWarehouse().getUser() != null ? item.getWarehouse().getUser().getUsername() : "N/A");
+                            itemMap.put("warehouse", warehouseInfo);
+                        } else {
+                            itemMap.put("warehouse", null);
+                        }
+                        
+                        return itemMap;
+                    }).collect(Collectors.toList());
+                    orderMap.put("orderItems", orderItems);
+                    orderMap.put("itemCount", orderItems.size());
+                } else {
+                    orderMap.put("orderItems", new java.util.ArrayList<>());
+                    orderMap.put("itemCount", 0);
                 }
+                
+                return orderMap;
             }).collect(Collectors.toList());
             
             return ResponseEntity.ok(orderDetails);
@@ -109,6 +127,78 @@ public class OrderController {
             
         } catch (Exception e) {
             log.error("Error getting order by code: {}", orderCode, e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
+    /**
+     * Lấy chi tiết order với OrderItem theo ID
+     */
+    @GetMapping("/detail/{orderId}")
+    public ResponseEntity<Map<String, Object>> getOrderDetail(@PathVariable Long orderId) {
+        try {
+            Order order = orderService.getOrderWithItems(orderId)
+                    .orElseThrow(() -> new RuntimeException("Order not found"));
+            
+            Map<String, Object> orderDetail = new HashMap<>();
+            orderDetail.put("id", order.getId());
+            orderDetail.put("orderCode", order.getOrderCode());
+            orderDetail.put("status", order.getStatus().name());
+            orderDetail.put("totalAmount", order.getTotalAmount());
+            orderDetail.put("totalCommissionAmount", order.getTotalCommissionAmount());
+            orderDetail.put("totalSellerAmount", order.getTotalSellerAmount());
+            orderDetail.put("paymentMethod", order.getPaymentMethod());
+            orderDetail.put("createdAt", order.getCreatedAt());
+            orderDetail.put("notes", order.getNotes());
+            
+            // Thêm thông tin buyer
+            if (order.getBuyer() != null) {
+                Map<String, Object> buyerInfo = new HashMap<>();
+                buyerInfo.put("id", order.getBuyer().getId());
+                buyerInfo.put("username", order.getBuyer().getUsername());
+                buyerInfo.put("email", order.getBuyer().getEmail());
+                orderDetail.put("buyer", buyerInfo);
+            }
+            
+            // Thêm thông tin OrderItem
+            if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+                List<Map<String, Object>> orderItems = order.getOrderItems().stream().map(item -> {
+                    Map<String, Object> itemMap = new HashMap<>();
+                    itemMap.put("id", item.getId());
+                    itemMap.put("productId", item.getProductId());
+                    itemMap.put("productName", item.getProduct() != null ? item.getProduct().getName() : "N/A");
+                    itemMap.put("warehouseId", item.getWarehouseId());
+                    itemMap.put("quantity", item.getQuantity());
+                    itemMap.put("unitPrice", item.getUnitPrice());
+                    itemMap.put("totalAmount", item.getTotalAmount());
+                    itemMap.put("commissionAmount", item.getCommissionAmount());
+                    itemMap.put("sellerAmount", item.getSellerAmount());
+                    itemMap.put("status", item.getStatus().name());
+                    itemMap.put("notes", item.getNotes());
+                    
+                    // Thêm thông tin warehouse nếu có
+                    if (item.getWarehouse() != null) {
+                        Map<String, Object> warehouseInfo = new HashMap<>();
+                        warehouseInfo.put("id", item.getWarehouse().getId());
+                        warehouseInfo.put("itemData", item.getWarehouse().getItemData());
+                        warehouseInfo.put("sellerId", item.getWarehouse().getUser() != null ? item.getWarehouse().getUser().getId() : null);
+                        warehouseInfo.put("sellerName", item.getWarehouse().getUser() != null ? item.getWarehouse().getUser().getUsername() : "N/A");
+                        itemMap.put("warehouse", warehouseInfo);
+                    }
+                    
+                    return itemMap;
+                }).collect(Collectors.toList());
+                orderDetail.put("orderItems", orderItems);
+                orderDetail.put("itemCount", orderItems.size());
+            } else {
+                orderDetail.put("orderItems", new java.util.ArrayList<>());
+                orderDetail.put("itemCount", 0);
+            }
+            
+            return ResponseEntity.ok(orderDetail);
+            
+        } catch (Exception e) {
+            log.error("Error getting order detail: {}", orderId, e);
             return ResponseEntity.notFound().build();
         }
     }

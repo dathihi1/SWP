@@ -85,9 +85,9 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     Optional<Warehouse> findFirstByProductIdAndLockedFalseAndIsDeleteFalse(Long productId);
     
     /**
-     * Find top N warehouse items by product ID (not locked, not deleted) - for batch locking
+     * Find warehouse items by product ID (not locked, not deleted) with pagination - for batch locking
      */
-    List<Warehouse> findTopByProductIdAndLockedFalseAndIsDeleteFalse(Long productId, Pageable pageable);
+    List<Warehouse> findByProductIdAndLockedFalseAndIsDeleteFalseOrderByCreatedAtAsc(Long productId, Pageable pageable);
     
     /**
      * Count available warehouse items for product (not locked, not deleted)

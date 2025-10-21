@@ -9,6 +9,7 @@ import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.integration.redis.util.RedisLockRegistry;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,8 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -29,28 +32,50 @@ public class WalletHoldService {
     private final WalletHistoryService walletHistoryService;
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final RedisLockRegistry redisLockRegistry;
     
     /**
      * Hold money trong ví user với thời gian 1 phút (để test)
+     * Sử dụng Redis lock để tránh race condition khi cùng 1 user
      */
     @Transactional
     public void holdMoney(Long userId, BigDecimal amount, String orderId) {
         log.info("Holding money for user {}: {} VND, order: {}", userId, amount, orderId);
         
-        // 1. Kiểm tra số dư
-        Wallet wallet = walletRepository.findByUserId(userId)
-            .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + userId));
-            
-        if (wallet.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance. Required: " + amount + ", Available: " + wallet.getBalance());
+        // User-level lock để tránh race condition khi cùng 1 user
+        String userLockKey = "user:wallet:lock:" + userId;
+        Lock userLock = redisLockRegistry.obtain(userLockKey);
+        
+        try {
+            if (userLock.tryLock(10, TimeUnit.SECONDS)) {
+                log.info("Acquired user wallet lock for user: {}", userId);
+                
+                // 1. Kiểm tra số dư (double-check trong lock)
+                Wallet wallet = walletRepository.findByUserId(userId)
+                    .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + userId));
+                    
+                log.info("Current wallet balance for user {}: {} VND", userId, wallet.getBalance());
+                
+                if (wallet.getBalance().compareTo(amount) < 0) {
+                    throw new RuntimeException("Insufficient balance. Required: " + amount + ", Available: " + wallet.getBalance());
+                }
+                
+                // 2. Trừ tiền khỏi wallet
+                BigDecimal newBalance = wallet.getBalance().subtract(amount);
+                wallet.setBalance(newBalance);
+                walletRepository.save(wallet);
+                
+                log.info("Wallet balance updated for user {}: {} -> {} VND", userId, wallet.getBalance(), newBalance);
+            } else {
+                throw new RuntimeException("Failed to acquire wallet lock for user: " + userId + " - another operation is in progress");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while waiting for wallet lock for user: " + userId, e);
+        } finally {
+            userLock.unlock();
+            log.info("Released user wallet lock for user: {}", userId);
         }
-        
-        // 2. Trừ tiền khỏi wallet
-        BigDecimal newBalance = wallet.getBalance().subtract(amount);
-        wallet.setBalance(newBalance);
-        walletRepository.save(wallet);
-        
-        log.info("Wallet balance updated for user {}: {} -> {}", userId, wallet.getBalance(), newBalance);
         
         // 3. Tạo hold record với thời gian 1 phút
         WalletHold hold = WalletHold.builder()
@@ -65,6 +90,8 @@ public class WalletHoldService {
         
         // 4. Tạo wallet history
         try {
+            Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + userId));
             walletHistoryService.saveHistory(
                 wallet.getId(),
                 amount.negate(), // Số âm vì đây là hold
@@ -83,6 +110,7 @@ public class WalletHoldService {
     
     /**
      * Release hold money về ví user
+     * Sử dụng Redis lock để tránh race condition
      */
     @Transactional
     public void releaseHold(Long holdId) {
@@ -96,20 +124,42 @@ public class WalletHoldService {
             return;
         }
         
-        // 1. Cập nhật hold status
-        hold.setStatus(WalletHold.Status.CANCELLED);
-        walletHoldRepository.save(hold);
+        // User-level lock để tránh race condition
+        String userLockKey = "user:wallet:lock:" + hold.getUserId();
+        Lock userLock = redisLockRegistry.obtain(userLockKey);
         
-        // 2. Hoàn tiền về ví
-        Wallet wallet = walletRepository.findByUserId(hold.getUserId())
-            .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + hold.getUserId()));
-            
-        BigDecimal newBalance = wallet.getBalance().add(hold.getAmount());
-        wallet.setBalance(newBalance);
-        walletRepository.save(wallet);
+        try {
+            if (userLock.tryLock(10, TimeUnit.SECONDS)) {
+                log.info("Acquired user wallet lock for release hold: {}", holdId);
+                
+                // 1. Cập nhật hold status
+                hold.setStatus(WalletHold.Status.CANCELLED);
+                walletHoldRepository.save(hold);
+                
+                // 2. Hoàn tiền về ví
+                Wallet wallet = walletRepository.findByUserId(hold.getUserId())
+                    .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + hold.getUserId()));
+                    
+                BigDecimal newBalance = wallet.getBalance().add(hold.getAmount());
+                wallet.setBalance(newBalance);
+                walletRepository.save(wallet);
+                
+                log.info("Wallet balance restored for user {}: {} -> {} VND", hold.getUserId(), wallet.getBalance(), newBalance);
+            } else {
+                throw new RuntimeException("Failed to acquire wallet lock for release hold: " + holdId);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while waiting for wallet lock for release hold: " + holdId, e);
+        } finally {
+            userLock.unlock();
+            log.info("Released user wallet lock for release hold: {}", holdId);
+        }
         
         // 3. Tạo wallet history
         try {
+            Wallet wallet = walletRepository.findByUserId(hold.getUserId())
+                .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + hold.getUserId()));
             walletHistoryService.saveHistory(
                 wallet.getId(),
                 hold.getAmount(), // Số dương vì đây là hoàn tiền
@@ -124,6 +174,77 @@ public class WalletHoldService {
         }
         
         log.info("Hold released successfully for user {}: {} VND", hold.getUserId(), hold.getAmount());
+    }
+    
+    /**
+     * Release hold money về ví user bằng userId và orderId
+     * Sử dụng Redis lock để tránh race condition
+     */
+    @Transactional
+    public void releaseHold(Long userId, String orderId) {
+        log.info("Releasing hold for user {} with orderId: {}", userId, orderId);
+        
+        // User-level lock để tránh race condition
+        String userLockKey = "user:wallet:lock:" + userId;
+        Lock userLock = redisLockRegistry.obtain(userLockKey);
+        
+        try {
+            if (userLock.tryLock(10, TimeUnit.SECONDS)) {
+                log.info("Acquired user wallet lock for release hold: user={}, orderId={}", userId, orderId);
+                
+                // Tìm hold theo userId và orderId
+                List<WalletHold> userHolds = walletHoldRepository.findByUserIdAndOrderIdAndStatus(userId, orderId, WalletHold.Status.PENDING);
+                
+                if (userHolds.isEmpty()) {
+                    log.warn("No pending holds found for user {} with orderId: {}", userId, orderId);
+                    return;
+                }
+                
+                // Release tất cả holds cho user và orderId này
+                for (WalletHold hold : userHolds) {
+                    if (hold.getStatus() == WalletHold.Status.PENDING) {
+                        // 1. Cập nhật hold status
+                        hold.setStatus(WalletHold.Status.CANCELLED);
+                        walletHoldRepository.save(hold);
+                        
+                        // 2. Hoàn tiền về ví
+                        Wallet wallet = walletRepository.findByUserId(userId)
+                            .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + userId));
+                            
+                        BigDecimal newBalance = wallet.getBalance().add(hold.getAmount());
+                        wallet.setBalance(newBalance);
+                        walletRepository.save(wallet);
+                        
+                        log.info("Hold {} released for user {}: {} VND", hold.getId(), userId, hold.getAmount());
+                        
+                        // 3. Tạo wallet history
+                        try {
+                            walletHistoryService.saveHistory(
+                                wallet.getId(),
+                                hold.getAmount(), // Số dương vì đây là hoàn tiền
+                                hold.getOrderId(),
+                                null,
+                                WalletHistory.Type.REFUND,
+                                WalletHistory.Status.SUCCESS,
+                                "Hold released - Order: " + hold.getOrderId()
+                            );
+                        } catch (Exception e) {
+                            log.warn("Failed to create wallet history for release: {}", e.getMessage());
+                        }
+                    }
+                }
+                
+                log.info("All holds released successfully for user {} with orderId: {}", userId, orderId);
+            } else {
+                throw new RuntimeException("Failed to acquire wallet lock for user: " + userId + " - another operation is in progress");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while waiting for wallet lock for user: " + userId, e);
+        } finally {
+            userLock.unlock();
+            log.info("Released user wallet lock for user: {}", userId);
+        }
     }
     
     /**
@@ -234,8 +355,8 @@ public class WalletHoldService {
         
         // Tính tổng commission và seller amount từ tất cả orders
         for (Order order : orders) {
-            totalCommissionAmount = totalCommissionAmount.add(order.getCommissionAmount());
-            totalSellerAmount = totalSellerAmount.add(order.getSellerAmount());
+            totalCommissionAmount = totalCommissionAmount.add(order.getTotalCommissionAmount());
+            totalSellerAmount = totalSellerAmount.add(order.getTotalSellerAmount());
         }
         
         // 1. Cập nhật hold status
@@ -245,25 +366,35 @@ public class WalletHoldService {
         // 2. Chuyển tiền cho seller
         if (totalSellerAmount.compareTo(BigDecimal.ZERO) > 0) {
             try {
-                Wallet sellerWallet = walletRepository.findByUserId(orders.get(0).getSeller().getId())
-                    .orElseThrow(() -> new RuntimeException("Seller wallet not found"));
+                // Lấy seller từ OrderItem đầu tiên (tất cả OrderItem trong cùng Order sẽ có cùng seller)
+                Long sellerId = null;
+                if (!orders.isEmpty() && orders.get(0).getOrderItems() != null && !orders.get(0).getOrderItems().isEmpty()) {
+                    sellerId = orders.get(0).getOrderItems().get(0).getWarehouse().getUser().getId();
+                }
+                
+                if (sellerId != null) {
+                    Wallet sellerWallet = walletRepository.findByUserId(sellerId)
+                        .orElseThrow(() -> new RuntimeException("Seller wallet not found"));
+                        
+                    BigDecimal newSellerBalance = sellerWallet.getBalance().add(totalSellerAmount);
+                    sellerWallet.setBalance(newSellerBalance);
+                    walletRepository.save(sellerWallet);
                     
-                BigDecimal newSellerBalance = sellerWallet.getBalance().add(totalSellerAmount);
-                sellerWallet.setBalance(newSellerBalance);
-                walletRepository.save(sellerWallet);
-                
-                // Tạo wallet history cho seller
-                walletHistoryService.saveHistory(
-                    sellerWallet.getId(),
-                    totalSellerAmount,
-                    hold.getOrderId(),
-                    null,
-                    WalletHistory.Type.SALE_SUCCESS,
-                    WalletHistory.Status.SUCCESS,
-                    "Payment received from order: " + hold.getOrderId()
-                );
-                
-                log.info("Transferred {} VND to seller {}", totalSellerAmount, orders.get(0).getSeller().getId());
+                    // Tạo wallet history cho seller
+                    walletHistoryService.saveHistory(
+                        sellerWallet.getId(),
+                        totalSellerAmount,
+                        hold.getOrderId(),
+                        null,
+                        WalletHistory.Type.SALE_SUCCESS,
+                        WalletHistory.Status.SUCCESS,
+                        "Payment received from order: " + hold.getOrderId()
+                    );
+                    
+                    log.info("Transferred {} VND to seller {}", totalSellerAmount, sellerId);
+                } else {
+                    log.warn("No seller found for order {}", hold.getOrderId());
+                }
                 
             } catch (Exception e) {
                 log.error("Failed to transfer money to seller: {}", e.getMessage());

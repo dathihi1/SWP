@@ -456,12 +456,21 @@
                 checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang xử lý...';
                 
                 // Prepare cart data for improved payment system
+                console.log('All cart items:', cartItems.map(item => ({ id: item.product?.id, name: item.product?.name })));
+                console.log('Selected items Set:', Array.from(selectedItems));
                 const selectedCartItems = cartItems.filter(item => selectedItems.has(item.product?.id));
+                console.log('Selected cart items:', selectedCartItems.map(item => ({ id: item.product?.id, name: item.product?.name })));
+                console.log('Total cart items:', cartItems.length);
+                
                 const cartData = selectedCartItems.map(item => ({
                     productId: item.product?.id,
                     quantity: item.quantity,
                     price: item.product?.price,
-                    name: item.product?.name
+                    name: item.product?.name,
+                    warehouseId: item.product?.id, // Sử dụng productId làm warehouseId tạm thời
+                    stallId: item.product?.stallId,
+                    shopId: item.product?.shopId,
+                    sellerId: item.product?.shop?.userId || item.product?.shopId
                 }));
                 
                 const totalAmount = selectedCartItems.reduce((sum, item) => {
@@ -469,6 +478,9 @@
                     const qty = Number(item.quantity || 1);
                     return sum + (price * qty);
                 }, 0);
+                
+                console.log('Cart data to send:', cartData);
+                console.log('Total amount:', totalAmount);
                 
                 // Call improved payment API
                 const response = await fetch('/api/improved-payment/process-cart', {

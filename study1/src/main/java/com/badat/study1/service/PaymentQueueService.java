@@ -3,8 +3,9 @@ package com.badat.study1.service;
 import com.badat.study1.model.PaymentQueue;
 import com.badat.study1.model.Warehouse;
 import com.badat.study1.model.Order;
-import com.badat.study1.model.WalletHold;
+import com.badat.study1.model.OrderItem;
 import com.badat.study1.repository.PaymentQueueRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import org.springframework.integration.redis.util.RedisLockRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.concurrent.locks.Lock;
 
 @Service
@@ -29,6 +31,7 @@ public class PaymentQueueService {
     private final WalletHoldService walletHoldService;
     private final WarehouseLockService warehouseLockService;
     private final OrderService orderService;
+    private final OrderItemRepository orderItemRepository;
     private final ObjectMapper objectMapper;
     private final RedisLockRegistry redisLockRegistry;
     
@@ -118,6 +121,7 @@ public class PaymentQueueService {
         String paymentLockKey = "payment:process:" + payment.getId();
         Lock paymentLock = redisLockRegistry.obtain(paymentLockKey);
         
+        String orderId = null;
         try {
             if (paymentLock.tryLock(3, java.util.concurrent.TimeUnit.SECONDS)) {
                 log.info("Acquired lock for payment: {}", payment.getId());
@@ -130,9 +134,11 @@ public class PaymentQueueService {
             
                     // 2. Parse cart data
                     List<Map<String, Object>> cartItems = parseCartData(payment.getCartData());
+                    log.info("Parsed {} cart items for payment {}", cartItems.size(), payment.getId());
+                    log.debug("Cart items details: {}", cartItems);
 
                     // 3. Generate order id and HOLD MONEY (stock already validated before enqueueing)
-                    String orderId = "ORDER_" + payment.getUserId() + "_" + System.currentTimeMillis();
+                    orderId = "ORDER_" + payment.getUserId() + "_" + System.currentTimeMillis();
                     walletHoldService.holdMoney(payment.getUserId(), payment.getTotalAmount(), orderId);
 
                     // 4. Lock warehouse items AFTER holding funds - tính theo số lượng
@@ -152,21 +158,16 @@ public class PaymentQueueService {
                             payment.getUserId(), totalRequiredQuantity, lockedItems.size());
                         // Release hold trước khi throw exception - tìm hold theo orderId
                         try {
-                            List<WalletHold> userHolds = walletHoldService.getActiveHolds(payment.getUserId());
-                            for (WalletHold hold : userHolds) {
-                                if (hold.getOrderId().equals(orderId) && hold.getStatus() == WalletHold.Status.PENDING) {
-                                    walletHoldService.releaseHold(hold.getId());
-                                    break;
-                                }
-                            }
+                            // Sử dụng method mới với user-level lock
+                            walletHoldService.releaseHold(payment.getUserId(), orderId);
                         } catch (Exception releaseError) {
                             log.error("Failed to release hold during warehouse lock failure: {}", releaseError.getMessage());
                         }
                         throw new RuntimeException("Không thể khóa đủ số lượng hàng trong kho - có thể đã có người khác mua trước");
                     }
 
-                    // 5. Create orders
-                    createSimpleOrders(payment.getUserId(), cartItems, lockedItems, orderId);
+                    // 5. Create order with multiple items
+                    createOrderWithItems(payment.getUserId(), cartItems, lockedItems, orderId);
 
                     // 6. Mark as completed
                     payment.setStatus(PaymentQueue.Status.COMPLETED);
@@ -179,7 +180,7 @@ public class PaymentQueueService {
                     
                     // Nếu lỗi → unlock warehouse và hoàn tiền nếu đã hold
                     try {
-                        handlePaymentError(payment, e.getMessage());
+                        handlePaymentError(payment, orderId, e.getMessage());
                         markPaymentAsFailed(payment.getId(), "Payment failed - reverted changes");
                         log.info("Payment failed for payment {} - reverted holds and locks where applicable", payment.getId());
                     } catch (Exception errorHandlingException) {
@@ -199,68 +200,68 @@ public class PaymentQueueService {
     }
     
     /**
-     * Tạo orders đơn giản - sử dụng ID trực tiếp thay vì truy cập relationships
+     * Tạo order với nhiều items từ cart
      */
     @Transactional
-    private void createSimpleOrders(Long userId, List<Map<String, Object>> cartItems, List<Warehouse> lockedItems, String orderId) {
-        log.info("Creating simple orders for user: {} with {} items", userId, cartItems.size());
+    private void createOrderWithItems(Long userId, List<Map<String, Object>> cartItems, List<Warehouse> lockedItems, String orderId) {
+        log.info("Creating order with items for user: {} with {} cart items and {} locked warehouse items", 
+                userId, cartItems.size(), lockedItems.size());
         
-        // Tạo map để lưu thông tin product từ cart
-        Map<Long, Map<String, Object>> productInfo = new java.util.HashMap<>();
-        for (Map<String, Object> cartItem : cartItems) {
-            Long productId = Long.valueOf(cartItem.get("productId").toString());
-            productInfo.put(productId, cartItem);
+        // Tạo Order chính với tất cả OrderItem
+        Order order = orderService.createOrderFromCart(userId, cartItems, "WALLET", "Order from cart payment", orderId);
+        
+        // Cập nhật warehouseId thực tế cho các OrderItem
+        updateOrderItemsWithActualWarehouseIds(order, lockedItems);
+        
+        // Mark tất cả warehouse items as delivered
+        for (Warehouse lockedItem : lockedItems) {
+            warehouseLockService.markAsDelivered(lockedItem.getId());
         }
         
-        // Tạo 1 order cho mỗi warehouse item đã lock
-        for (Warehouse lockedItem : lockedItems) {
-            try {
-                Long productId = lockedItem.getProduct().getId();
+        log.info("Successfully created order {} with {} items for user: {}", order.getId(), cartItems.size(), userId);
+    }
+    
+    /**
+     * Cập nhật warehouseId thực tế cho các OrderItem
+     */
+    @Transactional
+    private void updateOrderItemsWithActualWarehouseIds(Order order, List<Warehouse> lockedItems) {
+        log.info("Updating OrderItems with actual warehouse IDs for order: {}", order.getId());
+        
+        // Group locked items by productId
+        Map<Long, List<Warehouse>> lockedItemsByProduct = lockedItems.stream()
+                .collect(Collectors.groupingBy(warehouse -> warehouse.getProduct().getId()));
+        
+        // Get all OrderItems for this order
+        List<OrderItem> orderItems = orderItemRepository.findByOrderIdOrderByCreatedAtAsc(order.getId());
+        
+        int warehouseIndex = 0;
+        for (OrderItem orderItem : orderItems) {
+            Long productId = orderItem.getProductId();
+            List<Warehouse> productWarehouses = lockedItemsByProduct.get(productId);
+            
+            if (productWarehouses != null && !productWarehouses.isEmpty()) {
+                // Gán warehouseId thực tế cho OrderItem
+                Warehouse actualWarehouse = productWarehouses.get(warehouseIndex % productWarehouses.size());
+                orderItem.setWarehouseId(actualWarehouse.getId());
                 
-                // Lấy thông tin product từ cart
-                Map<String, Object> productData = productInfo.get(productId);
-                if (productData == null) {
-                    log.error("Product data not found for productId: {}", productId);
-                    continue;
-                }
+                log.info("Updated OrderItem {} with warehouseId: {} (productId: {})", 
+                        orderItem.getId(), actualWarehouse.getId(), productId);
                 
-                BigDecimal unitPrice = new BigDecimal(productData.get("price").toString());
-                
-                // Tạo order cho từng warehouse item
-                Order order = orderService.createOrder(
-                    userId,                    // buyerId
-                    lockedItem.getUser().getId(),   // sellerId (từ warehouse.user)
-                    lockedItem.getShop().getId(),   // shopId (từ warehouse.shop)
-                    lockedItem.getStall().getId(),  // stallId (từ warehouse.stall)
-                    productId,               // productId
-                    lockedItem.getId(),      // warehouseId
-                    1,                       // quantity (mỗi warehouse item = 1 sản phẩm)
-                    unitPrice,               // unitPrice
-                    "WALLET",               // paymentMethod
-                    "Order from cart payment", // notes
-                    orderId                  // customOrderCode
-                );
-                
-                log.info("Created order {} for user {}: product {}, warehouse {}, quantity 1, price {}", 
-                    order.getId(), userId, productId, lockedItem.getId(), unitPrice);
-                
-                // Mark warehouse item as delivered
-                warehouseLockService.markAsDelivered(lockedItem.getId());
-                
-            } catch (Exception e) {
-                log.error("Failed to create order for user {}: warehouse item {}", userId, lockedItem.getId(), e);
-                throw e;
+                warehouseIndex++;
             }
         }
         
-        log.info("Successfully created all orders for user: {}", userId);
+        // Save updated OrderItems
+        orderItemRepository.saveAll(orderItems);
+        log.info("Updated {} OrderItems with actual warehouse IDs", orderItems.size());
     }
     
     /**
      * Xử lý lỗi payment - hoàn tiền và unlock warehouse
      */
     @Transactional
-    private void handlePaymentError(PaymentQueue payment, String errorMessage) {
+    private void handlePaymentError(PaymentQueue payment, String orderId, String errorMessage) {
         log.info("Handling payment error for payment {}: {}", payment.getId(), errorMessage);
         
         try {
@@ -279,19 +280,10 @@ public class PaymentQueueService {
                 }
             }
             
-            // Hoàn tiền về ví user - tìm hold theo userId và totalAmount
+            // Hoàn tiền về ví user - sử dụng method mới với user-level lock
             try {
-                List<WalletHold> userHolds = walletHoldService.getActiveHolds(payment.getUserId());
-                for (WalletHold hold : userHolds) {
-                    if (hold.getAmount().equals(payment.getTotalAmount()) && 
-                        hold.getStatus() == WalletHold.Status.PENDING) {
-                        
-                        walletHoldService.releaseHold(hold.getId());
-                        log.info("Released hold {} for user {} with amount {}", 
-                            hold.getId(), payment.getUserId(), hold.getAmount());
-                        break;
-                    }
-                }
+                walletHoldService.releaseHold(payment.getUserId(), orderId);
+                log.info("Released holds for user {} with orderId {}", payment.getUserId(), orderId);
             } catch (Exception refundError) {
                 log.error("Failed to refund money for payment {}: {}", payment.getId(), refundError.getMessage());
                 // Không throw exception để không block việc unlock warehouse

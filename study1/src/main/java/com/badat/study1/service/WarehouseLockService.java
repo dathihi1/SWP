@@ -148,10 +148,23 @@ public class WarehouseLockService {
                     if (lock.tryLock(5, java.util.concurrent.TimeUnit.SECONDS)) {
                         log.info("Acquired lock for product: {}", productId);
                         
+                        // 0. Kiểm tra số lượng có sẵn trước khi tìm
+                        long availableCount = warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(productId);
+                        log.info("Available stock for product {}: {} items", productId, availableCount);
+                        
+                        if (availableCount < requiredQuantity) {
+                            log.warn("Not enough stock for product {}. Required: {}, Available: {}", 
+                                productId, requiredQuantity, availableCount);
+                            throw new RuntimeException("Không đủ hàng cho sản phẩm: " + productId + 
+                                " (cần " + requiredQuantity + ", chỉ có " + availableCount + ")");
+                        }
+                        
                         // 1. Tìm CHÍNH XÁC số lượng cần trong 1 query
                         Pageable limit = Pageable.ofSize(requiredQuantity);
                         List<Warehouse> foundItems = warehouseRepository
-                            .findTopByProductIdAndLockedFalseAndIsDeleteFalse(productId, limit);
+                            .findByProductIdAndLockedFalseAndIsDeleteFalseOrderByCreatedAtAsc(productId, limit);
+                        
+                        log.info("Found {} items for product {} (requested: {})", foundItems.size(), productId, requiredQuantity);
 
                         // 2. Kiểm tra có đủ hàng không
                         if (foundItems.size() < requiredQuantity) {
