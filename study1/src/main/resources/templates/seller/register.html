@@ -118,7 +118,7 @@
                     <!-- Current Balance -->
                     <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                         <i class="fa-solid fa-wallet"></i>
-                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
+                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'POINT', 0, 'COMMA')}">0</span>
                     </div>
                     <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
@@ -128,7 +128,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
@@ -154,23 +154,19 @@
         <!-- Thông báo cho user đã có role SELLER -->
         <div th:if="${alreadySeller}" class="alert alert-info text-center" role="alert">
             <i class="fa-solid fa-handshake fa-3x text-primary mb-3"></i>
-            <h5 class="alert-heading mb-3 text-primary" th:text="${submitSuccess} ? 'Yêu cầu đăng ký bán hàng của bạn đã được gửi thành công!' : 'Bạn đã đăng ký shop rồi!'">Bạn đã đăng ký shop rồi!</h5>
+            <h5 class="alert-heading mb-3 text-primary" th:text="${submitSuccess} ? 'Yêu cầu đăng ký bán hàng của bạn đã được gửi thành công!' : 'Bạn đã đăng ký shop thành công!'">Bạn đã đăng ký shop thành công</h5>
             <div th:if="${submitSuccess}">
                 <p class="mb-1">Hệ thống đang chuyển yêu cầu của bạn đến quản trị viên để duyệt.</p>
                 <p class="mb-0">Dự kiến thời gian xử lý: 12–24 giờ làm việc.</p>
             </div>
             <div th:if="${submitSuccess == false}" class="d-flex justify-content-center mt-2">
-                <a class="btn btn-outline-primary keep-outline" th:href="@{/seller/shop}" href="/seller/shop">
+                <a class="btn btn-outline-primary keep-outline" th:href="@{/seller/stall-management}" href="/seller/stall-management">
                     <i class="fa-solid fa-store me-2"></i>Quản lí gian hàng
                 </a>
             </div>
         </div>
         
-        <div th:if="${pendingReview}" class="alert alert-warning text-center" role="alert">
-            <i class="fa-solid fa-hourglass-half fa-2x text-warning mb-2"></i>
-            <div class="fw-semibold">Yêu cầu đăng ký bán hàng của bạn đang được xét duyệt</div>
-            <div class="small">Dự kiến thời gian xử lý: 12–24 giờ làm việc.</div>
-        </div>
+        
         
         <!-- Form đăng ký chỉ hiển thị cho user chưa có role SELLER -->
         <form th:if="${!alreadySeller and !pendingReview}" method="post" th:action="@{/seller/register}" enctype="multipart/form-data" id="sellerRegisterForm">
@@ -187,6 +183,7 @@
                 <div class="field">
                     <label for="bankAccountNumber">Số tài khoản ngân hàng</label>
                     <input id="bankAccountNumber" name="bankAccountNumber" type="text" placeholder="123456789" required>
+                    <small class="text-danger">Chú ý: Tên chủ tài khoản ngân hàng phải khớp với họ và tên trong thông tin cá nhân</small>
                 </div>
                 <div class="field">
                     <label for="bankName">Tên ngân hàng</label>
@@ -198,7 +195,7 @@
                 <label class="small text-muted m-0"><input type="checkbox" id="agree" required> Tôi đồng ý với <a class="link-secondary" th:href="@{/terms}" target="_blank" rel="noopener noreferrer">Điều khoản & Chính sách</a></label>
                 <div>
                     <button class="btn secondary" type="reset">Xoá</button>
-                    <button class="btn primary" type="submit">Gửi đăng ký</button>
+                    <button class="btn primary" type="submit">Đăng ký</button>
                 </div>
             </div>
             <div th:if="${submitError}" class="alert alert-danger mt-3" th:text="${submitError}"></div>

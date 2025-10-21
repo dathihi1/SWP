@@ -5,12 +5,15 @@ import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.model.Product;
+import com.badat.study1.model.Order;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.UserRepository;
+import com.badat.study1.repository.OrderRepository;
+import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.dto.response.AuditLogResponse;
@@ -19,13 +22,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -37,6 +38,8 @@ import java.util.Map;
 import java.util.Base64;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 @Slf4j
 @Controller
@@ -47,11 +50,13 @@ public class ViewController {
     private final ProductRepository productRepository;
     private final UploadHistoryRepository uploadHistoryRepository;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
+    private final ReviewRepository reviewRepository;
 
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
 
-    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository) {
+    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, OrderRepository orderRepository, ReviewRepository reviewRepository) {
         this.walletRepository = walletRepository;
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
@@ -60,6 +65,8 @@ public class ViewController {
         this.walletHistoryService = walletHistoryService;
         this.auditLogService = auditLogService;
         this.userRepository = userRepository;
+        this.orderRepository = orderRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     // Inject common attributes (auth info and wallet balance) for all views
@@ -180,10 +187,13 @@ public class ViewController {
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
                         
+                        NumberFormat viNumber = NumberFormat.getInstance(new Locale("vi", "VN"));
+                        String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
+                        String maxStr = viNumber.format(maxPrice.setScale(0, RoundingMode.HALF_UP));
                         if (minPrice.equals(maxPrice)) {
-                            vm.put("priceRange", minPrice.setScale(0, RoundingMode.HALF_UP).toString() + " đ");
+                            vm.put("priceRange", minStr + " VND");
                         } else {
-                            vm.put("priceRange", minPrice.setScale(0, RoundingMode.HALF_UP) + " đ - " + maxPrice.setScale(0, RoundingMode.HALF_UP) + " đ");
+                            vm.put("priceRange", minStr + " VND - " + maxStr + " VND");
                         }
                     } else {
                         vm.put("priceRange", "Hết hàng");
@@ -265,7 +275,7 @@ public class ViewController {
     }
 
     @GetMapping("/seller/register")
-    public String sellerRegisterPage(Model model) {
+    public String sellerRegisterPage(Model model, RedirectAttributes redirectAttributes) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
                 !authentication.getName().equals("anonymousUser");
@@ -278,6 +288,19 @@ public class ViewController {
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
 
         User user = (User) authentication.getPrincipal();
+		// Require phone and full name before accessing seller registration
+		boolean missingPhone = (user.getPhone() == null || user.getPhone().trim().isEmpty());
+		boolean missingFullName = (user.getFullName() == null || user.getFullName().trim().isEmpty());
+		
+		log.info("Seller registration check - User: {}, Phone: {}, FullName: {}, MissingPhone: {}, MissingFullName: {}", 
+				user.getUsername(), user.getPhone(), user.getFullName(), missingPhone, missingFullName);
+		
+		if (missingPhone || missingFullName) {
+			log.info("Redirecting to profile - missing required info");
+			redirectAttributes.addFlashAttribute("infoRequired",
+					"Vui lòng cập nhật đầy đủ Họ và tên và Số điện thoại trước khi đăng ký bán hàng.");
+			return "redirect:/profile";
+		}
         model.addAttribute("username", user.getUsername());
         model.addAttribute("authorities", authentication.getAuthorities());
         model.addAttribute("userRole", user.getRole().name());
@@ -671,7 +694,7 @@ public class ViewController {
     }
 
 
-    @GetMapping("/seller/shop")
+    @GetMapping("/seller/gross-sales")
     public String sellerShopPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
@@ -732,7 +755,7 @@ public class ViewController {
     }
 
 
-    @GetMapping("/seller/shop-management")
+    @GetMapping("/seller/stall-management")
     public String sellerShopManagementPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
@@ -792,10 +815,13 @@ public class ViewController {
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
                         
+                        NumberFormat viNumber = NumberFormat.getInstance(new Locale("vi", "VN"));
+                        String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
+                        String maxStr = viNumber.format(maxPrice.setScale(0, RoundingMode.HALF_UP));
                         if (minPrice.equals(maxPrice)) {
-                            stall.setPriceRange(minPrice.setScale(0, RoundingMode.HALF_UP).toString() + " đ");
+                            stall.setPriceRange(minStr + " VND");
                         } else {
-                            stall.setPriceRange(minPrice.setScale(0, RoundingMode.HALF_UP) + " đ - " + maxPrice.setScale(0, RoundingMode.HALF_UP) + " đ");
+                            stall.setPriceRange(minStr + " VND - " + maxStr + " VND");
                         }
                     } else {
                         stall.setPriceRange("Hết hàng");
@@ -812,7 +838,7 @@ public class ViewController {
             model.addAttribute("totalProducts", totalProducts);
         });
 
-        return "seller/shop-management";
+        return "seller/stall-management";
     }
 
     @GetMapping("/seller/add-stall")
@@ -835,7 +861,7 @@ public class ViewController {
         // Check if user has a shop
         boolean hasShop = shopRepository.findByUserId(user.getId()).isPresent();
         if (!hasShop) {
-            return "redirect:/seller/shop-management";
+            return "redirect:/seller/stall-management";
         }
 
         model.addAttribute("username", user.getUsername());
@@ -881,7 +907,7 @@ public class ViewController {
         // Lấy thông tin gian hàng
         var stall = stallRepository.findById(id);
         if (stall.isEmpty()) {
-            return "redirect:/seller/shop-management";
+            return "redirect:/seller/stall-management";
         }
 
         // Kiểm tra quyền sở hữu gian hàng
@@ -926,7 +952,7 @@ public class ViewController {
         // Lấy thông tin gian hàng
         var stallOptional = stallRepository.findById(stallId);
         if (stallOptional.isEmpty()) {
-            return "redirect:/seller/shop-management";
+            return "redirect:/seller/stall-management";
         }
 
         Stall stall = stallOptional.get();
@@ -934,7 +960,7 @@ public class ViewController {
         // Kiểm tra quyền sở hữu gian hàng
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
-            return "redirect:/seller/shop-management";
+            return "redirect:/seller/stall-management";
         }
 
         model.addAttribute("stall", stall);
@@ -978,7 +1004,7 @@ public class ViewController {
         // Lấy thông tin sản phẩm
         var productOptional = productRepository.findById(productId);
         if (productOptional.isEmpty()) {
-            return "redirect:/seller/shop-management";
+            return "redirect:/seller/stall-management";
         }
 
         var product = productOptional.get();
@@ -986,12 +1012,12 @@ public class ViewController {
         // Kiểm tra quyền sở hữu sản phẩm
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
-            return "redirect:/seller/shop-management";
+            return "redirect:/seller/stall-management";
         }
 
         var stallOptional = stallRepository.findById(product.getStallId());
         if (stallOptional.isEmpty() || !stallOptional.get().getShopId().equals(userShop.get().getId())) {
-            return "redirect:/seller/shop-management";
+            return "redirect:/seller/stall-management";
         }
 
         model.addAttribute("product", product);
@@ -1009,6 +1035,235 @@ public class ViewController {
         model.addAttribute("hasPrevious", uploadHistoryPage.hasPrevious());
         
         return "seller/add-quantity";
+    }
+
+    @GetMapping("/seller/orders")
+    public String sellerOrdersPage(@RequestParam(defaultValue = "0") int page,
+                                   @RequestParam(required = false) String status,
+                                   @RequestParam(required = false) Long stallId,
+                                   @RequestParam(required = false) Long productId,
+                                   @RequestParam(required = false) String dateFrom,
+                                   @RequestParam(required = false) String dateTo,
+                                   Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+
+        User user = (User) authentication.getPrincipal();
+
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+
+        // Get seller's shop
+        var userShop = shopRepository.findByUserId(user.getId());
+        if (userShop.isEmpty()) {
+            return "redirect:/seller/stall-management";
+        }
+
+        // Get seller's stalls and products for filter dropdowns
+        var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
+        var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
+        
+        // Get orders for this seller with pagination (10 orders per page)
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<Order> ordersPage;
+        
+        // Build query based on filters
+        // SECURITY: Validate both seller_id and shop_id to ensure orders belong to this seller's shop
+        if (status != null && !status.isEmpty()) {
+            try {
+                Order.Status orderStatus = Order.Status.valueOf(status.toUpperCase());
+                ordersPage = orderRepository.findBySellerIdAndShopIdAndStatusOrderByCreatedAtDesc(user.getId(), userShop.get().getId(), orderStatus, pageable);
+            } catch (IllegalArgumentException e) {
+                ordersPage = orderRepository.findBySellerIdAndShopIdOrderByCreatedAtDesc(user.getId(), userShop.get().getId(), pageable);
+            }
+        } else {
+            ordersPage = orderRepository.findBySellerIdAndShopIdOrderByCreatedAtDesc(user.getId(), userShop.get().getId(), pageable);
+        }
+        
+        // Apply additional filters if provided
+        if (stallId != null || productId != null || (dateFrom != null && !dateFrom.isEmpty()) || (dateTo != null && !dateTo.isEmpty())) {
+            // SECURITY: Validate stallId belongs to seller's shop
+            boolean validStallId = true;
+            if (stallId != null) {
+                validStallId = stalls.stream().anyMatch(stall -> stall.getId().equals(stallId));
+            }
+            
+            // SECURITY: Validate productId belongs to seller's shop
+            boolean validProductId = true;
+            if (productId != null) {
+                validProductId = products.stream().anyMatch(product -> product.getId().equals(productId));
+            }
+            
+            // Only apply filters if they are valid
+            if (validStallId && validProductId) {
+                var allOrders = ordersPage.getContent();
+                var filteredOrders = allOrders.stream()
+                    .filter(order -> stallId == null || order.getStallId().equals(stallId))
+                    .filter(order -> productId == null || order.getProductId().equals(productId))
+                .filter(order -> {
+                    if (dateFrom == null || dateFrom.isEmpty()) return true;
+                    return order.getCreatedAt().toLocalDate().isAfter(java.time.LocalDate.parse(dateFrom).minusDays(1));
+                })
+                .filter(order -> {
+                    if (dateTo == null || dateTo.isEmpty()) return true;
+                    return order.getCreatedAt().toLocalDate().isBefore(java.time.LocalDate.parse(dateTo).plusDays(1));
+                })
+                .collect(java.util.stream.Collectors.toList());
+            
+            // Create a custom page with filtered results
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), filteredOrders.size());
+            var pageContent = filteredOrders.subList(start, end);
+            
+            ordersPage = new org.springframework.data.domain.PageImpl<>(
+                pageContent, 
+                pageable, 
+                filteredOrders.size()
+            );
+            }
+        }
+
+        model.addAttribute("orders", ordersPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", ordersPage.getTotalPages());
+        model.addAttribute("totalElements", ordersPage.getTotalElements());
+        model.addAttribute("hasNext", ordersPage.hasNext());
+        model.addAttribute("hasPrevious", ordersPage.hasPrevious());
+        model.addAttribute("selectedStatus", status);
+        model.addAttribute("selectedStallId", stallId);
+        model.addAttribute("selectedProductId", productId);
+        model.addAttribute("selectedDateFrom", dateFrom);
+        model.addAttribute("selectedDateTo", dateTo);
+        model.addAttribute("orderStatuses", Order.Status.values());
+        model.addAttribute("stalls", stalls);
+        model.addAttribute("products", products);
+
+        return "seller/orders";
+    }
+
+    @GetMapping("/seller/reviews")
+    public String sellerReviewsPage(@RequestParam(defaultValue = "0") int page,
+                                   Model model) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+
+        User user = (User) authentication.getPrincipal();
+
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+
+        // Get seller's shop
+        var userShop = shopRepository.findByUserId(user.getId());
+        if (userShop.isEmpty()) {
+            return "redirect:/seller/stall-management";
+        }
+
+        // Get seller's stalls with review statistics
+        var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
+        var stallStats = new java.util.ArrayList<java.util.Map<String, Object>>();
+        
+        for (var stall : stalls) {
+            var stallReviews = reviewRepository.findByStallIdAndIsDeleteFalse(stall.getId());
+            
+            double averageRating = 0.0;
+            int reviewCount = stallReviews.size();
+            
+            if (reviewCount > 0) {
+                averageRating = stallReviews.stream()
+                    .mapToInt(com.badat.study1.model.Review::getRating)
+                    .average()
+                    .orElse(0.0);
+            }
+            
+            var stallStat = new java.util.HashMap<String, Object>();
+            stallStat.put("stall", stall);
+            stallStat.put("averageRating", Math.round(averageRating * 10.0) / 10.0); // Round to 1 decimal
+            stallStat.put("reviewCount", reviewCount);
+            stallStats.add(stallStat);
+        }
+        
+        // Get reviews for this seller with pagination (10 reviews per page)
+        // SECURITY: Validate both seller_id and shop_id to ensure reviews belong to this seller's shop
+        Pageable pageable = PageRequest.of(page, 10);
+        Page<com.badat.study1.model.Review> reviewsPage = reviewRepository.findBySellerIdAndShopIdAndIsDeleteFalse(user.getId(), userShop.get().getId(), pageable);
+
+        model.addAttribute("reviews", reviewsPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", reviewsPage.getTotalPages());
+        model.addAttribute("totalElements", reviewsPage.getTotalElements());
+        model.addAttribute("hasNext", reviewsPage.hasNext());
+        model.addAttribute("hasPrevious", reviewsPage.hasPrevious());
+        model.addAttribute("stallStats", stallStats);
+
+        return "seller/reviews";
+    }
+
+    @PostMapping("/seller/reviews/{reviewId}/reply")
+    public String replyToReview(@PathVariable Long reviewId,
+                                @RequestParam String sellerReply,
+                                RedirectAttributes redirectAttributes) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+
+        User user = (User) authentication.getPrincipal();
+
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return "redirect:/profile";
+        }
+
+        // Get seller's shop for validation
+        var userShop = shopRepository.findByUserId(user.getId());
+        if (userShop.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy shop của bạn!");
+            return "redirect:/seller/reviews";
+        }
+
+        try {
+            var reviewOptional = reviewRepository.findById(reviewId);
+            if (reviewOptional.isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy đánh giá!");
+                return "redirect:/seller/reviews";
+            }
+
+            var review = reviewOptional.get();
+            
+            // SECURITY: Check if seller owns this review AND it belongs to their shop
+            if (!review.getSellerId().equals(user.getId()) || !review.getShopId().equals(userShop.get().getId())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền trả lời đánh giá này!");
+                return "redirect:/seller/reviews";
+            }
+
+            // Update seller reply
+            review.setReplyContent(sellerReply);
+            review.setReplyAt(java.time.LocalDateTime.now());
+            reviewRepository.save(review);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Đã trả lời đánh giá thành công!");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi trả lời đánh giá. Vui lòng thử lại!");
+        }
+
+        return "redirect:/seller/reviews";
     }
 
 }

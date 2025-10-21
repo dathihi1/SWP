@@ -301,7 +301,7 @@
         
         <div class="menu-section">
             <div class="section-title">SALE</div>
-            <a href="/seller/shop" class="menu-item">
+            <a href="/seller/gross-sales" class="menu-item">
                 <i class="fas fa-shopping-cart"></i>
                 Doanh số
             </a>
@@ -309,7 +309,7 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/shop-management" class="menu-item">
+            <a href="/seller/stall-management" class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
                 Quản lý gian hàng
             </a>
@@ -317,11 +317,11 @@
                 <i class="fas fa-plus"></i>
                 Thêm gian hàng
             </a>
-            <a href="#" class="menu-item">
+            <a href="/seller/orders" class="menu-item">
                 <i class="fas fa-file-invoice-dollar"></i>
                 Đơn hàng sản phẩm
             </a>
-            <a href="#" class="menu-item">
+            <a href="/seller/reviews" class="menu-item">
                 <i class="fas fa-comment"></i>
                 Đánh giá
             </a>
@@ -383,7 +383,7 @@
                         <h1 class="page-title">Chỉnh sửa gian hàng</h1>
                         <small class="text-muted" th:text="'Gian hàng: ' + ${stall.stallName}">Gian hàng: Tên gian hàng</small>
                     </div>
-                    <a th:href="@{/seller/shop-management}" href="/seller/shop-management" class="btn-back">
+                    <a th:href="@{/seller/stall-management}" href="/seller/stall-management" class="btn-back">
                         <i class="fas fa-arrow-left me-2"></i>
                         Quay lại
                     </a>
@@ -420,7 +420,7 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Loại gian hàng</label>
-                                <input type="text" class="form-control" th:value="${stall.stallCategory}" readonly>
+                                <input type="text" class="form-control" th:value="${stall.stallCategory == 'Tài Khoản' ? 'Tài khoản Email' : stall.stallCategory}" readonly>
                                 <div class="form-text">Không thể thay đổi</div>
                             </div>
                         </div>
@@ -710,7 +710,7 @@
                 })
                 .then(response => {
                     if (response.ok) {
-                        window.location.href = '/seller/shop-management';
+                        window.location.href = '/seller/stall-management';
                     } else {
                         alert('Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!');
                     }

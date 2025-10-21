@@ -25,15 +25,11 @@
     </style>
     <script src="/js/auth.js"></script>
     <script>
-        async function addToCart(productId){
+        async function addToCart(id){
             const qtyEl = document.getElementById('qty');
             const qty = qtyEl ? Math.max(1, parseInt(qtyEl.value || '1', 10)) : 1;
-            
-            // Use variant ID if available, otherwise use product ID
-            const itemId = selectedVariantId || productId;
-            
             try {
-                const res = await fetch(`/api/cart/add/${itemId}?quantity=${qty}`, {method:'POST'});
+                const res = await fetch(`/api/cart/add/${id}?quantity=${qty}`, {method:'POST'});
                 if(res.ok){
                     alert('Đã thêm vào giỏ hàng');
                 } else if (res.status === 401) {
@@ -88,7 +84,7 @@
                     <!-- Current Balance -->
                     <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                         <i class="fa-solid fa-wallet"></i>
-                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
+                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'POINT', 0, 'COMMA')}">0</span>
                     </div>
                     
                     <div class="dropdown">
@@ -99,7 +95,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
@@ -179,27 +175,30 @@
 
             <!-- Stock Status -->
             <div class="mb-3">
-                <span class="stock-badge" id="stock-display">Kho: 0</span>
+                <span class="stock-badge" th:if="${product.quantity == 0}">Hết hàng</span>
+                <span class="badge bg-success" th:if="${product.quantity > 0}" th:text="'Kho: ' + ${product.quantity}">Còn hàng</span>
             </div>
 
             <!-- Price -->
-            <div class="h4 text-danger mb-4" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</div>
+            <div class="h4 text-danger mb-4" th:text="${#numbers.formatDecimal(product.price, 0, 'POINT', 0, 'COMMA')} + ' VND'">0 VND</div>
 
             <!-- Product Variants -->
             <div class="mb-4">
                 <h6 class="mb-3">SẢN PHẨM</h6>
-                <div th:if="${#lists.isEmpty(variants)}" class="text-muted">
-                    <div class="product-variant selected" onclick="selectVariant(this)">
-                        <div class="fw-bold" th:text="${product.name}">Gmail USA 2-5 THÁNG. Bật 2FA. Not Used SỐNG TRÂU (ĐỌC MÔ TẢ)</div>
-                    </div>
+                <div class="product-variant selected" onclick="selectVariant(this)">
+                    <div class="fw-bold" th:text="${product.name}">Gmail USA 2-5 THÁNG. Bật 2FA. Not Used SỐNG TRÂU (ĐỌC MÔ TẢ)</div>
                 </div>
-                <div th:each="variant, iterStat : ${variants}" 
-                     th:class="${iterStat.first} ? 'product-variant selected' : 'product-variant'"
-                     th:onclick="'selectVariant(this, ' + ${variant.id} + ', ' + ${variant.stock} + ', ' + ${variant.price} + ')'"
-                     th:data-variant-id="${variant.id}"
-                     th:data-variant-stock="${variant.stock}"
-                     th:data-variant-price="${variant.price}">
-                    <div class="fw-bold" th:text="${variant.name}">Variant Name</div>
+                <div class="product-variant" onclick="selectVariant(this)">
+                    <div class="fw-bold">Gmail NEW RANDOM NGÂM 8-12 THÁNG. HÀNG TRÂU.</div>
+                </div>
+                <div class="product-variant" onclick="selectVariant(this)">
+                    <div class="fw-bold">Gmail USA 1-5 THÁNG. Not Used. SỐNG TRÂU (ĐỌC MÔ TẢ).</div>
+                </div>
+                <div class="product-variant" onclick="selectVariant(this)">
+                    <div class="fw-bold">GMAIL USA 10-20 THÁNG 2FA. NGÂM PTTT + Chpay+</div>
+                </div>
+                <div class="product-variant" onclick="selectVariant(this)">
+                    <div class="fw-bold">Gmail IOS USA 2022-2024 Not Used. SỐNG TRÂU (ĐỌC MÔ TẢ)</div>
                 </div>
             </div>
 
@@ -354,86 +353,19 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    let selectedVariantId = null;
-    let selectedVariantStock = 0;
-    let selectedVariantPrice = 0;
-
-    function selectVariant(element, variantId = null, stock = null, price = null) {
+    function selectVariant(element) {
         // Remove selected class from all variants
         document.querySelectorAll('.product-variant').forEach(v => v.classList.remove('selected'));
         // Add selected class to clicked variant
         element.classList.add('selected');
-        
-        // Update variant info if provided
-        if (variantId !== null && stock !== null && price !== null) {
-            selectedVariantId = variantId;
-            selectedVariantStock = stock;
-            selectedVariantPrice = price;
-            
-            // Update stock display
-            updateStockDisplay(stock);
-            
-            // Update price display
-            updatePriceDisplay(price);
-        } else {
-            // Fallback for product without variants
-            selectedVariantId = null;
-            selectedVariantStock = 0;
-            selectedVariantPrice = 0;
-            updateStockDisplay(0);
-        }
-    }
-
-    function updateStockDisplay(stock) {
-        const stockDisplay = document.getElementById('stock-display');
-        if (stockDisplay) {
-            if (stock > 0) {
-                stockDisplay.textContent = 'Kho: ' + stock;
-                stockDisplay.className = 'badge bg-success';
-            } else {
-                stockDisplay.textContent = 'Hết hàng';
-                stockDisplay.className = 'stock-badge';
-            }
-        }
-    }
-
-    function updatePriceDisplay(price) {
-        const priceDisplay = document.querySelector('.h4.text-danger.mb-4');
-        if (priceDisplay && price > 0) {
-            // Format price with commas
-            const formattedPrice = new Intl.NumberFormat('vi-VN').format(price);
-            priceDisplay.textContent = formattedPrice + ' VND';
-        }
     }
 
     function changeQty(delta) {
         const qtyEl = document.getElementById('qty');
         const currentQty = parseInt(qtyEl.value) || 1;
-        const maxQty = selectedVariantStock > 0 ? Math.min(10, selectedVariantStock) : 10;
-        const newQty = Math.max(1, Math.min(maxQty, currentQty + delta));
+        const newQty = Math.max(1, Math.min(10, currentQty + delta));
         qtyEl.value = newQty;
     }
-
-    // Initialize with first variant or product stock
-    document.addEventListener('DOMContentLoaded', function() {
-        const firstVariant = document.querySelector('.product-variant.selected');
-        if (firstVariant) {
-            const variantId = firstVariant.getAttribute('data-variant-id');
-            const stock = firstVariant.getAttribute('data-variant-stock');
-            const price = firstVariant.getAttribute('data-variant-price');
-            
-            if (variantId && stock !== null && price !== null) {
-                selectedVariantId = parseInt(variantId);
-                selectedVariantStock = parseInt(stock);
-                selectedVariantPrice = parseFloat(price);
-                updateStockDisplay(selectedVariantStock);
-                updatePriceDisplay(selectedVariantPrice);
-            } else {
-                // No variants, use product stock
-                updateStockDisplay(0);
-            }
-        }
-    });
 </script>
 </body>
 </html>

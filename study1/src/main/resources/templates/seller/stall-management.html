@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý mặt hàng/kho - MMO Market</title>
+    <title>Quản lý gian hàng - MMO Market</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -128,7 +128,7 @@
             margin-bottom: 0;
         }
         
-        .btn-back {
+        .btn-add-shop {
             background: linear-gradient(135deg, #0d6efd, #0b5ed7);
             border: none;
             color: white;
@@ -137,33 +137,13 @@
             font-weight: 500;
             font-size: 0.9rem;
             transition: all 0.3s ease;
-            text-decoration: none;
         }
         
-        .btn-back:hover {
+        .btn-add-shop:hover {
             background: linear-gradient(135deg, #0b5ed7, #0a58ca);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
             color: white;
-        }
-        
-        .stall-info {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        
-        .stall-category {
-            background-color: #28a745;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            display: inline-block;
-            margin-left: 10px;
         }
         
         .table-container {
@@ -216,12 +196,17 @@
             font-weight: 500;
         }
         
-        .status-available {
-            background-color: #d4edda;
-            color: #155724;
+        .status-active {
+            background-color: #d1f2eb;
+            color: #0f5132;
         }
         
-        .status-unavailable {
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-inactive {
             background-color: #f8d7da;
             color: #721c24;
         }
@@ -249,16 +234,6 @@
             color: white;
         }
         
-        .btn-add-quantity {
-            background-color: #28a745;
-            color: white;
-        }
-        
-        .btn-add-quantity:hover {
-            background-color: #218838;
-            color: white;
-        }
-        
         .btn-delete {
             background-color: #dc3545;
             color: white;
@@ -269,55 +244,27 @@
             color: white;
         }
         
-        .add-product-section {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-top: 20px;
-        }
-        
-        .form-control, .form-select {
-            border: 1px solid #ced4da;
-            border-radius: 8px;
-            padding: 12px 16px;
-            transition: all 0.3s ease;
-        }
-        
-        .form-control:focus, .form-select:focus {
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-        }
-        
-        .btn-add {
-            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
-            border: none;
+        .btn-view {
+            background-color: #6c757d;
             color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
         }
         
-        .btn-add:hover {
-            background: linear-gradient(135deg, #0b5ed7, #0a58ca);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+        .btn-view:hover {
+            background-color: #5a6268;
+            color: white;
+        }
+        
+        .btn-add-product {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-add-product:hover {
+            background-color: #218838;
             color: white;
         }
         
         
-        .required {
-            color: #dc3545;
-        }
-        
-        .form-text {
-            font-size: 0.875rem;
-            color: #6c757d;
-            margin-top: 5px;
-        }
-
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -360,7 +307,7 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/stall-management" class="menu-item">
+            <a href="/seller/stall-management" class="menu-item active">
                 <i class="fas fa-clipboard-list"></i>
                 Quản lý gian hàng
             </a>
@@ -396,10 +343,13 @@
             <div class="d-flex align-items-center gap-3">
                 <!-- Profile Dropdown -->
                 <div class="dropdown">
-                    <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                        <i class="fa-solid fa-user"></i>
-                        <span th:text="${username}">User</span>
-                    </button>
+                        <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                            <img th:src="${user != null} ? @{/api/profile/avatar/me} : '/images/default-avatar.svg'" 
+                                 class="rounded-circle" 
+                                 style="width: 24px; height: 24px; object-fit: cover;"
+                                 alt="Avatar">
+                            <span th:text="${username}">User</span>
+                        </button>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                         <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
@@ -431,128 +381,78 @@
             <div class="page-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h1 class="page-title">Quản lý mặt hàng/kho</h1>
+                        <h1 class="page-title">Quản lý gian hàng</h1>
+                        <small class="text-muted" th:text="'Hiện tại: ' + ${#lists.size(stalls)} + '/5 gian hàng'">Hiện tại: 0/5 gian hàng</small>
                     </div>
-                    <a th:href="@{/seller/stall-management}" href="/seller/stall-management" class="btn-back">
-                        <i class="fas fa-arrow-left me-2"></i>
-                        Quay lại
+                    <a href="/seller/add-stall" class="btn btn-add-shop" th:if="${#lists.size(stalls)} < 5">
+                        <i class="fas fa-plus me-2"></i>
+                        Thêm gian hàng
                     </a>
+                    <button class="btn btn-secondary" disabled th:if="${#lists.size(stalls)} >= 5">
+                        <i class="fas fa-ban me-2"></i>
+                        Đã đạt giới hạn (5/5)
+                    </button>
                 </div>
             </div>
             
-            <!-- Stall Information -->
-            <div class="stall-info">
-                <div class="d-flex align-items-center">
-                    <strong>Gian hàng:</strong>
-                    <span class="stall-category" th:text="${stall.stallCategory}">Loại gian hàng</span>
-                    <span class="ms-2" th:text="${stall.stallName}">Tên gian hàng</span>
-                </div>
-            </div>
             
-            <!-- Products Table -->
+            <!-- Stalls Table -->
             <div class="table-container">
                 <div class="table-header">
-                    <h5 class="table-title">Danh sách mặt hàng</h5>
+                    <h5 class="table-title">Danh sách gian hàng</h5>
                 </div>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Tên mặt hàng</th>
+                                <th>Tên gian hàng</th>
+                                <th>Loại</th>
+                                <th>Hoa hồng</th>
+                                <th>Kho</th>
                                 <th>Giá</th>
+                                <th>Ngày tạo</th>
                                 <th>Trạng thái</th>
-                                <th>Tồn kho</th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="product : ${products}" th:attr="data-product-id=${product.id}">
-                                <td th:text="${product.name}">Tên mặt hàng</td>
-                                <td th:text="${#numbers.formatDecimal(product.price, 0, 'POINT', 0, 'COMMA')}">Giá</td>
+                            <tr th:each="stall : ${stalls}">
+                                <td th:text="${stall.stallName}">Tên gian hàng</td>
+                                <td th:text="${stall.stallCategory == 'Tài Khoản' ? 'Tài khoản Email' : stall.stallCategory}">Loại gian hàng</td>
+                                <td th:text="${stall.discountPercentage} + '%'">Hoa hồng</td>
+                                <td>
+                                    <span th:text="${stall.productCount ?: 0}">0</span>
+                                </td>
+                                <td th:text="${stall.priceRange}">Giá</td>
+                                <td th:text="${#temporals.format(stall.createdAt, 'dd/MM/yyyy')}">Ngày tạo</td>
                                 <td>
                                     <span class="status-badge" 
-                                          th:classappend="${(product.quantity != null and product.quantity > 0)} ? 'status-available' : 'status-unavailable'"
-                                          th:text="${(product.quantity != null and product.quantity > 0)} ? 'Còn hàng' : 'Hết hàng'">
+                                          th:classappend="${stall.status == 'OPEN'} ? 'status-active' : 
+                                                         (${stall.status == 'PENDING'} ? 'status-pending' : 'status-inactive')"
+                                          th:text="${stall.status == 'OPEN'} ? 'Mở' : 
+                                                  (${stall.status == 'PENDING'} ? 'Chờ duyệt' : 'Đóng')">
                                         Trạng thái
                                     </span>
                                 </td>
-                                <td th:text="${product.quantity}">Tồn kho</td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn btn-action btn-edit" title="Sửa thông tin mặt hàng" th:onclick="'editProduct(' + ${product.id} + ')'">
+                                        <button class="btn btn-action btn-edit" title="Sửa gian hàng" th:onclick="'editStall(' + ${stall.id} + ')'">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <a th:href="@{/seller/add-quantity/{productId}(productId=${product.id})}" class="btn btn-action btn-add-quantity" title="Thêm số lượng">
+                                        <button class="btn btn-action btn-add-product" title="Thêm mặt hàng" th:onclick="'addProduct(' + ${stall.id} + ')'">
                                             <i class="fas fa-plus"></i>
-                                        </a>
-                                        <button class="btn btn-action btn-delete" title="Xóa mặt hàng" th:onclick="'deleteProduct(' + ${product.id} + ')'">
-                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-                            <tr th:if="${#lists.isEmpty(products)}">
-                                <td colspan="5" class="text-center text-muted py-4">
+                            <tr th:if="${#lists.isEmpty(stalls)}">
+                                <td colspan="8" class="text-center text-muted py-4">
                                     <i class="fas fa-inbox fa-2x mb-2"></i><br>
-                                    Chưa có mặt hàng nào.
+                                    Chưa có gian hàng nào.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
-            
-            <!-- Add Product Section -->
-            <div class="add-product-section">
-                <h5 class="mb-3">Thêm mặt hàng</h5>
-                <form th:action="@{/seller/add-product/{stallId}(stallId=${stall.id})}" method="post" id="addProductForm">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="productName" class="form-label">Tên mặt hàng <span class="required">*</span></label>
-                            <input type="text" class="form-control" id="productName" name="productName" placeholder="Tên mặt hàng" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="productPrice" class="form-label">Giá tiền <span class="required">*</span></label>
-                            <input type="number" class="form-control" id="productPrice" name="productPrice" placeholder="Giá tiền" min="0" step="1000" required>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-end">
-                        <button type="submit" class="btn btn-add">
-                            <i class="fas fa-plus me-2"></i>
-                            Thêm
-                        </button>
-                    </div>
-                </form>
-            </div>
-            
-            <!-- Edit Product Modal -->
-            <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="editProductModalLabel">Sửa mặt hàng</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form id="editProductForm" method="post">
-                            <div class="modal-body">
-                                <div class="mb-3">
-                                    <label for="editProductName" class="form-label">Tên mặt hàng <span class="required">*</span></label>
-                                    <input type="text" class="form-control" id="editProductName" name="productName" placeholder="Tên mặt hàng" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editProductPrice" class="form-label">Giá tiền <span class="required">*</span></label>
-                                    <input type="number" class="form-control" id="editProductPrice" name="productPrice" placeholder="Giá tiền" min="0" step="1000" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>
-                                    Cập nhật
-                                </button>
-                            </div>
-                        </form>
-                    </div>
                 </div>
             </div>
         </div>
@@ -579,76 +479,13 @@
         });
         
         // Action button functions
-        function editProduct(productId) {
-            // Find the product row to get current data
-            const productRow = document.querySelector(`tr[data-product-id="${productId}"]`);
-            if (productRow) {
-                const productName = productRow.querySelector('td:nth-child(1)').textContent.trim();
-                const productPrice = productRow.querySelector('td:nth-child(2)').textContent.trim().replace(/[^\d]/g, '');
-                
-                // Populate modal with current data
-                document.getElementById('editProductName').value = productName;
-                document.getElementById('editProductPrice').value = productPrice;
-                
-                // Set form action
-                document.getElementById('editProductForm').action = '/seller/update-product/' + productId;
-                
-                // Show modal
-                const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
-                modal.show();
-            }
+        function editStall(stallId) {
+            window.location.href = '/seller/edit-stall/' + stallId;
         }
         
-        function addQuantity(productId) {
-            const quantity = prompt('Nhập số lượng muốn thêm:');
-            if (quantity && !isNaN(quantity) && parseInt(quantity) > 0) {
-                // Create a form to submit the quantity update
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/seller/update-product-quantity/' + productId;
-                
-                const quantityInput = document.createElement('input');
-                quantityInput.type = 'hidden';
-                quantityInput.name = 'newQuantity';
-                quantityInput.value = quantity;
-                
-                form.appendChild(quantityInput);
-                document.body.appendChild(form);
-                form.submit();
-            }
+        function addProduct(stallId) {
+            window.location.href = '/seller/product-management/' + stallId;
         }
-        
-        function deleteProduct(productId) {
-            if (confirm('Bạn có chắc chắn muốn xóa mặt hàng này?')) {
-                // Create a form to submit the delete request
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/seller/delete-product/' + productId;
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-        
-        // Form validation
-        document.getElementById('addProductForm').addEventListener('submit', function(e) {
-            const productName = document.getElementById('productName').value.trim();
-            const productPrice = document.getElementById('productPrice').value;
-            
-            if (productName.length === 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập tên mặt hàng');
-                document.getElementById('productName').focus();
-                return;
-            }
-            
-            if (productPrice === '' || parseFloat(productPrice) <= 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập giá mặt hàng hợp lệ');
-                document.getElementById('productPrice').focus();
-                return;
-            }
-        });
     </script>
 </body>
 </html>
