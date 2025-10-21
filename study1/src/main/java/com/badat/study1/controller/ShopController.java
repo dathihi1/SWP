@@ -9,13 +9,11 @@ import com.badat.study1.model.Warehouse;
 import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
-import com.badat.study1.repository.TransactionRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.WarehouseRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -41,15 +39,14 @@ public class ShopController {
     private final ProductRepository productRepository;
     private final UploadHistoryRepository uploadHistoryRepository;
     private final WarehouseRepository warehouseRepository;
-    private final TransactionRepository transactionRepository;
+    
 
-    public ShopController(ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WarehouseRepository warehouseRepository, TransactionRepository transactionRepository) {
+    public ShopController(ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WarehouseRepository warehouseRepository) {
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
         this.productRepository = productRepository;
         this.uploadHistoryRepository = uploadHistoryRepository;
         this.warehouseRepository = warehouseRepository;
-        this.transactionRepository = transactionRepository;
     }
 
     @PostMapping("/seller/add-stall")
@@ -98,7 +95,7 @@ public class ShopController {
             
             if (userShop == null) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn chưa có shop. Vui lòng tạo shop trước khi tạo gian hàng!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Check if user already has maximum number of stalls (5) - CHECK SAU
@@ -106,7 +103,7 @@ public class ShopController {
             if (currentStallCount >= 5) {
                 redirectAttributes.addFlashAttribute("errorMessage", 
                         "Bạn đã đạt giới hạn tối đa 5 gian hàng. Không thể tạo thêm gian hàng mới!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Create new stall
@@ -138,7 +135,7 @@ public class ShopController {
             stallRepository.save(stall);
             
             redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được tạo thành công với trạng thái Đóng!");
-            return "redirect:/seller/shop-management";
+            return "redirect:/seller/stall-management";
             
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi tạo gian hàng. Vui lòng thử lại!");
@@ -194,7 +191,7 @@ public class ShopController {
             var stallOptional = stallRepository.findById(id);
             if (stallOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             Stall stall = stallOptional.get();
@@ -203,7 +200,7 @@ public class ShopController {
             var userShop = shopRepository.findByUserId(user.getId());
             if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền sửa gian hàng này!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Validate: Chỉ cho phép mở gian hàng khi có hàng trong kho
@@ -246,7 +243,7 @@ public class ShopController {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!");
         }
         
-        return "redirect:/seller/shop-management";
+        return "redirect:/seller/stall-management";
     }
 
     @PostMapping("/seller/add-product/{stallId}")
@@ -275,7 +272,7 @@ public class ShopController {
             var stallOptional = stallRepository.findById(stallId);
             if (stallOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             Stall stall = stallOptional.get();
@@ -284,7 +281,7 @@ public class ShopController {
             var userShop = shopRepository.findByUserId(user.getId());
             if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền thêm sản phẩm vào gian hàng này!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Kiểm tra xem có sản phẩm đã bị xóa mềm với cùng tên và giá không
@@ -356,7 +353,7 @@ public class ShopController {
             var productOptional = productRepository.findById(productId);
             if (productOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             Product product = productOptional.get();
@@ -365,7 +362,7 @@ public class ShopController {
             var userShop = shopRepository.findByUserId(user.getId());
             if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền cập nhật sản phẩm này!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Cập nhật số lượng
@@ -431,7 +428,7 @@ public class ShopController {
             var productOptional = productRepository.findById(productId);
             if (productOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             Product product = productOptional.get();
@@ -440,14 +437,14 @@ public class ShopController {
             var userShop = shopRepository.findByUserId(user.getId());
             if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền cập nhật sản phẩm này!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             Shop shop = userShop.get();
             Stall stall = stallRepository.findById(product.getStallId()).orElse(null);
             if (stall == null) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Read file content
@@ -461,7 +458,6 @@ public class ShopController {
             
             // Determine expected item type based on stall category
             Warehouse.ItemType expectedType = determineItemTypeFromStall(stall.getStallCategory());
-            boolean isAccountStall = (expectedType == null); // Tài khoản gian hàng có thể chứa EMAIL hoặc ACCOUNT
             
             // Track processed items in this file to avoid duplicates
             Set<String> processedItemsInFile = new HashSet<>();
@@ -529,14 +525,7 @@ public class ShopController {
                     }
                     
                     // Check if item type matches expected type for this stall
-                    boolean isValidType = false;
-                    if (isAccountStall) {
-                        // Tài khoản gian hàng: chấp nhận EMAIL hoặc ACCOUNT
-                        isValidType = (type == Warehouse.ItemType.EMAIL || type == Warehouse.ItemType.ACCOUNT);
-                    } else {
-                        // Các gian hàng khác: chỉ chấp nhận 1 loại cụ thể
-                        isValidType = (type == expectedType);
-                    }
+                    boolean isValidType = (type == expectedType);
                     
                     if (!isValidType) {
                         failureCount++;
@@ -574,14 +563,7 @@ public class ShopController {
                         }
                         
                         if (isDuplicate) {
-                            // Kiểm tra xem item này đã được mua chưa
-                            boolean isItemPurchased = transactionRepository.findSuccessfulTransactionByWarehouseItem(item.getId()).isPresent();
-                            
-                            if (isItemPurchased) {
-                                // Item đã tồn tại và đã được mua - không thể thêm
-                                isItemAlreadyPurchased = true;
-                                break;
-                            } else if (item.getIsDelete()) {
+                    if (item.getIsDelete()) {
                                 // Item đã bị xóa mềm và chưa được mua - có thể restore
                                 existingItem = item;
                                 break;
@@ -807,7 +789,7 @@ public class ShopController {
             var productOptional = productRepository.findById(productId);
             if (productOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             Product product = productOptional.get();
@@ -816,7 +798,7 @@ public class ShopController {
             var userShop = shopRepository.findByUserId(user.getId());
             if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền xóa sản phẩm này!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Soft delete - chỉ cập nhật is_delete = true
@@ -868,7 +850,7 @@ public class ShopController {
             var productOptional = productRepository.findById(productId);
             if (productOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             Product product = productOptional.get();
@@ -877,7 +859,7 @@ public class ShopController {
             var userShop = shopRepository.findByUserId(user.getId());
             if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền hồi phục sản phẩm này!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Restore product - chỉ cập nhật is_delete = false
@@ -926,7 +908,7 @@ public class ShopController {
             var productOptional = productRepository.findById(productId);
             if (productOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             Product product = productOptional.get();
@@ -935,7 +917,7 @@ public class ShopController {
             var userShop = shopRepository.findByUserId(user.getId());
             if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền sửa sản phẩm này!");
-                return "redirect:/seller/shop-management";
+                return "redirect:/seller/stall-management";
             }
             
             // Cập nhật thông tin sản phẩm
@@ -1056,10 +1038,9 @@ public class ShopController {
         
         String category = stallCategory.toLowerCase();
         
-        // Tài Khoản gian hàng: EMAIL, ACCOUNT
+        // Tài khoản Email gian hàng: chỉ EMAIL
         if (category.contains("tài khoản") || category.contains("account") || category.contains("acc")) {
-            // Có thể là EMAIL hoặc ACCOUNT, cần kiểm tra thêm
-            return null; // Sẽ xử lý đặc biệt trong logic chính
+            return Warehouse.ItemType.EMAIL;
         } 
         // Thẻ cào gian hàng: CARD
         else if (category.contains("thẻ") || category.contains("card") || category.contains("gift") || 

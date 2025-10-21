@@ -1,7 +1,6 @@
 package com.badat.study1.dto.response;
 
 import com.badat.study1.model.Cart;
-import com.badat.study1.model.CartItem;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

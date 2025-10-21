@@ -3,6 +3,7 @@ package com.badat.study1.controller;
 import com.badat.study1.dto.request.LoginRequest;
 import com.badat.study1.dto.response.LoginResponse;
 import com.badat.study1.service.AuthenticationService;
+import com.badat.study1.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,14 +26,20 @@ import java.util.Map;
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
+    private final AuditLogService auditLogService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         try {
             log.info("Login attempt for username: {}", loginRequest.getUsername());
             
+            // Get client IP address
+            String ipAddress = getClientIpAddress(request);
+            log.info("Login attempt from IP: {}", ipAddress);
+            // Get simple device info from User-Agent
+            String userAgent = request.getHeader("User-Agent");
     
-            LoginResponse loginResponse = authenticationService.login(loginRequest);
+            LoginResponse loginResponse = authenticationService.login(loginRequest, ipAddress, userAgent);
             log.info("Login successful for username: {}", loginRequest.getUsername());
 
             // Set HttpOnly access token cookie for browser navigation
@@ -76,6 +83,18 @@ public class AuthenticationController {
             }
 
             String token = authHeader.replace("Bearer ", "");
+            
+            // Get user info before logout for audit logging
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+                Object principal = auth.getPrincipal();
+                if (principal instanceof com.badat.study1.model.User) {
+                    com.badat.study1.model.User user = (com.badat.study1.model.User) principal;
+                    String ipAddress = getClientIpAddress(request);
+                    auditLogService.logLogout(user, ipAddress);
+                }
+            }
+            
             authenticationService.logout(token);
             
             log.info("Logout successful");
@@ -162,6 +181,20 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Refresh token không hợp lệ hoặc đã hết hạn"));
         }
+    }
+
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
+        }
+        
+        return request.getRemoteAddr();
     }
 
     }

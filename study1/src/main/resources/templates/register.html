@@ -112,16 +112,8 @@
             });
 
             if (response.ok) {
-                // Hiển thị thông báo thành công
-                alertBox.textContent = 'Đã gửi email xác thực thành công! Vui lòng kiểm tra hộp thư của bạn.';
-                alertBox.classList.remove('d-none');
-                alertBox.classList.remove('alert-danger');
-                alertBox.classList.add('alert-success');
-                
-                // Chuyển sang trang verify-otp sau 2 giây
-                setTimeout(() => {
-                    window.location.href = '/verify-otp?email=' + encodeURIComponent(email);
-                }, 2000);
+                // Chuyển ngay sang trang verify-otp (email đang được gửi bất đồng bộ)
+                window.location.href = '/verify-otp?email=' + encodeURIComponent(email);
             } else {
                 const errorText = await response.text();
                 alertBox.textContent = errorText || 'Đăng ký thất bại';

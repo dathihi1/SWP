@@ -352,7 +352,7 @@
         
         <div class="menu-section">
             <div class="section-title">SALE</div>
-            <a href="/seller/shop" class="menu-item">
+            <a href="/seller/gross-sales" class="menu-item">
                 <i class="fas fa-shopping-cart"></i>
                 Doanh số
             </a>
@@ -360,7 +360,7 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/shop-management" class="menu-item">
+            <a href="/seller/stall-management" class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
                 Quản lý gian hàng
             </a>
@@ -368,11 +368,11 @@
                 <i class="fas fa-plus"></i>
                 Thêm gian hàng
             </a>
-            <a href="#" class="menu-item">
+            <a href="/seller/orders" class="menu-item">
                 <i class="fas fa-file-invoice-dollar"></i>
                 Đơn hàng sản phẩm
             </a>
-            <a href="#" class="menu-item">
+            <a href="/seller/reviews" class="menu-item">
                 <i class="fas fa-comment"></i>
                 Đánh giá
             </a>
@@ -433,7 +433,7 @@
                     <div>
                         <h1 class="page-title">Quản lý mặt hàng/kho</h1>
                     </div>
-                    <a th:href="@{/seller/shop-management}" href="/seller/shop-management" class="btn-back">
+                    <a th:href="@{/seller/stall-management}" href="/seller/stall-management" class="btn-back">
                         <i class="fas fa-arrow-left me-2"></i>
                         Quay lại
                     </a>
@@ -468,7 +468,7 @@
                         <tbody>
                             <tr th:each="product : ${products}" th:attr="data-product-id=${product.id}">
                                 <td th:text="${product.name}">Tên mặt hàng</td>
-                                <td th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')}">Giá</td>
+                                <td th:text="${#numbers.formatDecimal(product.price, 0, 'POINT', 0, 'COMMA')}">Giá</td>
                                 <td>
                                     <span class="status-badge" 
                                           th:classappend="${(product.quantity != null and product.quantity > 0)} ? 'status-available' : 'status-unavailable'"

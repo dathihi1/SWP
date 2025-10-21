@@ -5,7 +5,7 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: 1234
+    password: sa123
   data:
     redis:
       host: localhost
@@ -17,6 +17,13 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
+  mvc:
+    async:
+      request-timeout: 5000ms
   task:
     scheduling:
       enabled: true
@@ -32,7 +39,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+      show-sql: false
   mail:
     host: smtp.gmail.com
     port: 587
@@ -87,3 +94,14 @@ vnpay:
 logging:
   level:
     com.badat.study1: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN
+server:
+  port: 8080
+  tomcat:
+    connection-timeout: 30000
+    max-connections: 8192
+    accept-count: 100
+    threads:
+      max: 200
+      min-spare: 10

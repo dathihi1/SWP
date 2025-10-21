@@ -117,8 +117,17 @@ public class DataInitializer implements CommandLineRunner {
 
     private void createSampleShops() {
         User seller = userRepository.findByUsername("seller1").orElse(null);
-        BankAccount bankAccount = bankAccountRepository.findAll().get(0);
-        if (seller != null && bankAccount != null) {
+        List<BankAccount> bankAccounts = bankAccountRepository.findAll();
+        if (seller == null) {
+            log.warn("Sample seller not found, skipping shop creation");
+            return;
+        }
+        if (bankAccounts.isEmpty()) {
+            log.warn("No bank account found, skipping shop creation");
+            return;
+        }
+        BankAccount bankAccount = bankAccounts.get(0);
+        if (bankAccount != null) {
             Shop shop = new Shop();
             shop.setShopName("Tech Store");
             shop.setUserId(seller.getId());
@@ -131,7 +140,12 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void createSampleStalls() {
-        Shop shop = shopRepository.findAll().get(0);
+        List<Shop> shops = shopRepository.findAll();
+        if (shops.isEmpty()) {
+            log.warn("No shop found, skipping stall creation");
+            return;
+        }
+        Shop shop = shops.get(0);
         if (shop != null) {
             Stall stall = new Stall();
             stall.setShopId(shop.getId());
@@ -149,14 +163,19 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void createSampleProducts() {
-        Shop shop = shopRepository.findAll().get(0);
-        Stall stall = stallRepository.findAll().get(0);
+        List<Shop> shops = shopRepository.findAll();
+        List<Stall> stalls = stallRepository.findAll();
+        if (shops.isEmpty() || stalls.isEmpty()) {
+            log.warn("No shop or stall found, skipping product creation");
+            return;
+        }
+        Shop shop = shops.get(0);
+        Stall stall = stalls.get(0);
         
         // Email products
         List<Product> emailProducts = List.of(
                 Product.builder()
                         .shopId(shop.getId())
-                        .stallId(stall.getId())
                         .stallId(stall.getId())
                         .type("email")
                         .name("Gmail Premium 2024")
@@ -167,7 +186,6 @@ public class DataInitializer implements CommandLineRunner {
                         .build(),
                 Product.builder()
                         .shopId(shop.getId())
-                        .stallId(stall.getId())
                         .stallId(stall.getId())
                         .type("email")
                         .name("Yahoo Mail Pro")

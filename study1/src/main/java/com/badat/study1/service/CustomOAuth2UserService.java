@@ -59,6 +59,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String email = (String) attributes.get("email");
         String name = (String) attributes.get("name");
         String googleId = (String) attributes.get("id");
+        String picture = (String) attributes.get("picture"); // Google avatar URL
         
         if (email == null || email.isEmpty()) {
             throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
@@ -77,10 +78,20 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 user.setProvider("GOOGLE");
                 user.setProviderId(googleId);
                 user.setFullName(name);
+                // Temporarily comment out to avoid database issues
+                // if (picture != null && !picture.isEmpty()) {
+                //     user.setAvatarUrl(picture);
+                // }
                 userRepository.save(user);
                 log.info("Updated existing LOCAL user {} to support Google login", email);
             } else if ("GOOGLE".equals(user.getProvider()) && googleId.equals(user.getProviderId())) {
-                // User đã đăng nhập bằng Google trước đó
+                // User đã đăng nhập bằng Google trước đó - cập nhật avatar nếu chưa có
+                // Temporarily comment out to avoid database issues
+                // if ((user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) && picture != null && !picture.isEmpty()) {
+                //     user.setAvatarUrl(picture);
+                //     userRepository.save(user);
+                //     log.info("Updated avatar URL for existing Google user {}", email);
+                // }
                 log.info("Existing Google user {} logged in", email);
             } else {
                 // Email đã được sử dụng bởi provider khác
@@ -88,7 +99,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             }
         } else {
             // Tạo user mới
-            user = createNewGoogleUser(email, name, googleId);
+            user = createNewGoogleUser(email, name, googleId, picture);
             log.info("Created new Google user: {}", email);
         }
 
@@ -101,7 +112,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         );
     }
 
-    private User createNewGoogleUser(String email, String name, String googleId) {
+    private User createNewGoogleUser(String email, String name, String googleId, String picture) {
         // Username = Email (theo yêu cầu)
         String username = email;
         
@@ -126,6 +137,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .role(User.Role.USER)
                 .status(User.Status.ACTIVE)
                 .build();
+        
+        // Set avatar URL after building to avoid issues with new fields
+        // Temporarily comment out to avoid database issues
+        // if (picture != null && !picture.isEmpty()) {
+        //     newUser.setAvatarUrl(picture);
+        // }
 
         return userRepository.save(newUser);
     }

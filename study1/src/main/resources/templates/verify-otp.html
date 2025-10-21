@@ -26,13 +26,26 @@
 <div class="container" style="max-width: 460px;">
     <div class="card p-4">
         <h4 class="mb-3">Xác minh OTP</h4>
-        <div id="alert" class="alert alert-danger d-none" role="alert"></div>
+        <div id="alert" class="alert alert-danger d-none" role="alert">
+            <i class="fa-solid fa-exclamation-triangle me-2"></i>
+            <span id="alertMessage"></span>
+        </div>
+        <div id="successAlert" class="alert alert-success d-none" role="alert">
+            <i class="fa-solid fa-check-circle me-2"></i>
+            <span id="successMessage"></span>
+        </div>
         <form id="otpForm">
-            <p class="text-muted">Mã OTP đã được gửi tới email: <strong id="emailText"></strong></p>
+            <p class="text-muted">Mã OTP đang được gửi tới email: <strong id="emailText"></strong></p>
+            <div class="alert alert-info" role="alert">
+                <i class="fa-solid fa-info-circle me-2"></i>
+                <strong>Lưu ý:</strong> Email có thể mất vài phút để đến hộp thư của bạn. Vui lòng kiểm tra cả thư mục spam nếu không thấy email.
+            </div>
             <input type="hidden" id="emailHidden">
             <div class="mb-3">
                 <label class="form-label">Mã OTP</label>
-                <input type="text" class="form-control" id="otp" placeholder="Nhập mã OTP" required>
+                <input type="text" class="form-control" id="otp" placeholder="Nhập mã OTP (6 chữ số)" 
+                       maxlength="6" pattern="[0-9]{6}" required>
+                <div class="form-text">Mã OTP có 6 chữ số và sẽ hết hạn sau 10 phút</div>
             </div>
             <div class="d-grid">
                 <button type="submit" class="btn btn-primary">Xác nhận</button>
@@ -43,12 +56,56 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Only allow numeric input for OTP
+document.getElementById('otp').addEventListener('input', function(e) {
+    // Remove any non-numeric characters
+    this.value = this.value.replace(/[^0-9]/g, '');
+    
+    // Limit to 6 digits
+    if (this.value.length > 6) {
+        this.value = this.value.substring(0, 6);
+    }
+});
+
+// Auto-submit when 6 digits are entered
+document.getElementById('otp').addEventListener('input', function(e) {
+    if (this.value.length === 6) {
+        // Small delay to allow user to see the complete OTP
+        setTimeout(() => {
+            document.getElementById('otpForm').dispatchEvent(new Event('submit'));
+        }, 500);
+    }
+});
+</script>
+<script>
 document.getElementById('otpForm').addEventListener('submit', async function (event) {
     event.preventDefault();
     const email = document.getElementById('emailHidden').value.trim();
     const otp = document.getElementById('otp').value.trim();
     const alertBox = document.getElementById('alert');
+    const successAlert = document.getElementById('successAlert');
+    const alertMessage = document.getElementById('alertMessage');
+    const successMessage = document.getElementById('successMessage');
+    const submitButton = document.querySelector('button[type="submit"]');
+    
+    // Hide all alerts
     alertBox.classList.add('d-none');
+    successAlert.classList.add('d-none');
+    
+    // Validate OTP input
+    if (!otp) {
+        showError('Vui lòng nhập mã OTP');
+        return;
+    }
+    
+    if (otp.length !== 6) {
+        showError('Mã OTP phải có 6 chữ số');
+        return;
+    }
+    
+    // Disable submit button to prevent multiple submissions
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang xác minh...';
 
     try {
         const res = await fetch('/users/verify', {
@@ -56,16 +113,41 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, otp })
         });
+        
         if (res.ok) {
-            window.location.href = '/login';
+            showSuccess('Xác minh OTP thành công! Đang chuyển hướng...');
+            setTimeout(() => {
+                // Chuyển sang trang reset password với email và OTP
+                window.location.href = `/reset-password?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`;
+            }, 2000);
         } else {
-            const err = await res.text();
-            alertBox.textContent = err || 'Sai OTP, vui lòng thử lại';
-            alertBox.classList.remove('d-none');
+            const errorData = await res.json().catch(() => ({ error: 'Có lỗi xảy ra' }));
+            const errorMessage = errorData.error || errorData.message || 'Sai OTP, vui lòng thử lại';
+            showError(errorMessage);
         }
     } catch (e) {
-        alertBox.textContent = 'Đã có lỗi xảy ra. Vui lòng thử lại';
+        console.error('OTP verification error:', e);
+        showError('Đã có lỗi xảy ra. Vui lòng kiểm tra kết nối và thử lại');
+    } finally {
+        // Re-enable submit button
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Xác nhận';
+    }
+    
+    function showError(message) {
+        alertMessage.textContent = message;
         alertBox.classList.remove('d-none');
+        successAlert.classList.add('d-none');
+        
+        // Focus on OTP input
+        document.getElementById('otp').focus();
+        document.getElementById('otp').select();
+    }
+    
+    function showSuccess(message) {
+        successMessage.textContent = message;
+        successAlert.classList.remove('d-none');
+        alertBox.classList.add('d-none');
     }
 });
 </script>

@@ -33,4 +33,14 @@ public class AuditLog extends BaseEntity {
     
     @Column(name = "ip_address", length = 50)
     String ipAddress;
+    
+    @Column(name = "success", nullable = false)
+    @Builder.Default
+    Boolean success = true;
+    
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
+    String failureReason;
+    
+    @Column(name = "device_info", length = 500)
+    String deviceInfo;
 }

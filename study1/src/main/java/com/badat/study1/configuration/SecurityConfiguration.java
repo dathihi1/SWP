@@ -33,10 +33,10 @@ public class SecurityConfiguration {
             "/product/**", 
             "/cart", 
             "/auth/**", 
-            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp",
+            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/reset-password",
             "/api/cart/test", // Thêm test endpoint vào whitelist
             "/users/**", 
-            "/login", "/register", "/verify-otp", "/forgot-password", 
+            "/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", 
             "/seller/register", 
             "/terms", "/faqs", 
             "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico",
@@ -126,8 +126,32 @@ public class SecurityConfiguration {
                     }
                     response.setHeader("Set-Cookie", cookieValue);
 
-                    // Also set in localStorage via JavaScript
-                    response.sendRedirect("/?login=success&token=" + accessToken);
+                    try {
+                        // Redirect to home page with success message
+                        response.sendRedirect("/?login=success");
+                        
+                        // Log OAuth2 login to audit
+                        String ip = request.getHeader("X-Forwarded-For");
+                        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                            ip = request.getHeader("X-Real-IP");
+                        }
+                        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                            ip = request.getRemoteAddr();
+                        }
+                        String ua = request.getHeader("User-Agent");
+                        // Defer to AuditLogService via ApplicationContext if available is complicated here; simply attach to JWT and log elsewhere.
+                        // For now, set headers for a downstream filter/service to log.
+                        response.setHeader("X-Auth-Logged", "oauth2");
+                        response.setHeader("X-Client-IP", ip);
+                        if (ua != null) response.setHeader("X-Client-UA", ua);
+                    } catch (Exception e) {
+                        log.error("Error in OAuth2 success handler: {}", e.getMessage());
+                        try {
+                            response.sendRedirect("/login?error=oauth2_redirect_failed");
+                        } catch (Exception redirectError) {
+                            log.error("Failed to redirect after OAuth2 error: {}", redirectError.getMessage());
+                        }
+                    }
                 } else {
                     log.warn("OAuth2 authentication failed - invalid user type: {}",
                             authentication.getPrincipal().getClass().getSimpleName());
@@ -144,7 +168,11 @@ public class SecurityConfiguration {
     public AuthenticationFailureHandler oauth2FailureHandler() {
         return (request, response, exception) -> {
             log.warn("OAuth2 authentication failed: {}", exception.getMessage());
-            response.sendRedirect("/login?error=oauth2_failed");
+            try {
+                response.sendRedirect("/login?error=oauth2_failed");
+            } catch (Exception e) {
+                log.error("Error redirecting after OAuth2 failure: {}", e.getMessage());
+            }
         };
     }
 

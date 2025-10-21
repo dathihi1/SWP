@@ -29,10 +29,7 @@ public class PaymentController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
-        
-        if (!isAuthenticated) {
-            return "redirect:/login";
-        }
+    
         
         model.addAttribute("isAuthenticated", true);
         return "payment";
