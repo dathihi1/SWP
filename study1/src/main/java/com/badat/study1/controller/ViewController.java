@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Base64;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 @Slf4j
 @Controller
@@ -185,10 +187,13 @@ public class ViewController {
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
                         
+                        NumberFormat viNumber = NumberFormat.getInstance(new Locale("vi", "VN"));
+                        String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
+                        String maxStr = viNumber.format(maxPrice.setScale(0, RoundingMode.HALF_UP));
                         if (minPrice.equals(maxPrice)) {
-                            vm.put("priceRange", minPrice.setScale(0, RoundingMode.HALF_UP).toString() + " VND");
+                            vm.put("priceRange", minStr + " VND");
                         } else {
-                            vm.put("priceRange", minPrice.setScale(0, RoundingMode.HALF_UP) + " VND - " + maxPrice.setScale(0, RoundingMode.HALF_UP) + " VND");
+                            vm.put("priceRange", minStr + " VND - " + maxStr + " VND");
                         }
                     } else {
                         vm.put("priceRange", "Hết hàng");
@@ -810,10 +815,13 @@ public class ViewController {
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
                         
+                        NumberFormat viNumber = NumberFormat.getInstance(new Locale("vi", "VN"));
+                        String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
+                        String maxStr = viNumber.format(maxPrice.setScale(0, RoundingMode.HALF_UP));
                         if (minPrice.equals(maxPrice)) {
-                            stall.setPriceRange(minPrice.setScale(0, RoundingMode.HALF_UP).toString() + " VND");
+                            stall.setPriceRange(minStr + " VND");
                         } else {
-                            stall.setPriceRange(minPrice.setScale(0, RoundingMode.HALF_UP) + " VND - " + maxPrice.setScale(0, RoundingMode.HALF_UP) + " VND");
+                            stall.setPriceRange(minStr + " VND - " + maxStr + " VND");
                         }
                     } else {
                         stall.setPriceRange("Hết hàng");

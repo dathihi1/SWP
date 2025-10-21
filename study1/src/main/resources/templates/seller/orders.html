@@ -444,8 +444,8 @@
                                 <td th:text="${order.product.name}">Tên sản phẩm</td>
                                 <td th:text="${order.stall.stallName}">Tên gian hàng</td>
                                 <td th:text="${order.quantity}">1</td>
-                                <td class="amount" th:text="${#numbers.formatDecimal(order.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
-                                <td class="amount" th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
+                                <td class="amount" th:text="${#numbers.formatDecimal(order.unitPrice, 1, 'POINT', 0, 'COMMA')} + ' VND'">0 VND</td>
+                                <td class="amount" th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'POINT', 0, 'COMMA')} + ' VND'">0 VND</td>
                                 <td>
                                     <span class="status-badge" 
                                           th:classappend="'status-' + ${order.status.name().toLowerCase()}"
