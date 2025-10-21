@@ -468,7 +468,7 @@
                         <tbody>
                             <tr th:each="product : ${products}" th:attr="data-product-id=${product.id}">
                                 <td th:text="${product.name}">Tên mặt hàng</td>
-                                <td th:text="${#numbers.formatDecimal(product.price, 0, 'POINT', 0, 'COMMA')}">Giá</td>
+                                <td th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')}">Giá</td>
                                 <td>
                                     <span class="status-badge" 
                                           th:classappend="${(product.quantity != null and product.quantity > 0)} ? 'status-available' : 'status-unavailable'"

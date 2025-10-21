@@ -303,7 +303,7 @@
                     <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
                         <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                             <i class="fa-solid fa-wallet"></i>
-                            <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'POINT', 0, 'COMMA')}">0</span>
+                            <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
                         </div>
                         <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
@@ -454,10 +454,10 @@
                                     <div class="transaction-amount">
                                         <span th:if="${(history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') || history.type.name() == 'REFUND'}" 
                                               class="positive" 
-                                              th:text="'+' + ${#numbers.formatDecimal(history.amount, 0, 'POINT', 0, 'COMMA')} + ' VNĐ'">+500,000 VNĐ</span>
+                                              th:text="'+' + ${#numbers.formatDecimal(history.amount, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">+500,000 VNĐ</span>
                                         <span th:if="${history.type.name() == 'WITHDRAW' || history.type.name() == 'PURCHASE' || (history.type.name() == 'DEPOSIT' && (history.status.name() == 'FAILED' || history.status.name() == 'PENDING'))}" 
                                               class="negative" 
-                                              th:text="'-' + ${#numbers.formatDecimal(history.amount, 0, 'POINT', 0, 'COMMA')} + ' VNĐ'">-500,000 VNĐ</span>
+                                              th:text="'-' + ${#numbers.formatDecimal(history.amount, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">-500,000 VNĐ</span>
                                     </div>
                                 </div>
                             </div>

@@ -130,7 +130,7 @@
                     <!-- Current Balance -->
                     <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                         <i class="fa-solid fa-wallet"></i>
-                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'POINT', 0, 'COMMA')}">0</span>
+                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
                     </div>
                     
                     <div class="dropdown">
@@ -259,7 +259,7 @@
                 </div>
                 
                 <!-- Price -->
-                <div class="product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA')} + ' ₫'">9.000 ₫ - 25.000 ₫</div>
+                <div class="product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'COMMA', 0, 'POINT')} + ' ₫'">9.000 ₫ - 25.000 ₫</div>
                 
                 <!-- Sponsored Badge -->
                 <div class="sponsored-badge">

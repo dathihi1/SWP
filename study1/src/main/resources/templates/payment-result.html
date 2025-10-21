@@ -49,7 +49,7 @@
                             <p class="text-muted mb-3" th:text="${message}">Nạp tiền thành công!</p>
                             <div class="alert alert-success" th:if="${amount}">
                                 <strong>Số tiền đã nạp:</strong> 
-                                <span th:text="${#numbers.formatDecimal(amount, 0, 'POINT', 0, 'COMMA')}">0</span> VNĐ
+                                <span th:text="${#numbers.formatDecimal(amount, 0, 'COMMA', 0, 'POINT')}">0</span> VNĐ
                             </div>
                             <div class="alert alert-secondary" th:if="${txnRef != null or transactionNo != null}">
                                 <div><strong>Mã đơn hàng:</strong> <span th:text="${txnRef}">-</span></div>
