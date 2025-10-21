@@ -78,4 +78,8 @@ public class Review extends BaseEntity {
     
     @Column(name = "reply_at")
     java.time.LocalDateTime replyAt;
+    
+    @Column(name = "is_read", nullable = false)
+    @Builder.Default
+    Boolean isRead = false;
 }
