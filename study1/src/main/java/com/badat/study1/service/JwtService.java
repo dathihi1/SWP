@@ -77,33 +77,48 @@ public class JwtService {
     }
 
     public boolean verifyToken(String token) throws ParseException, JOSEException {
-        SignedJWT signedJWT = SignedJWT.parse(token);
-        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
-        
-        // Check if token is expired first (more efficient)
-        if (expirationTime.before(new Date())) {
-            log.debug("Token has expired: {}", jwtId);
-            return false; // Token has expired
-        }
-        
-        // Check if token is blacklisted (logged out) - with fallback if Redis is unavailable
         try {
-            if (redisTokenRepository.existsById(jwtId)) {
-                log.debug("Token is blacklisted: {}", jwtId);
-                return false; // Token has been blacklisted
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+            String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
+            
+            log.debug("Verifying token: JWT ID = {}, Expires = {}", jwtId, expirationTime);
+            
+            // Check if token is expired first (more efficient)
+            if (expirationTime.before(new Date())) {
+                log.debug("Token has expired: {}", jwtId);
+                return false; // Token has expired
             }
+            
+            // Check if token is blacklisted (logged out) - with fallback if Redis is unavailable
+            try {
+                if (redisTokenRepository.existsById(jwtId)) {
+                    log.debug("Token is blacklisted: {}", jwtId);
+                    return false; // Token has been blacklisted
+                }
+            } catch (Exception e) {
+                log.warn("Redis unavailable, skipping blacklist check: {}", e.getMessage());
+                // Continue without blacklist check if Redis is unavailable
+            }
+            
+            // Verify token signature
+            boolean signatureValid = signedJWT.verify(new MACVerifier(secret));
+            if (!signatureValid) {
+                log.debug("Token signature invalid: {}", jwtId);
+            } else {
+                log.debug("Token signature valid: {}", jwtId);
+            }
+            return signatureValid;
+        } catch (ParseException e) {
+            log.warn("Token parsing failed: {}", e.getMessage());
+            return false;
+        } catch (JOSEException e) {
+            log.warn("Token verification failed: {}", e.getMessage());
+            return false;
         } catch (Exception e) {
-            log.warn("Redis unavailable, skipping blacklist check: {}", e.getMessage());
-            // Continue without blacklist check if Redis is unavailable
+            log.warn("Unexpected error during token verification: {}", e.getMessage());
+            return false;
         }
-        
-        // Verify token signature
-        boolean signatureValid = signedJWT.verify(new MACVerifier(secret));
-        if (!signatureValid) {
-            log.debug("Token signature invalid: {}", jwtId);
-        }
-        return signatureValid;
     }
 
     public String extractUsername(String token) throws ParseException {
