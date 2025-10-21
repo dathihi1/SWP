@@ -1,10 +1,12 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.Product;
+import com.badat.study1.model.ProductVariant;
 import com.badat.study1.model.Review;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.repository.ProductVariantRepository;
 import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.repository.WalletRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 public class ProductBrowseController {
 
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ReviewRepository reviewRepository;
     private final WalletRepository walletRepository;
 
@@ -123,6 +126,10 @@ public class ProductBrowseController {
         Product product = productRepository.findById(id)
                 .filter(p -> Boolean.FALSE.equals(p.getIsDelete()) && p.getStatus() == Product.Status.AVAILABLE)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+        
+        // Lấy danh sách ProductVariant cho sản phẩm này
+        List<ProductVariant> variants = productVariantRepository.findAvailableVariantsByProductId(id);
+        
         List<Review> reviews = reviewRepository.findByProductIdAndIsDeleteFalse(id);
         double avgRating = reviews.stream()
                 .map(Review::getRating)
@@ -157,6 +164,7 @@ public class ProductBrowseController {
         }
         
         model.addAttribute("product", product);
+        model.addAttribute("variants", variants);
         model.addAttribute("reviews", reviews);
         model.addAttribute("avgRating", avgRating);
         return "products/detail";
