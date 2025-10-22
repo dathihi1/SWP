@@ -423,21 +423,29 @@
                                 <td th:text="${stall.priceRange}">Giá</td>
                                 <td th:text="${#temporals.format(stall.createdAt, 'dd/MM/yyyy')}">Ngày tạo</td>
                                 <td>
-                                    <span class="status-badge" 
-                                          th:classappend="${stall.status == 'OPEN'} ? 'status-active' : 
-                                                         (${stall.status == 'PENDING'} ? 'status-pending' : 'status-inactive')"
-                                          th:text="${stall.status == 'OPEN'} ? 'Mở' : 
-                                                  (${stall.status == 'PENDING'} ? 'Chờ duyệt' : 'Đóng')">
-                                        Trạng thái
-                                    </span>
+                                    <span class="status-badge status-active" th:if="${stall.status == 'OPEN' or stall.status == 'ACTIVE'}" th:text="'Mở'">Mở</span>
+                                    <span class="status-badge status-pending" th:if="${stall.status == 'PENDING'}" th:text="'Chờ duyệt'">Chờ duyệt</span>
+                                    <span class="status-badge status-inactive" th:if="${stall.status == 'REJECTED'}" th:text="'Từ chối'">Từ chối</span>
+                                    <span class="status-badge status-inactive" th:if="${stall.status == 'CLOSED'}" th:text="'Đóng'">Đóng</span>
+                                    <span class="status-badge status-inactive" th:if="${stall.status != 'OPEN' and stall.status != 'ACTIVE' and stall.status != 'PENDING' and stall.status != 'REJECTED' and stall.status != 'CLOSED'}" th:text="'Đóng'">Đóng</span>
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn btn-action btn-edit" title="Sửa gian hàng" th:onclick="'editStall(' + ${stall.id} + ')'">
+                                        <button class="btn btn-action btn-edit" title="Sửa gian hàng" th:onclick="'editStall(' + ${stall.id} + ')'" th:if="${stall.status != 'PENDING'}">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-action btn-add-product" title="Thêm mặt hàng" th:onclick="'addProduct(' + ${stall.id} + ')'">
+                                        <button class="btn btn-action btn-add-product" title="Thêm mặt hàng" th:onclick="'addProduct(' + ${stall.id} + ')'" th:if="${stall.status == 'OPEN' or stall.status == 'ACTIVE' or stall.status == 'CLOSED'}">
                                             <i class="fas fa-plus"></i>
+                                        </button>
+                                        <button class="btn btn-action btn-view" title="Lịch sử duyệt" 
+                                                th:data-stall-id="${stall.id}"
+                                                th:data-stall-name="${stall.stallName}"
+                                                th:data-stall-status="${stall.status}"
+                                                th:data-approved-at="${stall.approvedAt}"
+                                                th:data-approval-reason="${stall.approvalReason}"
+                                                th:data-created-at="${stall.createdAt}"
+                                                onclick="showApprovalHistoryFromData(this)">
+                                            <i class="fas fa-history"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -450,6 +458,31 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Approval History Modal -->
+    <div class="modal fade" id="approvalHistoryModal" tabindex="-1" aria-labelledby="approvalHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="approvalHistoryModalLabel">
+                        <i class="fas fa-history me-2"></i>Lịch sử duyệt gian hàng
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <h6><strong>Gian hàng:</strong> <span id="stallName"></span></h6>
+                    </div>
+                    <div id="historyContent">
+                        <!-- History content will be populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>
@@ -482,6 +515,66 @@
         
         function addProduct(stallId) {
             window.location.href = '/seller/product-management/' + stallId;
+        }
+        
+        function showApprovalHistoryFromData(button) {
+            // Get data from button attributes
+            const stallId = button.getAttribute('data-stall-id');
+            const stallName = button.getAttribute('data-stall-name');
+            const status = button.getAttribute('data-stall-status');
+            const approvedAt = button.getAttribute('data-approved-at');
+            const approvalReason = button.getAttribute('data-approval-reason');
+            const createdAt = button.getAttribute('data-created-at');
+            
+            // Update modal content
+            document.getElementById('stallName').textContent = stallName;
+            
+            const historyContent = document.getElementById('historyContent');
+            let historyHtml = '';
+            
+            if (status === 'OPEN' || status === 'ACTIVE') {
+                historyHtml = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Đã duyệt</h6>
+                        <p class="mb-1"><strong>Thời gian:</strong> ${formatDateTime(approvedAt)}</p>
+                        ${approvalReason ? `<p class="mb-0"><strong>Ghi chú:</strong> ${approvalReason}</p>` : ''}
+                    </div>
+                `;
+            } else if (status === 'REJECTED') {
+                historyHtml = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-times-circle me-2"></i>Bị từ chối</h6>
+                        <p class="mb-1"><strong>Thời gian:</strong> ${formatDateTime(approvedAt)}</p>
+                        ${approvalReason ? `<p class="mb-0"><strong>Lý do:</strong> ${approvalReason}</p>` : ''}
+                    </div>
+                `;
+            } else if (status === 'PENDING') {
+                historyHtml = `
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-clock me-2"></i>Chờ duyệt</h6>
+                        <p class="mb-1"><strong>Trạng thái:</strong> Gian hàng đang chờ admin duyệt</p>
+                        <p class="mb-0"><strong>Ngày tạo:</strong> ${formatDateTime(createdAt)}</p>
+                    </div>
+                `;
+            }
+            
+            historyContent.innerHTML = historyHtml;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('approvalHistoryModal'));
+            modal.show();
+        }
+        
+        function formatDateTime(dateTimeStr) {
+            if (!dateTimeStr) return 'Chưa có thông tin';
+            const date = new Date(dateTimeStr);
+            return date.toLocaleString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
     </script>
 </body>

@@ -33,4 +33,7 @@ public interface StallRepository extends JpaRepository<Stall, Long> {
     // Check if stall with same name and category already exists for a shop
     Optional<Stall> findByStallNameAndStallCategoryAndShopIdAndIsDeleteFalse(String stallName, String stallCategory, Long shopId);
     
+    // Find all pending stalls for admin approval
+    List<Stall> findByStatusAndIsDeleteFalseOrderByCreatedAtDesc(String status);
+    
 }

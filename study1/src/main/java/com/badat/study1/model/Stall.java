@@ -36,7 +36,19 @@ public class Stall {
     private byte[] stallImageData;
 
     @Column(name = "status", length = 20, nullable = false)
-    private String status = "OPEN";
+    private String status = "PENDING";
+
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = false;
+
+    @Column(name = "approval_reason", columnDefinition = "TEXT")
+    private String approvalReason;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "approved_by")
+    private Long approvedBy;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -64,6 +76,8 @@ public class Stall {
         this.shortDescription = shortDescription;
         this.detailedDescription = detailedDescription;
         this.stallImageData = stallImageData;
+        this.status = "PENDING";
+        this.isActive = false;
         this.createdAt = Instant.now();
         this.isDelete = false;
     }
@@ -98,6 +112,18 @@ public class Stall {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public boolean isActive() { return isActive; }
+    public void setActive(boolean active) { isActive = active; }
+
+    public String getApprovalReason() { return approvalReason; }
+    public void setApprovalReason(String approvalReason) { this.approvalReason = approvalReason; }
+
+    public Instant getApprovedAt() { return approvedAt; }
+    public void setApprovedAt(Instant approvedAt) { this.approvedAt = approvedAt; }
+
+    public Long getApprovedBy() { return approvedBy; }
+    public void setApprovedBy(Long approvedBy) { this.approvedBy = approvedBy; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
