@@ -164,7 +164,7 @@ public class ViewController {
         try {
             var activeStalls = stallRepository.findByStatusAndIsDeleteFalse("OPEN");
             List<Map<String, Object>> stallCards = new ArrayList<>();
-            
+
             // Calculate product counts for all stalls
             List<Map<String, Object>> stallsWithCounts = new ArrayList<>();
             for (Stall stall : activeStalls) {
@@ -179,24 +179,24 @@ public class ViewController {
                         .mapToInt(p -> p.getQuantity() != null ? p.getQuantity() : 0)
                         .sum();
                 vm.put("productCount", totalStock);
-                
+
                 // Calculate price range from available products
                 if (!products.isEmpty()) {
                     var availableProducts = products.stream()
                             .filter(product -> product.getQuantity() != null && product.getQuantity() > 0)
                             .collect(Collectors.toList());
-                    
+
                     if (!availableProducts.isEmpty()) {
                         BigDecimal minPrice = availableProducts.stream()
                                 .map(Product::getPrice)
                                 .min(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
-                        
+
                         BigDecimal maxPrice = availableProducts.stream()
                                 .map(Product::getPrice)
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
-                        
+
                         NumberFormat viNumber = NumberFormat.getNumberInstance(Locale.US);
                         viNumber.setGroupingUsed(true);
                         String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
@@ -230,13 +230,13 @@ public class ViewController {
 
                 stallsWithCounts.add(vm);
             }
-            
+
             // Sort by product count descending and take top 8
             stallCards = stallsWithCounts.stream()
                     .sorted((a, b) -> Integer.compare((Integer) b.get("productCount"), (Integer) a.get("productCount")))
                     .limit(8)
                     .collect(Collectors.toList());
-                    
+
             model.addAttribute("stalls", stallCards);
         } catch (Exception ignored) {}
 
@@ -274,8 +274,8 @@ public class ViewController {
 
     @GetMapping("/reset-password")
     public String resetPasswordPage(@RequestParam(value = "email", required = false) String email,
-                                   @RequestParam(value = "otp", required = false) String otp,
-                                   Model model) {
+                                    @RequestParam(value = "otp", required = false) String otp,
+                                    Model model) {
         if (email != null) {
             model.addAttribute("email", email);
         }
@@ -299,19 +299,19 @@ public class ViewController {
         model.addAttribute("walletBalance", BigDecimal.ZERO); // Default value
 
         User user = (User) authentication.getPrincipal();
-		// Require phone and full name before accessing seller registration
-		boolean missingPhone = (user.getPhone() == null || user.getPhone().trim().isEmpty());
-		boolean missingFullName = (user.getFullName() == null || user.getFullName().trim().isEmpty());
-		
-		log.info("Seller registration check - User: {}, Phone: {}, FullName: {}, MissingPhone: {}, MissingFullName: {}", 
-				user.getUsername(), user.getPhone(), user.getFullName(), missingPhone, missingFullName);
-		
-		if (missingPhone || missingFullName) {
-			log.info("Redirecting to profile - missing required info");
-			redirectAttributes.addFlashAttribute("infoRequired",
-					"Vui lòng cập nhật đầy đủ Họ và tên và Số điện thoại trước khi đăng ký bán hàng.");
-			return "redirect:/profile";
-		}
+        // Require phone and full name before accessing seller registration
+        boolean missingPhone = (user.getPhone() == null || user.getPhone().trim().isEmpty());
+        boolean missingFullName = (user.getFullName() == null || user.getFullName().trim().isEmpty());
+
+        log.info("Seller registration check - User: {}, Phone: {}, FullName: {}, MissingPhone: {}, MissingFullName: {}",
+                user.getUsername(), user.getPhone(), user.getFullName(), missingPhone, missingFullName);
+
+        if (missingPhone || missingFullName) {
+            log.info("Redirecting to profile - missing required info");
+            redirectAttributes.addFlashAttribute("infoRequired",
+                    "Vui lòng cập nhật đầy đủ Họ và tên và Số điện thoại trước khi đăng ký bán hàng.");
+            return "redirect:/profile";
+        }
         model.addAttribute("username", user.getUsername());
         model.addAttribute("authorities", authentication.getAuthorities());
         model.addAttribute("userRole", user.getRole().name());
@@ -585,17 +585,17 @@ public class ViewController {
     }
 
     @GetMapping("/activity-history")
-    public String activityHistoryPage(Model model, 
-                                    @RequestParam(defaultValue = "0") int page,
-                                    @RequestParam(required = false) String action,
-                                    @RequestParam(required = false) Boolean success,
-                                    @RequestParam(required = false) String fromDate,
-                                    @RequestParam(required = false) String toDate,
-                                    @RequestParam(required = false) String technicalAction,
-                                    @RequestParam(required = false) String ipFilter) {
+    public String activityHistoryPage(Model model,
+                                      @RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(required = false) String action,
+                                      @RequestParam(required = false) Boolean success,
+                                      @RequestParam(required = false) String fromDate,
+                                      @RequestParam(required = false) String toDate,
+                                      @RequestParam(required = false) String technicalAction,
+                                      @RequestParam(required = false) String ipFilter) {
         try {
             log.info("Activity history page requested for page: {}, action: {}, success: {}", page, action, success);
-            
+
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
                     !authentication.getName().equals("anonymousUser");
@@ -607,7 +607,7 @@ public class ViewController {
 
             User user = (User) authentication.getPrincipal();
             log.info("Loading activity history for user: {}", user.getUsername());
-            
+
             model.addAttribute("username", user.getUsername());
             model.addAttribute("isAuthenticated", true);
             model.addAttribute("userRole", user.getRole().name());
@@ -627,18 +627,18 @@ public class ViewController {
 
             // Use technicalAction if provided, otherwise use action
             String finalAction = (technicalAction != null && !technicalAction.isEmpty()) ? technicalAction : action;
-            
+
             // Lấy lịch sử hoạt động với retry logic và error handling
             Page<AuditLogResponse> activities = null;
             int maxRetries = 3;
             int retryCount = 0;
-            
+
             while (activities == null && retryCount < maxRetries) {
                 try {
                     log.info("Attempting to get audit logs for user {} (attempt {})", user.getId(), retryCount + 1);
                     activities = auditLogService.getUserAuditLogsWithFilters(
                             user.getId(), page, 5, finalAction, success, fromDate, toDate, null);
-                    
+
                     if (activities != null) {
                         log.info("Successfully retrieved {} activities for user {}", activities.getTotalElements(), user.getId());
                     }
@@ -646,7 +646,7 @@ public class ViewController {
                 } catch (Exception e) {
                     retryCount++;
                     log.error("Attempt {} failed to get audit logs for user {}: {}", retryCount, user.getId(), e.getMessage());
-                    
+
                     if (retryCount >= maxRetries) {
                         log.error("All retry attempts failed for user {}", user.getId());
                         activities = Page.empty();
@@ -663,21 +663,21 @@ public class ViewController {
                     }
                 }
             }
-            
+
             if (activities == null) {
                 activities = Page.empty();
             }
-            
+
             model.addAttribute("activities", activities);
             model.addAttribute("currentPage", page);
-            
+
             // Filter parameters
             model.addAttribute("selectedAction", finalAction);
             model.addAttribute("selectedSuccess", success);
             model.addAttribute("selectedFromDate", fromDate);
             model.addAttribute("selectedToDate", toDate);
             model.addAttribute("selectedIp", ipFilter);
-            
+
             // Available actions for filter with user-friendly names
             Map<String, String> actionMappings = new HashMap<>();
             actionMappings.put("LOGIN", "Đăng nhập");
@@ -688,15 +688,15 @@ public class ViewController {
             actionMappings.put("PROFILE_UPDATE", "Cập nhật thông tin");
             actionMappings.put("REGISTER", "Đăng ký tài khoản");
             actionMappings.put("OTP_VERIFY", "Xác minh OTP");
-            
+
             model.addAttribute("actionMappings", actionMappings);
             model.addAttribute("availableActions", actionMappings.keySet());
-            
+
             log.info("Available actions for user {}: {}", user.getUsername(), actionMappings.keySet());
 
             log.info("Activity history page loaded successfully for user {}", user.getUsername());
             return "customer/activity-history";
-            
+
         } catch (Exception e) {
             log.error("Critical error in activityHistoryPage: {}", e.getMessage(), e);
             // Return error page or redirect to home
@@ -833,24 +833,24 @@ public class ViewController {
                         .sum();
 
                 stall.setProductCount(totalStock);
-                
+
                 // Tính khoảng giá từ sản phẩm còn hàng
                 if (!products.isEmpty()) {
                     var availableProducts = products.stream()
                             .filter(product -> product.getQuantity() != null && product.getQuantity() > 0)
                             .collect(Collectors.toList());
-                    
+
                     if (!availableProducts.isEmpty()) {
                         BigDecimal minPrice = availableProducts.stream()
                                 .map(Product::getPrice)
                                 .min(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
-                        
+
                         BigDecimal maxPrice = availableProducts.stream()
                                 .map(Product::getPrice)
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
-                        
+
                         NumberFormat viNumber = NumberFormat.getNumberInstance(Locale.US);
                         viNumber.setGroupingUsed(true);
                         String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
@@ -910,7 +910,7 @@ public class ViewController {
                 .map(Wallet::getBalance)
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
-        
+
         return "seller/add-stall";
     }
 
@@ -1010,9 +1010,9 @@ public class ViewController {
     }
 
     @GetMapping("/seller/add-quantity/{productId}")
-    public String sellerAddQuantityPage(@PathVariable Long productId, 
-                                       @RequestParam(defaultValue = "0") int page,
-                                       Model model) {
+    public String sellerAddQuantityPage(@PathVariable Long productId,
+                                        @RequestParam(defaultValue = "0") int page,
+                                        Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
                 !authentication.getName().equals("anonymousUser");
@@ -1059,18 +1059,18 @@ public class ViewController {
 
         model.addAttribute("product", product);
         model.addAttribute("stall", stallOptional.get());
-        
+
         // Lấy lịch sử upload gần nhất cho sản phẩm này với pagination (5 bản ghi mỗi trang)
         Pageable pageable = PageRequest.of(page, 5);
         Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
-        
+
         model.addAttribute("recentUploads", uploadHistoryPage.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", uploadHistoryPage.getTotalPages());
         model.addAttribute("totalElements", uploadHistoryPage.getTotalElements());
         model.addAttribute("hasNext", uploadHistoryPage.hasNext());
         model.addAttribute("hasPrevious", uploadHistoryPage.hasPrevious());
-        
+
         return "seller/add-quantity";
     }
 
@@ -1106,11 +1106,11 @@ public class ViewController {
         // Get seller's stalls and products for filter dropdowns
         var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
-        
+
         // Get orders for this seller with pagination (10 orders per page)
         Pageable pageable = PageRequest.of(page, 10);
         List<com.badat.study1.model.Order> allOrders = orderRepository.findBySellerIdOrderByCreatedAtDesc(user.getId());
-        
+
         // Populate transient fields from first OrderItem for each Order
         for (com.badat.study1.model.Order order : allOrders) {
             if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
@@ -1120,7 +1120,7 @@ public class ViewController {
                 order.setUnitPrice(firstItem.getUnitPrice());
             }
         }
-        
+
         // Apply filters
         List<com.badat.study1.model.Order> filteredOrders = allOrders.stream()
                 .filter(order -> status == null || status.isEmpty() || order.getStatus().name().equals(status.toUpperCase()))
@@ -1136,16 +1136,16 @@ public class ViewController {
                     return order.getCreatedAt().toLocalDate().isBefore(java.time.LocalDate.parse(dateTo).plusDays(1));
                 })
                 .collect(java.util.stream.Collectors.toList());
-        
+
         // Create pagination manually
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), filteredOrders.size());
         List<com.badat.study1.model.Order> pageContent = filteredOrders.subList(start, end);
-        
+
         Page<com.badat.study1.model.Order> ordersPage = new org.springframework.data.domain.PageImpl<>(
-            pageContent, 
-            pageable, 
-            filteredOrders.size()
+                pageContent,
+                pageable,
+                filteredOrders.size()
         );
         model.addAttribute("orders", ordersPage.getContent());
         model.addAttribute("currentPage", page);
@@ -1167,7 +1167,7 @@ public class ViewController {
 
     @GetMapping("/seller/reviews")
     public String sellerReviewsPage(@RequestParam(defaultValue = "0") int page,
-                                   Model model) {
+                                    Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
                 !authentication.getName().equals("anonymousUser");
@@ -1192,25 +1192,25 @@ public class ViewController {
         // Get seller's stalls with review statistics
         var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         var stallStats = new java.util.ArrayList<java.util.Map<String, Object>>();
-        
+
         for (var stall : stalls) {
             var stallReviews = reviewRepository.findByStallIdAndIsDeleteFalse(stall.getId());
-            
+
             double averageRating = 0.0;
             int reviewCount = stallReviews.size();
-            
+
             if (reviewCount > 0) {
                 averageRating = stallReviews.stream()
-                    .mapToInt(com.badat.study1.model.Review::getRating)
-                    .average()
-                    .orElse(0.0);
+                        .mapToInt(com.badat.study1.model.Review::getRating)
+                        .average()
+                        .orElse(0.0);
             }
-            
+
             // Calculate unread count for this stall
             int unreadCount = (int) stallReviews.stream()
-                .filter(review -> !review.getIsRead())
-                .count();
-            
+                    .filter(review -> !review.getIsRead())
+                    .count();
+
             var stallStat = new java.util.HashMap<String, Object>();
             stallStat.put("stall", stall);
             stallStat.put("averageRating", Math.round(averageRating * 10.0) / 10.0); // Round to 1 decimal
@@ -1218,7 +1218,7 @@ public class ViewController {
             stallStat.put("unreadCount", unreadCount);
             stallStats.add(stallStat);
         }
-        
+
         // Get reviews for this seller with pagination (10 reviews per page)
         // SECURITY: Validate both seller_id and shop_id to ensure reviews belong to this seller's shop
         Pageable pageable = PageRequest.of(page, 10);
@@ -1273,7 +1273,7 @@ public class ViewController {
 
             // Get reviews for this stall
             var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stallId);
-            
+
             // Convert to DTO format for JSON response
             var reviewDTOs = reviews.stream().map(review -> {
                 var dto = new java.util.HashMap<String, Object>();
@@ -1283,80 +1283,80 @@ public class ViewController {
                 dto.put("replyContent", review.getReplyContent());
                 dto.put("createdAt", review.getCreatedAt());
                 dto.put("isRead", review.getIsRead());
-                
+
                 // Add buyer info
                 var buyerInfo = new java.util.HashMap<String, Object>();
                 buyerInfo.put("username", review.getBuyer().getUsername());
                 dto.put("buyer", buyerInfo);
-                
+
                 // Add product info
                 var productInfo = new java.util.HashMap<String, Object>();
                 productInfo.put("name", review.getProduct().getName());
                 dto.put("product", productInfo);
-                
+
                 return dto;
             }).collect(java.util.stream.Collectors.toList());
 
-        return ResponseEntity.ok(reviewDTOs);
+            return ResponseEntity.ok(reviewDTOs);
 
-    } catch (Exception e) {
-        log.error("Error fetching reviews for stall {}: {}", stallId, e.getMessage());
-        return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
-    }
-}
-
-@PostMapping("/api/seller/reviews/mark-read")
-@ResponseBody
-public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
-            !authentication.getName().equals("anonymousUser");
-
-    if (!isAuthenticated) {
-        return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        } catch (Exception e) {
+            log.error("Error fetching reviews for stall {}: {}", stallId, e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+        }
     }
 
-    User user = (User) authentication.getPrincipal();
+    @PostMapping("/api/seller/reviews/mark-read")
+    @ResponseBody
+    public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
 
-    // Check if user has SELLER role
-    if (!user.getRole().equals(User.Role.SELLER)) {
-        return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
-    }
-
-    try {
-        // Verify that the stall belongs to this seller
-        var stall = stallRepository.findById(stallId);
-        if (stall.isEmpty()) {
-            return ResponseEntity.status(404).body(Map.of("error", "Stall not found"));
+        if (!isAuthenticated) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
 
-        // Get seller's shop
-        var userShop = shopRepository.findByUserId(user.getId());
-        if (userShop.isEmpty()) {
-            return ResponseEntity.status(404).body(Map.of("error", "Shop not found"));
+        User user = (User) authentication.getPrincipal();
+
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
         }
 
-        // Verify stall belongs to seller's shop
-        if (!stall.get().getShopId().equals(userShop.get().getId())) {
-            return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
-        }
-
-        // Mark all reviews for this stall as read
-        var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stallId);
-        for (var review : reviews) {
-            if (!review.getIsRead()) {
-                review.setIsRead(true);
-                reviewRepository.save(review);
+        try {
+            // Verify that the stall belongs to this seller
+            var stall = stallRepository.findById(stallId);
+            if (stall.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Stall not found"));
             }
+
+            // Get seller's shop
+            var userShop = shopRepository.findByUserId(user.getId());
+            if (userShop.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Shop not found"));
+            }
+
+            // Verify stall belongs to seller's shop
+            if (!stall.get().getShopId().equals(userShop.get().getId())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+            }
+
+            // Mark all reviews for this stall as read
+            var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stallId);
+            for (var review : reviews) {
+                if (!review.getIsRead()) {
+                    review.setIsRead(true);
+                    reviewRepository.save(review);
+                }
+            }
+
+            return ResponseEntity.ok(Map.of("message", "Reviews marked as read", "count", reviews.size()));
+
+        } catch (Exception e) {
+            log.error("Error marking reviews as read for stall {}: {}", stallId, e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
         }
-
-        return ResponseEntity.ok(Map.of("message", "Reviews marked as read", "count", reviews.size()));
-
-    } catch (Exception e) {
-        log.error("Error marking reviews as read for stall {}: {}", stallId, e.getMessage());
-        return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
     }
-}
 
     @PostMapping("/seller/reviews/{reviewId}/reply")
     public String replyToReview(@PathVariable Long reviewId,
@@ -1392,7 +1392,7 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             }
 
             var review = reviewOptional.get();
-            
+
             // SECURITY: Check if seller owns this review AND it belongs to their shop
             if (!review.getSellerId().equals(user.getId()) || !review.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền trả lời đánh giá này!");
@@ -1415,15 +1415,15 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
 
     @GetMapping("/admin/users/{id}/detail")
     public String adminUserDetail(@PathVariable Long id, Model model,
-                                @RequestParam(defaultValue = "0") int page,
-                                @RequestParam(defaultValue = "25") int size,
-                                @RequestParam(required = false) String status,
-                                @RequestParam(required = false) String dateFrom,
-                                @RequestParam(required = false) String dateTo,
-                                @RequestParam(required = false) BigDecimal minAmount) {
+                                  @RequestParam(defaultValue = "0") int page,
+                                  @RequestParam(defaultValue = "25") int size,
+                                  @RequestParam(required = false) String status,
+                                  @RequestParam(required = false) String dateFrom,
+                                  @RequestParam(required = false) String dateTo,
+                                  @RequestParam(required = false) BigDecimal minAmount) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || 
-            "anonymousUser".equals(authentication.getName())) {
+        if (authentication == null || !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getName())) {
             return "redirect:/login";
         }
 
@@ -1444,55 +1444,55 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
 
         // Get user's orders with filters
         // Pageable pageable = PageRequest.of(page, size); // Not used in mock implementation
-        
+
         // Mock order data for now - you should implement real order filtering
         List<Map<String, Object>> orders = new ArrayList<>();
-        
+
         // Apply filters to mock data
         if (status != null && !status.isEmpty()) {
             // Filter by status
             orders = orders.stream()
-                .filter(order -> order.get("status").equals(status))
-                .collect(java.util.stream.Collectors.toList());
+                    .filter(order -> order.get("status").equals(status))
+                    .collect(java.util.stream.Collectors.toList());
         }
-        
+
         if (dateFrom != null && !dateFrom.isEmpty()) {
             try {
                 java.time.LocalDate fromDate = java.time.LocalDate.parse(dateFrom);
                 orders = orders.stream()
-                    .filter(order -> {
-                        java.time.LocalDate orderDate = (java.time.LocalDate) order.get("orderDate");
-                        return orderDate.isAfter(fromDate) || orderDate.isEqual(fromDate);
-                    })
-                    .collect(java.util.stream.Collectors.toList());
+                        .filter(order -> {
+                            java.time.LocalDate orderDate = (java.time.LocalDate) order.get("orderDate");
+                            return orderDate.isAfter(fromDate) || orderDate.isEqual(fromDate);
+                        })
+                        .collect(java.util.stream.Collectors.toList());
             } catch (Exception e) {
                 log.warn("Invalid dateFrom format: {}", dateFrom);
             }
         }
-        
+
         if (dateTo != null && !dateTo.isEmpty()) {
             try {
                 java.time.LocalDate toDate = java.time.LocalDate.parse(dateTo);
                 orders = orders.stream()
-                    .filter(order -> {
-                        java.time.LocalDate orderDate = (java.time.LocalDate) order.get("orderDate");
-                        return orderDate.isBefore(toDate) || orderDate.isEqual(toDate);
-                    })
-                    .collect(java.util.stream.Collectors.toList());
+                        .filter(order -> {
+                            java.time.LocalDate orderDate = (java.time.LocalDate) order.get("orderDate");
+                            return orderDate.isBefore(toDate) || orderDate.isEqual(toDate);
+                        })
+                        .collect(java.util.stream.Collectors.toList());
             } catch (Exception e) {
                 log.warn("Invalid dateTo format: {}", dateTo);
             }
         }
-        
+
         if (minAmount != null) {
             orders = orders.stream()
-                .filter(order -> {
-                    BigDecimal orderAmount = (BigDecimal) order.get("totalAmount");
-                    return orderAmount.compareTo(minAmount) >= 0;
-                })
-                .collect(java.util.stream.Collectors.toList());
+                    .filter(order -> {
+                        BigDecimal orderAmount = (BigDecimal) order.get("totalAmount");
+                        return orderAmount.compareTo(minAmount) >= 0;
+                    })
+                    .collect(java.util.stream.Collectors.toList());
         }
-        
+
         // Mock data for demonstration - replace with actual order queries
         Map<String, Object> order1 = new HashMap<>();
         order1.put("id", 1L);
@@ -1518,9 +1518,9 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
 
         // Calculate stats
         BigDecimal totalSpent = orders.stream()
-            .map(o -> (BigDecimal) o.get("totalPrice"))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+                .map(o -> (BigDecimal) o.get("totalPrice"))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         int totalOrders = orders.size();
 
         model.addAttribute("user", user);
@@ -1536,22 +1536,22 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("username", currentUser.getUsername());
         model.addAttribute("userRole", currentUser.getRole().name());
-        
+
         return "admin/user-detail";
     }
 
     @GetMapping("/admin/audit-logs")
     public String adminAuditLogs(Model model,
-                               @RequestParam(defaultValue = "0") int page,
-                               @RequestParam(defaultValue = "25") int size,
-                               @RequestParam(required = false) String action,
-                               @RequestParam(required = false) String category,
-                               @RequestParam(required = false) String success,
-                               @RequestParam(required = false) String startDate,
-                               @RequestParam(required = false) String endDate) {
+                                 @RequestParam(defaultValue = "0") int page,
+                                 @RequestParam(defaultValue = "25") int size,
+                                 @RequestParam(required = false) String action,
+                                 @RequestParam(required = false) String category,
+                                 @RequestParam(required = false) String success,
+                                 @RequestParam(required = false) String startDate,
+                                 @RequestParam(required = false) String endDate) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || 
-            "anonymousUser".equals(authentication.getName())) {
+        if (authentication == null || !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getName())) {
             return "redirect:/login";
         }
 
@@ -1562,24 +1562,24 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
 
         // Get audit logs with filters
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        
+
         // Note: You'll need to implement filtering in your AuditLogRepository
         // For now, we'll get all logs
         Page<AuditLog> auditLogsPage = auditLogRepository.findAll(pageable);
-        
-        log.info("Audit logs query - Page: {}, Size: {}, Total elements: {}, Total pages: {}", 
+
+        log.info("Audit logs query - Page: {}, Size: {}, Total elements: {}, Total pages: {}",
                 page, size, auditLogsPage.getTotalElements(), auditLogsPage.getTotalPages());
-        
+
         // Get unique actions and categories for filter dropdowns
         List<String> actions = auditLogRepository.findDistinctActions();
         List<String> categories = auditLogRepository.findDistinctCategories();
-        
+
         // Convert success parameter to Boolean if needed
         Boolean successBoolean = null;
         if (success != null && !success.isEmpty()) {
             successBoolean = Boolean.valueOf(success);
         }
-        
+
         model.addAttribute("auditLogs", auditLogsPage.getContent());
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", auditLogsPage.getTotalPages());
@@ -1590,26 +1590,26 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("username", currentUser.getUsername());
         model.addAttribute("userRole", currentUser.getRole().name());
-        
+
         // Add filter parameters to model for pagination
         model.addAttribute("action", action);
         model.addAttribute("category", category);
         model.addAttribute("success", success);
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
-        
+
         return "admin/audit-logs";
     }
 
     @GetMapping("/admin/audit-logs/export")
     public ResponseEntity<?> exportAuditLogs(@RequestParam(required = false) String action,
-                                            @RequestParam(required = false) String category,
-                                            @RequestParam(required = false) Boolean success,
-                                            @RequestParam(required = false) String startDate,
-                                            @RequestParam(required = false) String endDate) {
+                                             @RequestParam(required = false) String category,
+                                             @RequestParam(required = false) Boolean success,
+                                             @RequestParam(required = false) String startDate,
+                                             @RequestParam(required = false) String endDate) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || 
-            "anonymousUser".equals(authentication.getName())) {
+        if (authentication == null || !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getName())) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
 
@@ -1621,39 +1621,39 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         try {
             // Get all audit logs (no pagination for export)
             List<AuditLog> auditLogs = auditLogRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
-            
+
             // Create CSV content
             StringBuilder csv = new StringBuilder();
             csv.append("ID,Thời gian,Hành động,Danh mục,Trạng thái,User ID,IP Address,Chi tiết\n");
-            
+
             for (AuditLog log : auditLogs) {
                 csv.append(String.format("%d,%s,%s,%s,%s,%s,%s,\"%s\"\n",
-                    log.getId(),
-                    log.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),
-                    log.getAction(),
-                    log.getCategory().name(),
-                    log.getSuccess() ? "Thành công" : "Thất bại",
-                    log.getUserId() != null ? log.getUserId().toString() : "",
-                    log.getIpAddress(),
-                    log.getDetails().replace("\"", "\"\"") // Escape quotes
+                        log.getId(),
+                        log.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),
+                        log.getAction(),
+                        log.getCategory().name(),
+                        log.getSuccess() ? "Thành công" : "Thất bại",
+                        log.getUserId() != null ? log.getUserId().toString() : "",
+                        log.getIpAddress(),
+                        log.getDetails().replace("\"", "\"\"") // Escape quotes
                 ));
             }
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "audit-logs-" + 
-                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")) + ".csv");
-            
+            headers.setContentDispositionFormData("attachment", "audit-logs-" +
+                    java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")) + ".csv");
+
             return ResponseEntity.ok()
-                .headers(headers)
-                .body(csv.toString().getBytes("UTF-8"));
-                
+                    .headers(headers)
+                    .body(csv.toString().getBytes("UTF-8"));
+
         } catch (Exception e) {
             log.error("Error exporting audit logs: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
         }
     }
-    
+
     @GetMapping("/logout")
     public String logout(HttpServletRequest request, HttpServletResponse response) {
         try {
@@ -1666,15 +1666,15 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
                     .sameSite("Lax")
                     .maxAge(0)
                     .build();
-            
+
             response.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
-            
+
             // Clear Spring Security context
             SecurityContextHolder.clearContext();
-            
+
             log.info("User logged out successfully");
             return "redirect:/login?logout=true";
-            
+
         } catch (Exception e) {
             log.error("Error during logout: {}", e.getMessage(), e);
             return "redirect:/login?error=logout_failed";

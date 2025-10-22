@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -355,8 +357,84 @@ public class WithdrawService {
     public List<WithdrawRequestResponse> getWithdrawRequestsByStatus(WithdrawRequest.Status status) {
         List<WithdrawRequest> requests = withdrawRequestRepository.findByStatus(status);
         return requests.stream()
-                .map(WithdrawRequestResponse::fromEntity)
+                .map(request -> {
+                    WithdrawRequestResponse response = WithdrawRequestResponse.fromEntity(request);
+                    // Add shop name
+                    try {
+                        Shop shop = shopRepository.findById(request.getShopId()).orElse(null);
+                        if (shop != null) {
+                            response.setShopName(shop.getShopName());
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not load shop name for request {}: {}", request.getId(), e.getMessage());
+                    }
+                    return response;
+                })
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt())) // Sort by newest first
                 .collect(java.util.stream.Collectors.toList());
+    }
+    
+    public List<WithdrawRequestResponse> filterWithdrawRequests(
+            List<WithdrawRequestResponse> requests,
+            String dateFrom,
+            String dateTo,
+            String searchName,
+            String searchAccount,
+            String searchBank) {
+        
+        return requests.stream()
+                .filter(request -> {
+                    // Date filter
+                    if (dateFrom != null && !dateFrom.trim().isEmpty()) {
+                        try {
+                            LocalDate fromDate = LocalDate.parse(dateFrom);
+                            LocalDate requestDate = request.getCreatedAt().toLocalDate();
+                            if (requestDate.isBefore(fromDate)) {
+                                return false;
+                            }
+                        } catch (Exception e) {
+                            log.warn("Invalid dateFrom format: {}", dateFrom);
+                        }
+                    }
+                    
+                    if (dateTo != null && !dateTo.trim().isEmpty()) {
+                        try {
+                            LocalDate toDate = LocalDate.parse(dateTo);
+                            LocalDate requestDate = request.getCreatedAt().toLocalDate();
+                            if (requestDate.isAfter(toDate)) {
+                                return false;
+                            }
+                        } catch (Exception e) {
+                            log.warn("Invalid dateTo format: {}", dateTo);
+                        }
+                    }
+                    
+                    // Name search (search in shop name)
+                    if (searchName != null && !searchName.trim().isEmpty()) {
+                        String shopName = request.getShopName();
+                        if (shopName == null || !shopName.toLowerCase().contains(searchName.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    // Account number search
+                    if (searchAccount != null && !searchAccount.trim().isEmpty()) {
+                        String accountNumber = request.getBankAccountNumber();
+                        if (accountNumber == null || !accountNumber.contains(searchAccount)) {
+                            return false;
+                        }
+                    }
+                    
+                    // Bank name search
+                    if (searchBank != null && !searchBank.trim().isEmpty()) {
+                        String bankName = request.getBankName();
+                        if (bankName == null || !bankName.toLowerCase().contains(searchBank.toLowerCase())) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                })
+                .collect(Collectors.toList());
     }
 }
