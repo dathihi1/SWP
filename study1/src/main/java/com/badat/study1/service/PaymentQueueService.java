@@ -39,7 +39,7 @@ public class PaymentQueueService {
      * Thêm payment request vào queue
      */
     @Transactional
-    public void enqueuePayment(Long userId, List<Map<String, Object>> cartItems, BigDecimal totalAmount) {
+    public Long enqueuePayment(Long userId, List<Map<String, Object>> cartItems, BigDecimal totalAmount) {
         log.info("Enqueuing payment for user {}: {} VND", userId, totalAmount);
         
         try {
@@ -55,6 +55,7 @@ public class PaymentQueueService {
             paymentQueueRepository.save(paymentQueue);
             
             log.info("Payment queued successfully with ID: {}", paymentQueue.getId());
+            return paymentQueue.getId();
             
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize cart data", e);
@@ -245,8 +246,15 @@ public class PaymentQueueService {
                 Warehouse actualWarehouse = productWarehouses.get(warehouseIndex % productWarehouses.size());
                 orderItem.setWarehouseId(actualWarehouse.getId());
                 
-                log.info("Updated OrderItem {} with warehouseId: {} (productId: {})", 
-                        orderItem.getId(), actualWarehouse.getId(), productId);
+                // Set sellerId từ warehouse
+                if (actualWarehouse.getUser() != null) {
+                    orderItem.setSellerId(actualWarehouse.getUser().getId());
+                    log.info("Updated OrderItem {} with warehouseId: {} and sellerId: {} (productId: {})", 
+                            orderItem.getId(), actualWarehouse.getId(), actualWarehouse.getUser().getId(), productId);
+                } else {
+                    log.warn("Warehouse {} has no user, cannot set sellerId for OrderItem {}", 
+                            actualWarehouse.getId(), orderItem.getId());
+                }
                 
                 warehouseIndex++;
             }

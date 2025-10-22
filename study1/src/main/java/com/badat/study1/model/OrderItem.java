@@ -62,6 +62,9 @@ public class OrderItem extends BaseEntity {
     @Column(name = "seller_amount", precision = 15, scale = 2, nullable = false)
     BigDecimal sellerAmount;
 
+    @Column(name = "seller_id", nullable = false)
+    Long sellerId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default

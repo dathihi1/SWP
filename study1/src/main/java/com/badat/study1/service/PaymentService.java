@@ -269,7 +269,7 @@ public class PaymentService {
             }
             
             // Enqueue payment for processing
-            paymentQueueService.enqueuePayment(
+            Long paymentId = paymentQueueService.enqueuePayment(
                 user.getId(), 
                 cartInfo.getCartItems(), 
                 cartInfo.getTotalAmount()
@@ -278,6 +278,7 @@ public class PaymentService {
             return PaymentResponse.builder()
                 .message("Payment queued for processing")
                 .success(true)
+                .paymentId(paymentId)
                 .build();
                 
         } catch (Exception e) {

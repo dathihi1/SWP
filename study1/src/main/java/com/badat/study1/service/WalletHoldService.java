@@ -4,9 +4,11 @@ import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHold;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.model.Order;
+import com.badat.study1.model.OrderItem;
 import com.badat.study1.repository.WalletHoldRepository;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.OrderRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.integration.redis.util.RedisLockRegistry;
@@ -31,6 +33,7 @@ public class WalletHoldService {
     private final WalletRepository walletRepository;
     private final WalletHistoryService walletHistoryService;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final OrderService orderService;
     private final RedisLockRegistry redisLockRegistry;
     
@@ -156,10 +159,21 @@ public class WalletHoldService {
             log.info("Released user wallet lock for release hold: {}", holdId);
         }
         
-        // 3. Tạo wallet history
+        // 3. Update wallet history - update PURCHASE hiện tại thành SUCCESS và tạo REFUND
         try {
             Wallet wallet = walletRepository.findByUserId(hold.getUserId())
                 .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + hold.getUserId()));
+                
+            // Update PURCHASE record thành SUCCESS
+            walletHistoryService.updateWalletHistoryStatus(
+                wallet.getId(),
+                hold.getOrderId(),
+                WalletHistory.Type.PURCHASE,
+                WalletHistory.Status.SUCCESS,
+                "Hold released - Order: " + hold.getOrderId()
+            );
+            
+            // Tạo REFUND record mới
             walletHistoryService.saveHistory(
                 wallet.getId(),
                 hold.getAmount(), // Số dương vì đây là hoàn tiền
@@ -170,7 +184,7 @@ public class WalletHoldService {
                 "Hold released - Order: " + hold.getOrderId()
             );
         } catch (Exception e) {
-            log.warn("Failed to create wallet history for release: {}", e.getMessage());
+            log.warn("Failed to update wallet history for release: {}", e.getMessage());
         }
         
         log.info("Hold released successfully for user {}: {} VND", hold.getUserId(), hold.getAmount());
@@ -217,8 +231,17 @@ public class WalletHoldService {
                         
                         log.info("Hold {} released for user {}: {} VND", hold.getId(), userId, hold.getAmount());
                         
-                        // 3. Tạo wallet history
+                        // 3. Update wallet history - update PURCHASE hiện tại thành REFUND
                         try {
+                            walletHistoryService.updateWalletHistoryStatus(
+                                wallet.getId(),
+                                hold.getOrderId(),
+                                WalletHistory.Type.PURCHASE,
+                                WalletHistory.Status.SUCCESS, // Update PURCHASE thành SUCCESS trước
+                                "Hold released - Order: " + hold.getOrderId()
+                            );
+                            
+                            // Sau đó tạo REFUND record mới
                             walletHistoryService.saveHistory(
                                 wallet.getId(),
                                 hold.getAmount(), // Số dương vì đây là hoàn tiền
@@ -229,7 +252,7 @@ public class WalletHoldService {
                                 "Hold released - Order: " + hold.getOrderId()
                             );
                         } catch (Exception e) {
-                            log.warn("Failed to create wallet history for release: {}", e.getMessage());
+                            log.warn("Failed to update wallet history for release: {}", e.getMessage());
                         }
                     }
                 }
@@ -366,10 +389,15 @@ public class WalletHoldService {
         // 2. Chuyển tiền cho seller
         if (totalSellerAmount.compareTo(BigDecimal.ZERO) > 0) {
             try {
-                // Lấy seller từ OrderItem đầu tiên (tất cả OrderItem trong cùng Order sẽ có cùng seller)
+                // Lấy seller từ OrderItem đầu tiên - load trực tiếp từ database
                 Long sellerId = null;
-                if (!orders.isEmpty() && orders.get(0).getOrderItems() != null && !orders.get(0).getOrderItems().isEmpty()) {
-                    sellerId = orders.get(0).getOrderItems().get(0).getWarehouse().getUser().getId();
+                if (!orders.isEmpty()) {
+                    // Load OrderItems trực tiếp từ database thay vì từ Order object
+                    List<OrderItem> orderItems = orderItemRepository.findByOrderIdOrderByCreatedAtAsc(orders.get(0).getId());
+                    if (!orderItems.isEmpty()) {
+                        sellerId = orderItems.get(0).getSellerId();
+                        log.info("Found sellerId from OrderItem: {} (from {} orderItems)", sellerId, orderItems.size());
+                    }
                 }
                 
                 if (sellerId != null) {
@@ -429,22 +457,20 @@ public class WalletHoldService {
             }
         }
         
-        // 4. Tạo wallet history cho buyer (chi tiêu)
+        // 4. Update wallet history cho buyer (chi tiêu) - update PURCHASE hiện tại thành SUCCESS
         try {
             Wallet buyerWallet = walletRepository.findByUserId(hold.getUserId())
                 .orElseThrow(() -> new RuntimeException("Buyer wallet not found"));
                 
-            walletHistoryService.saveHistory(
+            walletHistoryService.updateWalletHistoryStatus(
                 buyerWallet.getId(),
-                totalAmount.negate(), // Số âm vì đây là chi tiêu
                 hold.getOrderId(),
-                null,
                 WalletHistory.Type.PURCHASE,
                 WalletHistory.Status.SUCCESS,
                 "Payment completed - Order: " + hold.getOrderId()
             );
         } catch (Exception e) {
-            log.warn("Failed to create wallet history for buyer: {}", e.getMessage());
+            log.warn("Failed to update wallet history for buyer: {}", e.getMessage());
         }
         
         // 5. Cập nhật trạng thái tất cả orders thành COMPLETED

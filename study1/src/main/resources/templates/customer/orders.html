@@ -311,7 +311,7 @@
         }
 
         function startAutoRefresh() {
-            refreshInterval = setInterval(loadOrders, 10000); // Refresh every 10 seconds
+            refreshInterval = setInterval(loadOrders, 30000); // Refresh every 30 seconds
         }
 
         function stopAutoRefresh() {
@@ -326,7 +326,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             loadAll();
-            startAutoRefresh();
+            // startAutoRefresh(); // Tắt auto-refresh, chỉ refresh khi người dùng click nút
         });
 
         // Stop auto refresh when page is hidden
@@ -334,7 +334,7 @@
             if (document.hidden) {
                 stopAutoRefresh();
             } else {
-                startAutoRefresh();
+                // startAutoRefresh(); // Tắt auto-refresh khi page visible lại
             }
         });
 

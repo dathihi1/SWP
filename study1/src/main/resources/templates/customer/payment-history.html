@@ -32,11 +32,17 @@
          .transaction-wrapper.purchase-success {
              background-color: #fd7e14; /* Cam - Mua đồ thành công */
          }
+         .transaction-wrapper.sale-success {
+             background-color: #28a745; /* Xanh lá - Bán hàng thành công */
+         }
          .transaction-wrapper.deposit-success {
              background-color: #28a745; /* Xanh lá - Nạp tiền thành công */
          }
          .transaction-wrapper.refund {
              background-color: #0d6efd; /* Xanh dương - Hoàn tiền */
+         }
+         .transaction-wrapper.commission {
+             background-color: #17a2b8; /* Xanh cyan - Hoa hồng */
          }
          .transaction-wrapper.default {
              background-color: #e9ecef; /* Mặc định */
@@ -96,8 +102,10 @@
          .transaction-icon.canceled { background: #6c757d; }
          .transaction-icon.withdraw-success { background: #fd7e14; }
          .transaction-icon.purchase-success { background: #fd7e14; }
+         .transaction-icon.sale-success { background: #28a745; }
          .transaction-icon.deposit-success { background: #28a745; }
          .transaction-icon.refund { background: #0d6efd; }
+         .transaction-icon.commission { background: #17a2b8; }
          .transaction-icon.default { background: #6c757d; }
         
         .transaction-date-time {
@@ -368,7 +376,9 @@
                                  <option value="ALL" th:selected="${transactionType == null or transactionType == 'ALL'}">Tất cả</option>
                                  <option value="DEPOSIT" th:selected="${transactionType == 'DEPOSIT'}">Nạp tiền</option>
                                  <option value="WITHDRAW" th:selected="${transactionType == 'WITHDRAW'}">Rút tiền</option>
-                                 <option value="PURCHASE" th:selected="${transactionType == 'PURCHASE'}">Thanh toán</option>
+                                 <option value="PURCHASE" th:selected="${transactionType == 'PURCHASE'}">Mua hàng</option>
+                                 <option value="SALE_SUCCESS" th:selected="${transactionType == 'SALE_SUCCESS'}">Bán hàng</option>
+                                 <option value="COMMISSION" th:selected="${transactionType == 'COMMISSION'}">Hoa hồng</option>
                                  <option value="REFUND" th:selected="${transactionType == 'REFUND'}">Hoàn tiền</option>
                              </select>
                              <i class="fa-solid fa-chevron-down position-absolute"></i>
@@ -405,6 +415,8 @@
                               (history.status.name() == 'CANCELED') ? 'canceled' :
                               (history.type.name() == 'WITHDRAW' && history.status.name() == 'SUCCESS') ? 'withdraw-success' :
                               (history.type.name() == 'PURCHASE' && history.status.name() == 'SUCCESS') ? 'purchase-success' :
+                              (history.type.name() == 'SALE_SUCCESS' && history.status.name() == 'SUCCESS') ? 'sale-success' :
+                              (history.type.name() == 'COMMISSION' && history.status.name() == 'SUCCESS') ? 'commission' :
                               (history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') ? 'deposit-success' :
                               (history.type.name() == 'REFUND') ? 'refund' : 'default'}">
                     
@@ -424,6 +436,10 @@
                                            class="fa-solid fa-money-bill-transfer"></i>
                                         <i th:if="${history.type.name() == 'PURCHASE' && history.status.name() == 'SUCCESS'}" 
                                            class="fa-solid fa-shopping-cart"></i>
+                                        <i th:if="${history.type.name() == 'SALE_SUCCESS' && history.status.name() == 'SUCCESS'}" 
+                                           class="fa-solid fa-hand-holding-dollar"></i>
+                                        <i th:if="${history.type.name() == 'COMMISSION' && history.status.name() == 'SUCCESS'}" 
+                                           class="fa-solid fa-percentage"></i>
                                         <i th:if="${history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS'}" 
                                            class="fa-solid fa-plus"></i>
                                         <i th:if="${history.type.name() == 'REFUND'}" 
@@ -445,19 +461,23 @@
                                         <span th:if="${history.type.name() == 'WITHDRAW' && history.status.name() == 'FAILED'}">Rút tiền thất bại</span>
                                         <span th:if="${history.type.name() == 'WITHDRAW' && history.status.name() == 'PENDING'}">Rút tiền đang xử lý</span>
                                         <span th:if="${history.type.name() == 'WITHDRAW' && history.status.name() == 'CANCELED'}">Rút tiền đã hủy</span>
-                                        <span th:if="${history.type.name() == 'PURCHASE'}">Thanh toán</span>
+                                        <span th:if="${history.type.name() == 'PURCHASE' && history.status.name() == 'SUCCESS'}">Mua hàng thành công</span>
+                                        <span th:if="${history.type.name() == 'PURCHASE' && history.status.name() == 'FAILED'}">Mua hàng thất bại</span>
+                                        <span th:if="${history.type.name() == 'PURCHASE' && history.status.name() == 'PENDING'}">Mua hàng đang xử lý</span>
+                                        <span th:if="${history.type.name() == 'SALE_SUCCESS' && history.status.name() == 'SUCCESS'}">Bán hàng thành công</span>
+                                        <span th:if="${history.type.name() == 'COMMISSION' && history.status.name() == 'SUCCESS'}">Hoa hồng</span>
                                         <span th:if="${history.type.name() == 'REFUND'}">Hoàn tiền</span>
                                     </div>
                                     <p class="transaction-description" th:text="${history.description}">Chuyển khoản ngân hàng</p>
                                 </div>
                                 <div class="transaction-right">
                                     <div class="transaction-amount">
-                                        <span th:if="${(history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') || history.type.name() == 'REFUND'}" 
+                                        <span th:if="${(history.type.name() == 'DEPOSIT' && history.status.name() == 'SUCCESS') || history.type.name() == 'REFUND' || (history.type.name() == 'SALE_SUCCESS' && history.status.name() == 'SUCCESS') || (history.type.name() == 'COMMISSION' && history.status.name() == 'SUCCESS')}" 
                                               class="positive" 
                                               th:text="'+' + ${#numbers.formatDecimal(history.amount, 0, 'POINT', 0, 'COMMA')} + ' VNĐ'">+500,000 VNĐ</span>
                                         <span th:if="${history.type.name() == 'WITHDRAW' || history.type.name() == 'PURCHASE' || (history.type.name() == 'DEPOSIT' && (history.status.name() == 'FAILED' || history.status.name() == 'PENDING'))}" 
                                               class="negative" 
-                                              th:text="'-' + ${#numbers.formatDecimal(history.amount, 0, 'POINT', 0, 'COMMA')} + ' VNĐ'">-500,000 VNĐ</span>
+                                              th:text="${#numbers.formatDecimal(history.amount, 0, 'POINT', 0, 'COMMA')} + ' VNĐ'">-500,000 VNĐ</span>
                                     </div>
                                 </div>
                             </div>

@@ -12,6 +12,7 @@ public interface WalletHistoryRepository extends JpaRepository<WalletHistory, Lo
     List<WalletHistory> findByWalletIdOrderByCreatedAtDesc(Long walletId);
     List<WalletHistory> findByWalletIdAndIsDeleteFalseOrderByCreatedAtDesc(Long walletId);
     java.util.Optional<WalletHistory> findByWalletIdAndReferenceIdAndTypeAndStatus(Long walletId, String referenceId, WalletHistory.Type type, WalletHistory.Status status);
+    java.util.Optional<WalletHistory> findByWalletIdAndReferenceIdAndTypeAndIsDeleteFalse(Long walletId, String referenceId, WalletHistory.Type type);
 }
 
 

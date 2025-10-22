@@ -113,6 +113,35 @@ public class WalletHistoryService {
 	public List<WalletHistory> getWalletHistoryByWalletId(Long walletId) {
 		return walletHistoryRepository.findByWalletIdAndIsDeleteFalseOrderByCreatedAtDesc(walletId);
 	}
+
+	/**
+	 * Update wallet history status for existing purchase record
+	 */
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public void updateWalletHistoryStatus(Long walletId, String referenceId, WalletHistory.Type type, WalletHistory.Status newStatus, String description) {
+		try {
+			// Find existing wallet history by walletId, referenceId, and type
+			WalletHistory existingHistory = walletHistoryRepository
+				.findByWalletIdAndReferenceIdAndTypeAndStatus(walletId, referenceId, type, WalletHistory.Status.PENDING)
+				.orElseThrow(() -> new RuntimeException("Wallet history not found for update"));
+			
+			// Update status and description
+			existingHistory.setStatus(newStatus);
+			existingHistory.setDescription(description);
+			existingHistory.setUpdatedAt(java.time.Instant.now());
+			
+			walletHistoryRepository.save(existingHistory);
+			
+		} catch (Exception ex) {
+			System.out.println("WalletHistory update failed. Details:");
+			System.out.println("  walletId=" + walletId);
+			System.out.println("  referenceId=" + referenceId);
+			System.out.println("  type=" + type);
+			System.out.println("  newStatus=" + newStatus);
+			System.out.println("  message=" + ex.getMessage());
+			throw ex;
+		}
+	}
 }
 
 
