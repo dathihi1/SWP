@@ -26,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -186,7 +187,8 @@ public class ViewController {
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
                         
-                        NumberFormat viNumber = NumberFormat.getInstance(new Locale("vi", "VN"));
+                        NumberFormat viNumber = NumberFormat.getNumberInstance(Locale.US);
+                        viNumber.setGroupingUsed(true);
                         String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
                         String maxStr = viNumber.format(maxPrice.setScale(0, RoundingMode.HALF_UP));
                         if (minPrice.equals(maxPrice)) {
@@ -814,7 +816,8 @@ public class ViewController {
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
                         
-                        NumberFormat viNumber = NumberFormat.getInstance(new Locale("vi", "VN"));
+                        NumberFormat viNumber = NumberFormat.getNumberInstance(Locale.US);
+                        viNumber.setGroupingUsed(true);
                         String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
                         String maxStr = viNumber.format(maxPrice.setScale(0, RoundingMode.HALF_UP));
                         if (minPrice.equals(maxPrice)) {
@@ -1157,10 +1160,16 @@ public class ViewController {
                     .orElse(0.0);
             }
             
+            // Calculate unread count for this stall
+            int unreadCount = (int) stallReviews.stream()
+                .filter(review -> !review.getIsRead())
+                .count();
+            
             var stallStat = new java.util.HashMap<String, Object>();
             stallStat.put("stall", stall);
             stallStat.put("averageRating", Math.round(averageRating * 10.0) / 10.0); // Round to 1 decimal
             stallStat.put("reviewCount", reviewCount);
+            stallStat.put("unreadCount", unreadCount);
             stallStats.add(stallStat);
         }
         
@@ -1179,6 +1188,129 @@ public class ViewController {
 
         return "seller/reviews";
     }
+
+    @GetMapping("/api/seller/reviews/stall/{stallId}")
+    @ResponseBody
+    public ResponseEntity<?> getReviewsByStall(@PathVariable Long stallId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !authentication.getName().equals("anonymousUser");
+
+        if (!isAuthenticated) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User user = (User) authentication.getPrincipal();
+
+        // Check if user has SELLER role
+        if (!user.getRole().equals(User.Role.SELLER)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+        }
+
+        try {
+            // Verify that the stall belongs to this seller
+            var stall = stallRepository.findById(stallId);
+            if (stall.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Stall not found"));
+            }
+
+            // Get seller's shop
+            var userShop = shopRepository.findByUserId(user.getId());
+            if (userShop.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Shop not found"));
+            }
+
+            // Verify stall belongs to seller's shop
+            if (!stall.get().getShopId().equals(userShop.get().getId())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+            }
+
+            // Get reviews for this stall
+            var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stallId);
+            
+            // Convert to DTO format for JSON response
+            var reviewDTOs = reviews.stream().map(review -> {
+                var dto = new java.util.HashMap<String, Object>();
+                dto.put("id", review.getId());
+                dto.put("rating", review.getRating());
+                dto.put("content", review.getContent());
+                dto.put("replyContent", review.getReplyContent());
+                dto.put("createdAt", review.getCreatedAt());
+                dto.put("isRead", review.getIsRead());
+                
+                // Add buyer info
+                var buyerInfo = new java.util.HashMap<String, Object>();
+                buyerInfo.put("username", review.getBuyer().getUsername());
+                dto.put("buyer", buyerInfo);
+                
+                // Add product info
+                var productInfo = new java.util.HashMap<String, Object>();
+                productInfo.put("name", review.getProduct().getName());
+                dto.put("product", productInfo);
+                
+                return dto;
+            }).collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(reviewDTOs);
+
+    } catch (Exception e) {
+        log.error("Error fetching reviews for stall {}: {}", stallId, e.getMessage());
+        return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+    }
+}
+
+@PostMapping("/api/seller/reviews/mark-read")
+@ResponseBody
+public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+            !authentication.getName().equals("anonymousUser");
+
+    if (!isAuthenticated) {
+        return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+    }
+
+    User user = (User) authentication.getPrincipal();
+
+    // Check if user has SELLER role
+    if (!user.getRole().equals(User.Role.SELLER)) {
+        return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+    }
+
+    try {
+        // Verify that the stall belongs to this seller
+        var stall = stallRepository.findById(stallId);
+        if (stall.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Stall not found"));
+        }
+
+        // Get seller's shop
+        var userShop = shopRepository.findByUserId(user.getId());
+        if (userShop.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Shop not found"));
+        }
+
+        // Verify stall belongs to seller's shop
+        if (!stall.get().getShopId().equals(userShop.get().getId())) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+        }
+
+        // Mark all reviews for this stall as read
+        var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stallId);
+        for (var review : reviews) {
+            if (!review.getIsRead()) {
+                review.setIsRead(true);
+                reviewRepository.save(review);
+            }
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Reviews marked as read", "count", reviews.size()));
+
+    } catch (Exception e) {
+        log.error("Error marking reviews as read for stall {}: {}", stallId, e.getMessage());
+        return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+    }
+}
 
     @PostMapping("/seller/reviews/{reviewId}/reply")
     public String replyToReview(@PathVariable Long reviewId,
