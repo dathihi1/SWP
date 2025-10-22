@@ -29,8 +29,8 @@
         /* Ensure navbar buttons have proper borders and sizing */
         .navbar .btn {
             border: 1px solid !important;
-            padding: 0.375rem 0.75rem !important;
-            font-size: 0.875rem !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 1rem !important;
             line-height: 1.5 !important;
             border-radius: 0.375rem !important;
             font-weight: 500 !important;
@@ -181,7 +181,10 @@
                     </div>
                     <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-user"></i>
+                            <img th:src="${user != null} ? @{/api/profile/avatar/me} : '/images/default-avatar.svg'" 
+                                 class="rounded-circle" 
+                                 style="width: 24px; height: 24px; object-fit: cover;"
+                                 alt="Avatar">
                             <span th:text="${username}">User</span>
                         </button>
                         <ul class="dropdown-menu">
@@ -196,6 +199,12 @@
                             <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
+
+                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
+                        <i class="fa-solid fa-message"></i>
+                        <span>Tin nhắn</span>
+                    </a>
+
                     <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span>Giỏ hàng</span>
