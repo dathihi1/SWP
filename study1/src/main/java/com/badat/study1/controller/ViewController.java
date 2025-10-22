@@ -5,6 +5,7 @@ import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.model.Product;
+import com.badat.study1.model.Review;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
@@ -211,6 +212,26 @@ public class ViewController {
                         .ifPresent(shop -> vm.put("shopName", shop.getShopName()));
                 if (!vm.containsKey("shopName")) {
                     vm.put("shopName", "Unknown Shop");
+                }
+
+                // Calculate average rating for the stall
+                try {
+                    var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stall.getId());
+                    if (!reviews.isEmpty()) {
+                        double avgRating = reviews.stream()
+                                .mapToInt(Review::getRating)
+                                .average()
+                                .orElse(0.0);
+                        vm.put("averageRating", Math.round(avgRating * 10.0) / 10.0); // Round to 1 decimal place
+                        vm.put("reviewCount", reviews.size());
+                    } else {
+                        vm.put("averageRating", 0.0);
+                        vm.put("reviewCount", 0);
+                    }
+                } catch (Exception e) {
+                    log.warn("Error calculating average rating for stall {}: {}", stall.getId(), e.getMessage());
+                    vm.put("averageRating", 0.0);
+                    vm.put("reviewCount", 0);
                 }
 
                 // Always set imageBase64 key, even if null
@@ -1084,7 +1105,8 @@ public class ViewController {
             if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
                 com.badat.study1.model.OrderItem firstItem = order.getOrderItems().get(0);
                 order.setProduct(firstItem.getProduct());
-                order.setQuantity(firstItem.getQuantity());
+                // Đếm số lượng order_item thay vì lấy quantity của item đầu tiên
+                order.setQuantity(order.getOrderItems().size());
                 order.setUnitPrice(firstItem.getUnitPrice());
             }
         }

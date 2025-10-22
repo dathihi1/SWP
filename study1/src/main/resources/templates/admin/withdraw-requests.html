@@ -347,6 +347,58 @@
             </div>
         </div>
 
+        <!-- Search and Filter Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card admin-card">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0"><i class="fa-solid fa-filter me-2"></i>Bộ lọc và tìm kiếm</h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="filterForm">
+                            <div class="row g-3">
+                                <!-- Date Range Filters -->
+                                <div class="col-md-3">
+                                    <label for="dateFrom" class="form-label">Từ ngày</label>
+                                    <input type="date" class="form-control" id="dateFrom" name="dateFrom">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="dateTo" class="form-label">Đến ngày</label>
+                                    <input type="date" class="form-control" id="dateTo" name="dateTo">
+                                </div>
+                                
+                                <!-- Search Fields -->
+                                <div class="col-md-3">
+                                    <label for="searchName" class="form-label">Tìm theo tên</label>
+                                    <input type="text" class="form-control" id="searchName" name="searchName" placeholder="Nhập tên người dùng...">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="searchAccount" class="form-label">Số tài khoản</label>
+                                    <input type="text" class="form-control" id="searchAccount" name="searchAccount" placeholder="Nhập số tài khoản...">
+                                </div>
+                                
+                                <!-- Bank Search -->
+                                <div class="col-md-4">
+                                    <label for="searchBank" class="form-label">Ngân hàng</label>
+                                    <input type="text" class="form-control" id="searchBank" name="searchBank" placeholder="Nhập tên ngân hàng...">
+                                </div>
+                                
+                                <!-- Action Buttons -->
+                                <div class="col-md-8 d-flex align-items-end gap-2">
+                                    <button type="button" class="btn btn-primary" onclick="applyFilters()">
+                                        <i class="fa-solid fa-filter me-1"></i>Lọc
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                                        <i class="fa-solid fa-eraser me-1"></i>Xóa bộ lọc
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Withdraw Requests -->
         <div class="row">
             <div class="col-12">
@@ -402,6 +454,13 @@
         let currentRequestId = null;
         
         let currentStatus = 'PENDING';
+        let currentFilters = {
+            dateFrom: '',
+            dateTo: '',
+            searchName: '',
+            searchAccount: '',
+            searchBank: ''
+        };
         
         document.addEventListener('DOMContentLoaded', function() {
             // Sidebar toggle functionality
@@ -458,7 +517,18 @@
         
         async function loadRequestsByStatus(status) {
             try {
-                const response = await fetch(`/api/admin/withdraw/requests?status=${status}`);
+                // Build query parameters
+                const params = new URLSearchParams();
+                params.append('status', status);
+                
+                // Add filter parameters
+                if (currentFilters.dateFrom) params.append('dateFrom', currentFilters.dateFrom);
+                if (currentFilters.dateTo) params.append('dateTo', currentFilters.dateTo);
+                if (currentFilters.searchName) params.append('searchName', currentFilters.searchName);
+                if (currentFilters.searchAccount) params.append('searchAccount', currentFilters.searchAccount);
+                if (currentFilters.searchBank) params.append('searchBank', currentFilters.searchBank);
+                
+                const response = await fetch(`/api/admin/withdraw/requests?${params.toString()}`);
                 const requests = await response.json();
                 
                 const container = document.getElementById('pendingRequests');
@@ -467,8 +537,8 @@
                     container.innerHTML = `
                         <div class="text-center py-5">
                             <i class="fa-solid fa-inbox fa-3x text-muted mb-3"></i>
-                            <h5 class="text-muted">Không có yêu cầu nào đang chờ duyệt</h5>
-                            <p class="text-muted">Tất cả yêu cầu rút tiền đã được xử lý.</p>
+                            <h5 class="text-muted">Không có yêu cầu nào</h5>
+                            <p class="text-muted">Không tìm thấy yêu cầu rút tiền phù hợp với bộ lọc hiện tại.</p>
                         </div>
                     `;
                     updateStatistics(0, 0, 0);
@@ -487,7 +557,7 @@
                                     <small class="text-muted">${createdAt}</small>
                                 </div>
                                 <div class="col-md-2">
-                                    <div class="fw-bold">Shop ID: ${request.shopId}</div>
+                                    <div class="fw-bold">${request.shopName || 'N/A'}</div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="fw-bold">${request.bankName}</div>
@@ -630,6 +700,54 @@
                 }
             }, 5000);
         }
+        
+        // Filter functions
+        function applyFilters() {
+            // Get filter values from form
+            currentFilters.dateFrom = document.getElementById('dateFrom').value;
+            currentFilters.dateTo = document.getElementById('dateTo').value;
+            currentFilters.searchName = document.getElementById('searchName').value.trim();
+            currentFilters.searchAccount = document.getElementById('searchAccount').value.trim();
+            currentFilters.searchBank = document.getElementById('searchBank').value.trim();
+            
+            // Reload requests with current filters
+            loadRequestsByStatus(currentStatus);
+            
+            showAlert('info', 'Đã áp dụng bộ lọc');
+        }
+        
+        function clearFilters() {
+            // Clear all filter inputs
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('searchName').value = '';
+            document.getElementById('searchAccount').value = '';
+            document.getElementById('searchBank').value = '';
+            
+            // Reset filter object
+            currentFilters = {
+                dateFrom: '',
+                dateTo: '',
+                searchName: '',
+                searchAccount: '',
+                searchBank: ''
+            };
+            
+            // Reload requests without filters
+            loadRequestsByStatus(currentStatus);
+            
+            showAlert('info', 'Đã xóa bộ lọc');
+        }
+        
+        // Allow Enter key to trigger filter
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const target = e.target;
+                if (target.id === 'searchName' || target.id === 'searchAccount' || target.id === 'searchBank') {
+                    applyFilters();
+                }
+            }
+        });
     </script>
 </body>
 </html>

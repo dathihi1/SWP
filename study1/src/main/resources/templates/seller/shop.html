@@ -140,7 +140,7 @@
             border-left-color: #198754; /* green for revenue */
         }
         .stat-card.warning {
-            border-left-color: #fd7e14; /* orange for pending */
+            border-left-color: #ffc107; /* yellow for pending */
         }
         
         .stat-card:hover {
@@ -317,7 +317,7 @@
                                 <i class="fas fa-dollar-sign fa-2x" style="color:#198754;"></i>
                             </div>
                             <div>
-                                <div class="stat-number" style="color:#198754;">0 VNĐ</div>
+                                <div class="stat-number" style="color:#198754;">0 VND</div>
                                 <div class="stat-label">Doanh số</div>
                             </div>
                         </div>
@@ -334,11 +334,25 @@
                 <h5 class="text-primary mb-0 position-absolute top-50 start-50 translate-middle bg-light px-3">Doanh số cửa hàng</h5>
             </div>
             <br>
+            
+            <!-- Filter tháng/năm cho doanh số cửa hàng -->
+            <div class="row mb-3">
+                <div class="col-md-10"></div>
+                <div class="col-md-2">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-calendar-alt"></i>
+                        </span>
+                        <input type="month" class="form-control" id="shopMonth" placeholder="Tháng/Năm" onchange="updateShopChart()">
+                    </div>
+                </div>
+            </div>
+            
             <div class="chart-container">
                 <div class="chart-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 d-flex align-items-center gap-2">
                         <i class="fa-solid fa-chart-line text-primary"></i>
-                        <span>30 ngày gần nhất</span>
+                        <span id="shopChartTitle">30 ngày gần nhất</span>
                     </h6>
                 </div>
                 <div class="chart-body">
@@ -371,7 +385,7 @@
                                 <i class="fas fa-dollar-sign fa-2x" style="color:#198754;"></i>
                             </div>
                             <div>
-                                <div class="stat-number stall-revenue-number" style="color:#198754;">0 VNĐ</div>
+                                <div class="stat-number stall-revenue-number" style="color:#198754;">0 VND</div>
                                 <div class="stat-label">Doanh số</div>
                             </div>
                         </div>
@@ -384,7 +398,7 @@
                                 <i class="fas fa-clock fa-2x" style="color:#ffc107;"></i>
                             </div>
                             <div>
-                                <div class="stat-number stall-pending-number" style="color:#ffc107;">0 VNĐ</div>
+                                <div class="stat-number stall-pending-number" style="color:#ffc107;">0 VND</div>
                                 <div class="stat-label">Tiền tạm giữ</div>
                             </div>
                         </div>
@@ -399,11 +413,31 @@
                 <h5 class="text-primary mb-0 position-absolute top-50 start-50 translate-middle bg-light px-3">Doanh số gian hàng</h5>
             </div>
             <br>
+            
+            <!-- Filter cho doanh số gian hàng -->
+            <div class="row mb-3">
+                <div class="col-md-8"></div>
+                <div class="col-md-2">
+                    <select class="form-select" id="stallFilter" onchange="updateStallChart()">
+                        <option value="">Tất cả gian hàng</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-calendar-alt"></i>
+                        </span>
+                        <input type="month" class="form-control" id="stallMonth" placeholder="Tháng/Năm" onchange="updateStallChart()">
+                    </div>
+                </div>
+            </div>
+            
             <div class="chart-container">
                 <div class="chart-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 d-flex align-items-center gap-2">
                         <i class="fa-solid fa-chart-bar text-primary"></i>
-                        <span>30 ngày gần nhất</span>
+                        <span id="stallChartTitle">30 ngày gần nhất</span>
                     </h6>
                 </div>
                 <div class="chart-body">
@@ -435,26 +469,231 @@
             });
         });
         
+        // Global variables for charts
+        let chart;
+        let stallChart;
+        
+        // Function to update shop chart with filters
+        async function updateShopChart() {
+            const month = document.getElementById('shopMonth').value;
+            let url = '/api/seller/sales';
+            const params = new URLSearchParams();
+            if (month) {
+                params.append('month', month);
+            }
+            if (params.toString()) url += '?' + params.toString();
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                }
+            });
+            
+            if (!res.ok) {
+                console.error('Error fetching shop sales data:', res.status, res.statusText);
+                return;
+            }
+            
+            const json = await res.json();
+            const labels = json.labels.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            const data = json.totals;
+            
+            // Update title
+            const title = document.getElementById('shopChartTitle');
+            if (month) {
+                const monthDate = new Date(month + '-01');
+                const newTitle = monthDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+                title.textContent = newTitle;
+            } else {
+                title.textContent = '30 ngày gần nhất';
+            }
+            
+            // Update chart
+            const salesData = {
+                labels: labels,
+                datasets: [{
+                    label: 'Doanh số (VND)',
+                    data: data,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            };
+            if (chart) chart.destroy();
+            chart = new Chart(document.getElementById('salesChart').getContext('2d'), {
+                type: 'line',
+                data: salesData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => v.toLocaleString('en-US') + ' VND' }
+                        }
+                    },
+                    elements: { point: { radius: 4, hoverRadius: 6 } }
+                }
+            });
+        }
+        
+        // Function to update stall chart with filters
+        async function updateStallChart() {
+            const month = document.getElementById('stallMonth').value;
+            const stallId = document.getElementById('stallFilter').value;
+            
+            let url = '/api/seller/stall-sales';
+            const params = new URLSearchParams();
+            if (month) {
+                params.append('month', month);
+            }
+            if (stallId) {
+                params.append('stallId', stallId);
+            }
+            if (params.toString()) url += '?' + params.toString();
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                }
+            });
+            
+            if (!res.ok) {
+                console.error('Error fetching stall sales data:', res.status, res.statusText);
+                return;
+            }
+            
+            const json = await res.json();
+            const labels = json.labels.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            const data = json.totals;
+            
+            // Update stall statistics cards
+            const stallOrdersEl = document.querySelector('.stall-orders-number');
+            const stallRevenueEl = document.querySelector('.stall-revenue-number');
+            const stallPendingEl = document.querySelector('.stall-pending-number');
+            
+            if (stallOrdersEl) {
+                const ordersValue = (json.ordersSum || 0).toLocaleString('en-US');
+                stallOrdersEl.textContent = ordersValue;
+            }
+            if (stallRevenueEl) {
+                const revenueValue = ((json.revenueSum || 0).toLocaleString('en-US')) + ' VND';
+                stallRevenueEl.textContent = revenueValue;
+            }
+            if (stallPendingEl) {
+                const pendingValue = ((json.pendingSum || 0).toLocaleString('en-US')) + ' VND';
+                stallPendingEl.textContent = pendingValue;
+            }
+            
+            // Update title
+            const title = document.getElementById('stallChartTitle');
+            if (month) {
+                const monthDate = new Date(month + '-01');
+                const newTitle = monthDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+                title.textContent = newTitle;
+            } else {
+                title.textContent = '30 ngày gần nhất';
+            }
+            
+            // Update chart
+            const stallSalesData = {
+                labels: labels,
+                datasets: [{
+                    label: 'Doanh số gian hàng (VND)',
+                    data: data,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            };
+            
+            if (stallChart) {
+                stallChart.destroy();
+            }
+            
+            const chartCanvas = document.getElementById('stallSalesChart');
+            
+            stallChart = new Chart(chartCanvas.getContext('2d'), {
+                type: 'line',
+                data: stallSalesData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => v.toLocaleString('en-US') + ' VND' }
+                        }
+                    },
+                    elements: { point: { radius: 4, hoverRadius: 6 } }
+                }
+            });
+        }
+        
+        
+        // Load stall options for filter
+        async function loadStallOptions() {
+            
+            try {
+                const res = await fetch('/api/seller/stalls', {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                    }
+                });
+                
+                if (!res.ok) {
+                    console.error('Error fetching stalls:', res.status, res.statusText);
+                    return;
+                }
+                
+                const stalls = await res.json();
+                const select = document.getElementById('stallFilter');
+                if (!select) {
+                    console.error('Stall filter select element not found!');
+                    return;
+                }
+                
+                // Clear existing options except first
+                select.innerHTML = '<option value="">Tất cả gian hàng</option>';
+                
+                stalls.forEach((stall, index) => {
+                    const option = document.createElement('option');
+                    option.value = stall.id;
+                    option.textContent = stall.name || `Gian hàng ${stall.id}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading stalls:', error);
+            }
+        }
+        
          // Load real data for last 30 days
          (function() {
              const ctx = document.getElementById('salesChart').getContext('2d');
-             let chart;
 
              async function loadAndRender(monthParam) {
                  const url = monthParam ? (`/api/seller/sales?month=${monthParam}`) : '/api/seller/sales';
-                 const res = await fetch(url);
+                 const res = await fetch(url, {
+                     headers: {
+                         'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                     }
+                 });
                  const json = await res.json();
-                 const labels = json.labels.map(d => new Date(d).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }));
+                 const labels = json.labels.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                  const data = json.totals;
                  // Update small cards with sums
                  const ordersEl = document.querySelector('.stat-card .stat-number');
-                 if (ordersEl) ordersEl.textContent = (json.ordersSum || 0).toLocaleString('vi-VN');
+                 if (ordersEl) ordersEl.textContent = (json.ordersSum || 0).toLocaleString('en-US');
                  const revenueEl = document.querySelector('.stat-card.success .stat-number');
-                 if (revenueEl) revenueEl.textContent = ((json.revenueSum || 0).toLocaleString('vi-VN')) + ' VNĐ';
+                 if (revenueEl) revenueEl.textContent = ((json.revenueSum || 0).toLocaleString('en-US')) + ' VND';
                  const salesData = {
                      labels: labels,
                      datasets: [{
-                         label: 'Doanh số (VNĐ)',
+                         label: 'Doanh số (VND)',
                          data: data,
                          borderColor: '#0d6efd',
                          backgroundColor: 'rgba(13, 110, 253, 0.1)',
@@ -474,7 +713,7 @@
                          scales: {
                              y: {
                                  beginAtZero: true,
-                                 ticks: { callback: v => v.toLocaleString('vi-VN') + ' VNĐ' }
+                                ticks: { callback: v => v.toLocaleString('en-US') + ' VND' }
                              }
                          },
                          elements: { point: { radius: 4, hoverRadius: 6 } }
@@ -482,25 +721,28 @@
                  });
              }
 
+
              // initial
              loadAndRender();
-             
-             // Stall Sales Chart
-             let stallChart;
+             loadStallOptions();
              
             async function loadAndRenderStallSales() {
                 let url = '/api/seller/stall-sales';
-                 const res = await fetch(url);
+                 const res = await fetch(url, {
+                     headers: {
+                         'Authorization': 'Bearer ' + localStorage.getItem('accessToken')
+                     }
+                 });
                  const json = await res.json();
-                const labels = json.labels.map(d => new Date(d).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }));
+                const labels = json.labels.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                 const data = json.totals;
                 // Update stall small cards
                 const stallOrdersEl = document.querySelector('.stall-orders-number');
-                if (stallOrdersEl) stallOrdersEl.textContent = (json.ordersSum || 0).toLocaleString('vi-VN');
+                if (stallOrdersEl) stallOrdersEl.textContent = (json.ordersSum || 0).toLocaleString('en-US');
                 const stallRevenueEl = document.querySelector('.stall-revenue-number');
-                if (stallRevenueEl) stallRevenueEl.textContent = ((json.revenueSum || 0).toLocaleString('vi-VN')) + ' VNĐ';
+                if (stallRevenueEl) stallRevenueEl.textContent = ((json.revenueSum || 0).toLocaleString('en-US')) + ' VND';
                 const stallPendingEl = document.querySelector('.stall-pending-number');
-                if (stallPendingEl) stallPendingEl.textContent = ((json.pendingSum || 0).toLocaleString('vi-VN')) + ' VNĐ';
+                if (stallPendingEl) stallPendingEl.textContent = ((json.pendingSum || 0).toLocaleString('en-US')) + ' VND';
                  
                  const ctx = document.getElementById('stallSalesChart').getContext('2d');
                  if (stallChart) stallChart.destroy();
@@ -508,7 +750,7 @@
                  const stallSalesData = {
                      labels: labels,
                      datasets: [{
-                         label: 'Doanh số gian hàng (VNĐ)',
+                         label: 'Doanh số gian hàng (VND)',
                          data: data,
                          borderColor: '#0d6efd',
                          backgroundColor: 'rgba(13, 110, 253, 0.1)',
@@ -528,7 +770,7 @@
                          scales: {
                              y: {
                                  beginAtZero: true,
-                                 ticks: { callback: v => v.toLocaleString('vi-VN') + ' VNĐ' }
+                                 ticks: { callback: v => v.toLocaleString('en-US') + ' VND' }
                              }
                          },
                          elements: { point: { radius: 4, hoverRadius: 6 } }
@@ -538,6 +780,9 @@
              
             // Load initial stall sales
             loadAndRenderStallSales();
+            
+            // Load stall options for filter
+            loadStallOptions();
 
              // Load initial sales data
              loadAndRender();

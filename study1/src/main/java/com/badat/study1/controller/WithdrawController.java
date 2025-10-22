@@ -213,7 +213,13 @@ public class WithdrawController {
     
     @GetMapping("/api/admin/withdraw/requests")
     @ResponseBody
-    public ResponseEntity<?> getAllWithdrawRequests(@RequestParam(required = false) String status) {
+    public ResponseEntity<?> getAllWithdrawRequests(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo,
+            @RequestParam(required = false) String searchName,
+            @RequestParam(required = false) String searchAccount,
+            @RequestParam(required = false) String searchBank) {
         try {
             List<WithdrawRequestResponse> requests;
             if (status != null && !status.isEmpty()) {
@@ -223,6 +229,10 @@ public class WithdrawController {
             } else {
                 requests = withdrawService.getAllPendingWithdrawRequests();
             }
+            
+            // Apply additional filters
+            requests = withdrawService.filterWithdrawRequests(requests, dateFrom, dateTo, searchName, searchAccount, searchBank);
+            
             return ResponseEntity.ok(requests);
         } catch (Exception e) {
             log.error("Error getting withdraw requests: {}", e.getMessage());
