@@ -403,10 +403,12 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="status" class="form-label">Trạng thái <span class="required">*</span></label>
-                                <select class="form-select" id="status" name="status" required>
+                                <select class="form-select" id="status" name="status" required th:disabled="${stall.status == 'REJECTED'}">
                                     <option value="OPEN" th:selected="${stall.status == 'OPEN'}">Mở</option>
                                     <option value="CLOSED" th:selected="${stall.status == 'CLOSED'}">Đóng</option>
                                 </select>
+                                <!-- Hidden input for REJECTED stalls to ensure PENDING status is submitted -->
+                                <input type="hidden" name="status" value="PENDING" th:if="${stall.status == 'REJECTED'}">
                             </div>
                         </div>
                         <div class="row">

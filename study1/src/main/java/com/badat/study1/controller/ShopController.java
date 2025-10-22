@@ -127,14 +127,15 @@ public class ShopController {
                 }
             }
             
-            stall.setStatus("CLOSED");
+            stall.setStatus("PENDING");
+            stall.setActive(false);
             stall.setCreatedAt(Instant.now());
             stall.setDelete(false);
             
             // Save to database
             stallRepository.save(stall);
             
-            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được tạo thành công với trạng thái Đóng!");
+            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được tạo thành công và đang chờ duyệt!");
             return "redirect:/seller/stall-management";
             
         } catch (Exception e) {
@@ -219,7 +220,19 @@ public class ShopController {
             
             // Cập nhật thông tin gian hàng
             stall.setStallName(stallName);
-            stall.setStatus(status);
+            
+            // Nếu gian hàng bị từ chối, chuyển về trạng thái chờ duyệt khi cập nhật
+            if ("REJECTED".equals(stall.getStatus())) {
+                stall.setStatus("PENDING");
+                stall.setActive(false);
+                // Xóa thông tin duyệt cũ
+                stall.setApprovedAt(null);
+                stall.setApprovedBy(null);
+                stall.setApprovalReason(null);
+            } else {
+                stall.setStatus(status);
+            }
+            
             stall.setShortDescription(shortDescription);
             stall.setDetailedDescription(detailedDescription);
             

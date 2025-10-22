@@ -99,4 +99,14 @@ public class User extends BaseEntity implements UserDetails {
     public enum Status {
          ACTIVE, LOCKED
     }
+    
+    // Explicit getter for status để đảm bảo Thymeleaf có thể access
+    public Status getStatus() {
+        return this.status;
+    }
+    
+    // Explicit setter for status
+    public void setStatus(Status status) {
+        this.status = status;
+    }
 }
