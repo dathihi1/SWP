@@ -8,8 +8,13 @@ import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.WithdrawRequestRepository;
+import com.badat.study1.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -39,6 +44,7 @@ public class AdminController {
     private final StallRepository stallRepository;
     private final OrderRepository orderRepository;
     private final WithdrawRequestRepository withdrawRequestRepository;
+    private final AuditLogRepository auditLogRepository;
     
     @GetMapping("/admin")
     public String adminDashboard(Model model) {
@@ -68,18 +74,33 @@ public class AdminController {
         long totalStalls = shopRepository.count();
         long pendingWithdrawals = withdrawRequestRepository.findByStatus(com.badat.study1.model.WithdrawRequest.Status.PENDING).size();
         
+        // Get audit log statistics
+        long totalAuditLogs = auditLogRepository.count();
+        long todayAuditLogs = auditLogRepository.countByCreatedAtAfter(java.time.LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0));
+        long failedLogins = auditLogRepository.countByActionAndSuccess("LOGIN", false);
+        long securityEvents = auditLogRepository.countByCategory(com.badat.study1.model.AuditLog.Category.SECURITY_EVENT);
+        
         model.addAttribute("totalUsers", totalUsers);
         model.addAttribute("totalStalls", totalStalls);
         model.addAttribute("pendingWithdrawals", pendingWithdrawals);
-        
-        // Get recent activities (placeholder for now)
-        model.addAttribute("recentActivities", java.util.Collections.emptyList());
+        model.addAttribute("totalAuditLogs", totalAuditLogs);
+        model.addAttribute("todayAuditLogs", todayAuditLogs);
+        model.addAttribute("failedLogins", failedLogins);
+        model.addAttribute("securityEvents", securityEvents);
         
         return "admin/dashboard";
     }
     
     @GetMapping("/admin/users")
-    public String adminUsers(Model model) {
+    public String adminUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String status,
+            Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");

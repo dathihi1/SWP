@@ -5,9 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Xác minh OTP - MMO Market</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
-        body { min-height: 100vh; background: linear-gradient(135deg, #20c997 0%, #0d6efd 100%); }
-        .card { border: none; border-radius: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .navbar-brand span { color: #0d6efd; font-weight: 700; }
+        .auth-page {
+            min-height: 100vh;
+            display: flex;
+            background: #f8f9fa;
+        }
+        .auth-left {
+            flex: 1;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            color: #0d6efd;
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-left::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }
+        .auth-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            background: white;
+        }
+        .auth-logo {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(13, 110, 253, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+        .auth-brand {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .auth-brand h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #0d6efd;
+        }
+        .auth-brand p {
+            font-size: 1.2rem;
+            color: #0d6efd;
+            margin-bottom: 0;
+        }
+        .verify-container {
+            max-width: 460px;
+            width: 100%;
+        }
+        .verify-card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            background: white;
+            overflow: hidden;
+            padding: 2rem;
+        }
+        .verify-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .verify-title {
+            font-weight: 700;
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        @media (max-width: 768px) {
+            .auth-page {
+                flex-direction: column;
+            }
+            .auth-left {
+                min-height: 40vh;
+                padding: 2rem 1rem;
+            }
+            .auth-right {
+                padding: 2rem 1rem;
+            }
+            .auth-brand h1 {
+                font-size: 2rem;
+            }
+            .auth-logo {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+                box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+            }
+        }
     </style>
     <meta name="base_url" th:content="@{/}">
     <meta name="email" th:content="${email}">
@@ -16,43 +129,144 @@
             const emailMeta = document.querySelector('meta[name="email"]');
             const emailText = document.getElementById('emailText');
             const emailHidden = document.getElementById('emailHidden');
+            const emailVisible = document.getElementById('emailVisible');
             const emailVal = emailMeta ? (emailMeta.content || '') : '';
             if (emailText) emailText.textContent = emailVal || '';
             if (emailHidden) emailHidden.value = emailVal || '';
+            if (emailVisible) emailVisible.value = emailVal || '';
+            
+            // Prevent auto-submit when OTP input reaches 6 digits
+            const otpInput = document.getElementById('otp');
+            if (otpInput) {
+                otpInput.addEventListener('input', function(e) {
+                    // Only allow numbers
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    
+                    // Don't auto-submit when reaching 6 digits
+                    if (e.target.value.length === 6) {
+                        // Just focus on submit button, don't submit
+                        const submitBtn = document.querySelector('button[type="submit"]');
+                        if (submitBtn) {
+                            submitBtn.focus();
+                        }
+                    }
+                });
+                
+                // Prevent form submission on Enter key in OTP input
+                otpInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        // Only submit if OTP is exactly 6 digits
+                        if (e.target.value.length === 6) {
+                            document.getElementById('otpForm').dispatchEvent(new Event('submit'));
+                        }
+                    }
+                });
+            }
         });
     </script>
-    </head>
-<body class="d-flex align-items-center justify-content-center py-5">
-<div class="container" style="max-width: 460px;">
-    <div class="card p-4">
-        <h4 class="mb-3">Xác minh OTP</h4>
-        <div id="alert" class="alert alert-danger d-none" role="alert">
-            <i class="fa-solid fa-exclamation-triangle me-2"></i>
-            <span id="alertMessage"></span>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
+            <i class="fa-solid fa-cart-shopping me-2 text-primary" style="font-size: 1.5rem;"></i>
+            <span class="fw-bold">MMO Market</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
+            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
+                <form role="search">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
+                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
+                <div class="d-flex align-items-center gap-2">
+                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
+                        <i class="fa-regular fa-user"></i>
+                        <span>Đăng nhập</span>
+                    </a>
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>Giỏ hàng</span>
+                    </a>
+                </div>
+            </div>
         </div>
-        <div id="successAlert" class="alert alert-success d-none" role="alert">
-            <i class="fa-solid fa-check-circle me-2"></i>
-            <span id="successMessage"></span>
-        </div>
-        <form id="otpForm">
-            <p class="text-muted">Mã OTP đang được gửi tới email: <strong id="emailText"></strong></p>
-            <div class="alert alert-info" role="alert">
-                <i class="fa-solid fa-info-circle me-2"></i>
-                <strong>Lưu ý:</strong> Email có thể mất vài phút để đến hộp thư của bạn. Vui lòng kiểm tra cả thư mục spam nếu không thấy email.
-            </div>
-            <input type="hidden" id="emailHidden">
-            <div class="mb-3">
-                <label class="form-label">Mã OTP</label>
-                <input type="text" class="form-control" id="otp" placeholder="Nhập mã OTP (6 chữ số)" 
-                       maxlength="6" pattern="[0-9]{6}" required>
-                <div class="form-text">Mã OTP có 6 chữ số và sẽ hết hạn sau 10 phút</div>
-            </div>
-            <div class="d-grid">
-                <button type="submit" class="btn btn-primary">Xác nhận</button>
-            </div>
-        </form>
     </div>
-</div>
+</nav>
+
+<main class="auth-page">
+    <div class="auth-left">
+        <div class="auth-logo">
+            <i class="fa-solid fa-cart-shopping"></i>
+        </div>
+        <div class="auth-brand">
+            <h1>MMO Market</h1>
+            <p>Xác minh tài khoản của bạn</p>
+        </div>
+    </div>
+    
+    <div class="auth-right">
+        <div class="verify-container">
+            <div class="verify-card">
+                <div class="verify-header">
+                    <h1 class="verify-title">Xác minh OTP</h1>
+                </div>
+            
+            <div id="alert" class="alert alert-danger d-none" role="alert">
+                <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                <span id="alertMessage"></span>
+            </div>
+            <div id="successAlert" class="alert alert-success d-none" role="alert">
+                <i class="fa-solid fa-check-circle me-2"></i>
+                <span id="successMessage"></span>
+            </div>
+            
+            <form id="otpForm">
+                <p class="text-muted">Mã OTP đang được gửi tới email: <strong id="emailText"></strong></p>
+                <div class="alert alert-info" role="alert">
+                    <i class="fa-solid fa-info-circle me-2"></i>
+                    <strong>Lưu ý:</strong> Email có thể mất vài phút để đến hộp thư của bạn. Vui lòng kiểm tra cả thư mục spam nếu không thấy email.
+                </div>
+                <div class="alert alert-warning" role="alert">
+                    <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                    <strong>Cảnh báo:</strong> Bạn chỉ có thể nhập sai OTP tối đa 5 lần. Sau đó email sẽ bị khóa trong 15 phút.
+                </div>
+                <input type="hidden" id="emailHidden">
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="text" class="form-control" id="emailVisible" readonly>
+                    <div class="form-text">Email dùng để nhận OTP</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mã OTP</label>
+                    <input type="text" class="form-control" id="otp" placeholder="Nhập mã OTP (6 chữ số)" 
+                           maxlength="6" pattern="[0-9]{6}" required autocomplete="off">
+                    <div class="form-text">Mã OTP có 6 chữ số và sẽ hết hạn sau 10 phút</div>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">Xác nhận</button>
+                </div>
+            </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="border-top py-3">
+    <div class="container d-flex justify-content-between align-items-center small">
+        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div class="text-muted">Liên hệ: support@example.com</div>
+    </div>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -108,21 +322,44 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
     submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang xác minh...';
 
     try {
-        const res = await fetch('/users/verify', {
+        const res = await fetch('/api/auth/verify-register-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, otp })
         });
         
         if (res.ok) {
-            showSuccess('Xác minh OTP thành công! Đang chuyển hướng...');
+            let result = {};
+            const ct = res.headers.get('Content-Type') || '';
+            if (ct.includes('application/json')) {
+                result = await res.json();
+            }
+            showSuccess('Đăng ký thành công! Đang chuyển hướng...');
             setTimeout(() => {
-                // Chuyển sang trang reset password với email và OTP
-                window.location.href = `/reset-password?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`;
+                // Chuyển sang trang login
+                if (result && result.data && result.data.nextUrl) {
+                    window.location.href = result.data.nextUrl;
+                } else {
+                    window.location.href = '/login';
+                }
             }, 2000);
         } else {
-            const errorData = await res.json().catch(() => ({ error: 'Có lỗi xảy ra' }));
-            const errorMessage = errorData.error || errorData.message || 'Sai OTP, vui lòng thử lại';
+            let errorMessage = 'Sai OTP, vui lòng thử lại';
+            try {
+                const ct = res.headers.get('Content-Type') || '';
+                if (ct.includes('application/json')) {
+                    const errorData = await res.json();
+                    errorMessage = errorData.message || errorMessage;
+                } else {
+                    errorMessage = await res.text();
+                }
+            } catch (_) {}
+            
+            // Check if it's an attempt limit error
+            if (errorMessage.includes('vượt quá số lần thử') || errorMessage.includes('5 lần')) {
+                errorMessage = 'Bạn đã nhập sai OTP quá 5 lần. Email này đã bị khóa trong 15 phút. Vui lòng thử lại sau.';
+            }
+            
             showError(errorMessage);
         }
     } catch (e) {

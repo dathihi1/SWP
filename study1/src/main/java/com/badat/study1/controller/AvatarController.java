@@ -95,8 +95,9 @@ public class AvatarController {
             
             if (avatarData != null && avatarData.length > 0) {
                 HttpHeaders headers = new HttpHeaders();
-                // Serve as PNG to match default avatar byte format
-                headers.setContentType(MediaType.IMAGE_PNG);
+                // Detect content type from byte data
+                String contentType = detectContentType(avatarData);
+                headers.setContentType(MediaType.valueOf(contentType));
                 headers.setContentLength(avatarData.length);
                 headers.setCacheControl("public, max-age=3600"); // Cache for 1 hour
                 
@@ -127,8 +128,9 @@ public class AvatarController {
             byte[] avatarData = userService.getAvatar(currentUser.getId());
             if (avatarData != null && avatarData.length > 0) {
                 HttpHeaders headers = new HttpHeaders();
-                // Serve as PNG to match default avatar byte format
-                headers.setContentType(MediaType.IMAGE_PNG);
+                // Detect content type from byte data
+                String contentType = detectContentType(avatarData);
+                headers.setContentType(MediaType.valueOf(contentType));
                 headers.setContentLength(avatarData.length);
                 headers.setCacheControl("public, max-age=3600");
                 return ResponseEntity.ok().headers(headers).body(avatarData);
@@ -201,5 +203,36 @@ public class AvatarController {
         }
         
         return request.getRemoteAddr();
+    }
+    
+    private String detectContentType(byte[] data) {
+        if (data.length < 4) {
+            return "image/svg+xml"; // Default fallback
+        }
+        
+        // Check for common image formats
+        // JPEG: FF D8 FF
+        if (data[0] == (byte) 0xFF && data[1] == (byte) 0xD8 && data[2] == (byte) 0xFF) {
+            return "image/jpeg";
+        }
+        
+        // PNG: 89 50 4E 47
+        if (data[0] == (byte) 0x89 && data[1] == (byte) 0x50 && data[2] == (byte) 0x4E && data[3] == (byte) 0x47) {
+            return "image/png";
+        }
+        
+        // GIF: 47 49 46 38
+        if (data[0] == (byte) 0x47 && data[1] == (byte) 0x49 && data[2] == (byte) 0x46 && data[3] == (byte) 0x38) {
+            return "image/gif";
+        }
+        
+        // SVG: Check for SVG content
+        String content = new String(data, 0, Math.min(100, data.length));
+        if (content.contains("<svg") || content.contains("<?xml")) {
+            return "image/svg+xml";
+        }
+        
+        // Default fallback
+        return "image/png";
     }
 }
