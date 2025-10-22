@@ -113,6 +113,9 @@ public class OrderService {
                     BigDecimal itemCommissionAmount = itemTotalAmount.multiply(commissionRate).divide(BigDecimal.valueOf(100));
                     BigDecimal itemSellerAmount = itemTotalAmount.subtract(itemCommissionAmount);
                     
+                    // Lấy sellerId từ warehouse (tạm thời set 0, sẽ được cập nhật sau)
+                    Long sellerId = 0L; // Sẽ được cập nhật trong PaymentQueueService
+                    
                     // Tạo OrderItem với quantity = 1
                     OrderItem orderItem = OrderItem.builder()
                             .orderId(savedOrder.getId())
@@ -124,6 +127,7 @@ public class OrderService {
                             .commissionRate(commissionRate)
                             .commissionAmount(itemCommissionAmount)
                             .sellerAmount(itemSellerAmount)
+                            .sellerId(sellerId) // Sẽ được cập nhật trong PaymentQueueService
                             .status(OrderItem.Status.PENDING)
                             .notes("Order item from cart - item " + (i + 1) + " of " + quantity)
                             .build();
@@ -223,6 +227,7 @@ public class OrderService {
                 .commissionRate(commissionRate)
                 .commissionAmount(commissionAmount)
                 .sellerAmount(sellerAmount)
+                .sellerId(sellerId) // Sử dụng sellerId được truyền vào
                 .status(OrderItem.Status.COMPLETED)
                 .notes("Simple order item")
                 .build();
