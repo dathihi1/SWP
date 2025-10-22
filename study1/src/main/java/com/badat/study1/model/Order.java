@@ -28,6 +28,31 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "buyer_id", insertable = false, updatable = false)
     User buyer;
 
+    @Column(name = "shop_id", nullable = false)
+    Long shopId;
+
+    @Column(name = "stall_id", nullable = false)
+    Long stallId;
+
+    @Column(name = "seller_id", nullable = false)
+    Long sellerId;
+
+    // Relationship với Stall
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "stall_id", insertable = false, updatable = false)
+    Stall stall;
+
+    // Relationship với Product (từ OrderItem đầu tiên)
+    @Transient
+    Product product;
+
+    // Quantity và unitPrice từ OrderItem đầu tiên
+    @Transient
+    Integer quantity;
+
+    @Transient
+    BigDecimal unitPrice;
+
     @Column(name = "total_amount", precision = 15, scale = 2, nullable = false)
     BigDecimal totalAmount;
 

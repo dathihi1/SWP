@@ -13,6 +13,7 @@ import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.repository.OrderItemRepository;
+import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.dto.response.AuditLogResponse;
@@ -52,11 +53,12 @@ public class ViewController {
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
     private final OrderItemRepository orderItemRepository;
+    private final OrderRepository orderRepository;
 
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
 
-    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, ReviewRepository reviewRepository, OrderItemRepository orderItemRepository) {
+    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, ReviewRepository reviewRepository, OrderItemRepository orderItemRepository, OrderRepository orderRepository) {
         this.walletRepository = walletRepository;
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
@@ -67,6 +69,7 @@ public class ViewController {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.orderItemRepository = orderItemRepository;
+        this.orderRepository = orderRepository;
     }
 
     // Inject common attributes (auth info and wallet balance) for all views
@@ -1072,34 +1075,45 @@ public class ViewController {
         var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         
-        // Get order items for this seller with pagination (10 order items per page)
+        // Get orders for this seller with pagination (10 orders per page)
         Pageable pageable = PageRequest.of(page, 10);
-        List<com.badat.study1.model.OrderItem> allOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
+        List<com.badat.study1.model.Order> allOrders = orderRepository.findBySellerIdOrderByCreatedAtDesc(user.getId());
+        
+        // Populate transient fields from first OrderItem for each Order
+        for (com.badat.study1.model.Order order : allOrders) {
+            if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+                com.badat.study1.model.OrderItem firstItem = order.getOrderItems().get(0);
+                order.setProduct(firstItem.getProduct());
+                order.setQuantity(firstItem.getQuantity());
+                order.setUnitPrice(firstItem.getUnitPrice());
+            }
+        }
         
         // Apply filters
-        List<com.badat.study1.model.OrderItem> filteredOrderItems = allOrderItems.stream()
-                .filter(oi -> status == null || status.isEmpty() || oi.getStatus().name().equals(status.toUpperCase()))
-                .filter(oi -> stallId == null || stallId.equals(oi.getProduct().getStallId()))
-                .filter(oi -> productId == null || productId.equals(oi.getProductId()))
-                .filter(oi -> {
+        List<com.badat.study1.model.Order> filteredOrders = allOrders.stream()
+                .filter(order -> status == null || status.isEmpty() || order.getStatus().name().equals(status.toUpperCase()))
+                .filter(order -> stallId == null || stallId.equals(order.getStallId()))
+                // Note: productId filter removed since Order doesn't have direct productId field
+                // If product filtering is needed, it should be done through OrderItem relationship
+                .filter(order -> {
                     if (dateFrom == null || dateFrom.isEmpty()) return true;
-                    return oi.getCreatedAt().toLocalDate().isAfter(java.time.LocalDate.parse(dateFrom).minusDays(1));
+                    return order.getCreatedAt().toLocalDate().isAfter(java.time.LocalDate.parse(dateFrom).minusDays(1));
                 })
-                .filter(oi -> {
+                .filter(order -> {
                     if (dateTo == null || dateTo.isEmpty()) return true;
-                    return oi.getCreatedAt().toLocalDate().isBefore(java.time.LocalDate.parse(dateTo).plusDays(1));
+                    return order.getCreatedAt().toLocalDate().isBefore(java.time.LocalDate.parse(dateTo).plusDays(1));
                 })
                 .collect(java.util.stream.Collectors.toList());
         
         // Create pagination manually
         int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), filteredOrderItems.size());
-        List<com.badat.study1.model.OrderItem> pageContent = filteredOrderItems.subList(start, end);
+        int end = Math.min((start + pageable.getPageSize()), filteredOrders.size());
+        List<com.badat.study1.model.Order> pageContent = filteredOrders.subList(start, end);
         
-        Page<com.badat.study1.model.OrderItem> ordersPage = new org.springframework.data.domain.PageImpl<>(
+        Page<com.badat.study1.model.Order> ordersPage = new org.springframework.data.domain.PageImpl<>(
             pageContent, 
             pageable, 
-            filteredOrderItems.size()
+            filteredOrders.size()
         );
         model.addAttribute("orders", ordersPage.getContent());
         model.addAttribute("currentPage", page);
@@ -1112,7 +1126,7 @@ public class ViewController {
         model.addAttribute("selectedProductId", productId);
         model.addAttribute("selectedDateFrom", dateFrom);
         model.addAttribute("selectedDateTo", dateTo);
-        model.addAttribute("orderStatuses", com.badat.study1.model.OrderItem.Status.values());
+        model.addAttribute("orderStatuses", com.badat.study1.model.Order.Status.values());
         model.addAttribute("stalls", stalls);
         model.addAttribute("products", products);
 
