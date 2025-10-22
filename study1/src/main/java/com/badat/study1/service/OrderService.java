@@ -4,6 +4,7 @@ import com.badat.study1.model.*;
 import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.StallRepository;
+import com.badat.study1.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final StallRepository stallRepository;
+    private final ShopRepository shopRepository;
     
     /**
      * Tạo order mới với nhiều sản phẩm từ cart
@@ -45,9 +47,25 @@ public class OrderService {
         // Tạo order code unique hoặc sử dụng customOrderCode
         String orderCode = customOrderCode != null ? customOrderCode : generateOrderCode();
         
+        // Lấy thông tin shop, stall, seller từ cart item đầu tiên
+        Map<String, Object> firstCartItem = cartItems.get(0);
+        Long stallId = Long.valueOf(firstCartItem.get("stallId").toString());
+        
+        // Lấy thông tin stall để lấy shopId
+        Stall stall = stallRepository.findById(stallId)
+                .orElseThrow(() -> new RuntimeException("Stall not found: " + stallId));
+        
+        // Lấy sellerId từ shopId
+        Shop shop = shopRepository.findById(stall.getShopId())
+                .orElseThrow(() -> new RuntimeException("Shop not found: " + stall.getShopId()));
+        Long sellerId = shop.getUserId();
+        
         // Tạo Order chính
         Order order = Order.builder()
                 .buyerId(buyerId)
+                .shopId(stall.getShopId())
+                .stallId(stallId)
+                .sellerId(sellerId)
                 .totalAmount(BigDecimal.ZERO)
                 .totalCommissionAmount(BigDecimal.ZERO)
                 .totalSellerAmount(BigDecimal.ZERO)
@@ -83,10 +101,10 @@ public class OrderService {
                 Long warehouseId = Long.valueOf(warehouseIdObj.toString());
                 Integer quantity = Integer.valueOf(quantityObj.toString());
                 BigDecimal unitPrice = new BigDecimal(priceObj.toString());
-                Long stallId = Long.valueOf(stallIdObj.toString());
+                Long itemStallId = Long.valueOf(stallIdObj.toString());
                 
                 // Lấy thông tin stall để tính commission
-                BigDecimal commissionRate = getCommissionRate(stallId);
+                BigDecimal commissionRate = getCommissionRate(itemStallId);
                 
                 // Tạo nhiều OrderItem riêng biệt cho mỗi quantity
                 for (int i = 0; i < quantity; i++) {
@@ -96,7 +114,7 @@ public class OrderService {
                     BigDecimal itemSellerAmount = itemTotalAmount.subtract(itemCommissionAmount);
                     
                     // Lấy sellerId từ warehouse (tạm thời set 0, sẽ được cập nhật sau)
-                    Long sellerId = 0L; // Sẽ được cập nhật trong PaymentQueueService
+                    Long itemSellerId = 0L; // Sẽ được cập nhật trong PaymentQueueService
                     
                     // Tạo OrderItem với quantity = 1
                     OrderItem orderItem = OrderItem.builder()
@@ -109,7 +127,7 @@ public class OrderService {
                             .commissionRate(commissionRate)
                             .commissionAmount(itemCommissionAmount)
                             .sellerAmount(itemSellerAmount)
-                            .sellerId(sellerId) // Sẽ được cập nhật trong PaymentQueueService
+                            .sellerId(itemSellerId) // Sẽ được cập nhật trong PaymentQueueService
                             .status(OrderItem.Status.PENDING)
                             .notes("Order item from cart - item " + (i + 1) + " of " + quantity)
                             .build();
@@ -184,6 +202,9 @@ public class OrderService {
         // Tạo Order chính
         Order order = Order.builder()
                 .buyerId(buyerId)
+                .shopId(shopId)
+                .stallId(stallId)
+                .sellerId(sellerId)
                 .totalAmount(totalAmount)
                 .totalCommissionAmount(commissionAmount)
                 .totalSellerAmount(sellerAmount)

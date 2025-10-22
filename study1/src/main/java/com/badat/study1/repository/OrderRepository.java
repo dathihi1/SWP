@@ -19,6 +19,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     Page<Order> findByBuyerIdOrderByCreatedAtDesc(Long buyerId, Pageable pageable);
     
+    List<Order> findBySellerIdOrderByCreatedAtDesc(Long sellerId);
+    
     List<Order> findByStatusOrderByCreatedAtDesc(Order.Status status);
     
     List<Order> findByBuyerIdAndStatusOrderByCreatedAtDesc(Long buyerId, Order.Status status);
