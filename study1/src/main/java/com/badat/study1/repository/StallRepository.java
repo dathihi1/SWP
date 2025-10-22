@@ -36,4 +36,7 @@ public interface StallRepository extends JpaRepository<Stall, Long> {
     // Find all pending stalls for admin approval
     List<Stall> findByStatusAndIsDeleteFalseOrderByCreatedAtDesc(String status);
     
+    // Find stalls by name containing and status
+    List<Stall> findByStallNameContainingIgnoreCaseAndIsDeleteFalseAndStatus(String stallName, String status);
+    
 }
