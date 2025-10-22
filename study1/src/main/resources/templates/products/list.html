@@ -150,6 +150,11 @@
                             <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
+
+                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
+                        <i class="fa-solid fa-message"></i>
+                        <span>Tin nhắn</span>
+                    </a>
                     
                     <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
@@ -287,6 +292,13 @@
         </div>
     </div>
 </main>
+
+<footer class="border-top py-3 mt-5">
+    <div class="container d-flex justify-content-between align-items-center small">
+        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div class="text-muted">Liên hệ: support@example.com</div>
+    </div>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
