@@ -1,8 +1,12 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
+import com.badat.study1.model.Stall;
+import com.badat.study1.model.Order;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ShopRepository;
+import com.badat.study1.repository.StallRepository;
+import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.WithdrawRequestRepository;
 import com.badat.study1.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +19,20 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import java.time.Instant;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Controller
@@ -25,6 +41,8 @@ public class AdminController {
     
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
+    private final StallRepository stallRepository;
+    private final OrderRepository orderRepository;
     private final WithdrawRequestRepository withdrawRequestRepository;
     private final AuditLogRepository auditLogRepository;
     
@@ -104,87 +122,14 @@ public class AdminController {
         model.addAttribute("userRole", user.getRole().name());
         model.addAttribute("user", user);
         
-        // Create sort object
-        Sort sort = sortDir.equalsIgnoreCase("desc") ? 
-                   Sort.by(sortBy).descending() : 
-                   Sort.by(sortBy).ascending();
-        
-        // Create pageable object
-        Pageable pageable = PageRequest.of(page, size, sort);
-        
-        // Get users with pagination and filtering
-        Page<User> userPage;
-        
-        // Build dynamic query based on filters
-        if (search != null && !search.trim().isEmpty()) {
-            if (role != null && !role.isEmpty() && status != null && !status.isEmpty()) {
-                // Search + Role + Status
-                userPage = userRepository.findByUsernameContainingIgnoreCaseAndRoleAndStatus(
-                    search, User.Role.valueOf(role.toUpperCase()), 
-                    User.Status.valueOf(status.toUpperCase()), pageable);
-            } else if (role != null && !role.isEmpty()) {
-                // Search + Role
-                userPage = userRepository.findByUsernameContainingIgnoreCaseAndRole(
-                    search, User.Role.valueOf(role.toUpperCase()), pageable);
-            } else if (status != null && !status.isEmpty()) {
-                // Search + Status
-                userPage = userRepository.findByUsernameContainingIgnoreCaseAndStatus(
-                    search, User.Status.valueOf(status.toUpperCase()), pageable);
-            } else {
-                // Search only
-                userPage = userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
-                    search, search, search, pageable);
-            }
-        } else if (role != null && !role.isEmpty() && status != null && !status.isEmpty()) {
-            // Role + Status
-            userPage = userRepository.findByRoleAndStatus(
-                User.Role.valueOf(role.toUpperCase()), 
-                User.Status.valueOf(status.toUpperCase()), 
-                pageable);
-        } else if (role != null && !role.isEmpty()) {
-            // Role only
-            userPage = userRepository.findByRole(
-                User.Role.valueOf(role.toUpperCase()), 
-                pageable);
-        } else if (status != null && !status.isEmpty()) {
-            // Status only
-            userPage = userRepository.findByStatus(
-                User.Status.valueOf(status.toUpperCase()), 
-                pageable);
-        } else {
-            // Get all users
-            userPage = userRepository.findAll(pageable);
-        }
-        
-        // Add pagination attributes
-        model.addAttribute("users", userPage.getContent());
-        model.addAttribute("currentPage", userPage.getNumber());
-        model.addAttribute("totalPages", userPage.getTotalPages());
-        model.addAttribute("totalElements", userPage.getTotalElements());
-        model.addAttribute("pageSize", size);
-        model.addAttribute("sortBy", sortBy);
-        model.addAttribute("sortDir", sortDir);
-        model.addAttribute("search", search);
-        model.addAttribute("role", role);
-        model.addAttribute("status", status);
-        
-        // Add filter options
-        model.addAttribute("roles", User.Role.values());
-        model.addAttribute("statuses", User.Status.values());
+        // Get all users
+        model.addAttribute("users", userRepository.findAll());
         
         return "admin/users";
     }
     
     @GetMapping("/admin/stalls")
-    public String adminStalls(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String isDelete,
-            Model model) {
+    public String adminStalls(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
@@ -206,56 +151,94 @@ public class AdminController {
         model.addAttribute("userRole", user.getRole().name());
         model.addAttribute("user", user);
         
-        // Create sort object
-        Sort sort = sortDir.equalsIgnoreCase("desc") ? 
-                   Sort.by(sortBy).descending() : 
-                   Sort.by(sortBy).ascending();
+        // Get all stalls with different statuses
+        model.addAttribute("pendingStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("PENDING"));
+        model.addAttribute("approvedStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("CLOSED"));
+        model.addAttribute("rejectedStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("REJECTED"));
         
-        // Create pageable object
-        Pageable pageable = PageRequest.of(page, size, sort);
+        // Combine approved and rejected stalls for history
+        List<Stall> historyStalls = new java.util.ArrayList<>();
+        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("CLOSED"));
+        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("OPEN"));
+        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("REJECTED"));
+        // Sort by approval date (most recent first)
+        historyStalls.sort((a, b) -> {
+            if (a.getApprovedAt() == null && b.getApprovedAt() == null) return 0;
+            if (a.getApprovedAt() == null) return 1;
+            if (b.getApprovedAt() == null) return -1;
+            return b.getApprovedAt().compareTo(a.getApprovedAt());
+        });
+        model.addAttribute("historyStalls", historyStalls);
         
-        // Get shops with pagination and filtering
-        Page<com.badat.study1.model.Shop> shopPage;
+        // Get all sellers (users with SELLER role)
+        List<User> sellers = userRepository.findByRole(User.Role.SELLER);
         
-        if (search != null && !search.trim().isEmpty()) {
-            // Search by shop name, description, address, phone, or email
-            shopPage = shopRepository.findByShopNameContainingIgnoreCaseOrDescriptionContainingIgnoreCaseOrAddressContainingIgnoreCase(
-                search, search, search, pageable);
-        } else if (status != null && !status.isEmpty() && isDelete != null && !isDelete.isEmpty()) {
-            // Filter by both status and isDelete
-            Boolean deleteStatus = Boolean.parseBoolean(isDelete);
-            shopPage = shopRepository.findByStatusAndIsDelete(
-                com.badat.study1.model.Shop.Status.valueOf(status.toUpperCase()), 
-                deleteStatus, 
-                pageable);
-        } else if (status != null && !status.isEmpty()) {
-            // Filter by status only
-            shopPage = shopRepository.findByStatus(
-                com.badat.study1.model.Shop.Status.valueOf(status.toUpperCase()), 
-                pageable);
-        } else if (isDelete != null && !isDelete.isEmpty()) {
-            // Filter by isDelete only
-            Boolean deleteStatus = Boolean.parseBoolean(isDelete);
-            shopPage = shopRepository.findByIsDelete(deleteStatus, pageable);
-        } else {
-            // Get all shops
-            shopPage = shopRepository.findAll(pageable);
+        // Đảm bảo tất cả sellers có status được set
+        for (User seller : sellers) {
+            if (seller.getStatus() == null) {
+                seller.setStatus(User.Status.ACTIVE);
+                userRepository.save(seller);
+            }
         }
         
-        // Add pagination attributes
-        model.addAttribute("stalls", shopPage.getContent());
-        model.addAttribute("currentPage", shopPage.getNumber());
-        model.addAttribute("totalPages", shopPage.getTotalPages());
-        model.addAttribute("totalElements", shopPage.getTotalElements());
-        model.addAttribute("pageSize", size);
-        model.addAttribute("sortBy", sortBy);
-        model.addAttribute("sortDir", sortDir);
-        model.addAttribute("search", search);
-        model.addAttribute("status", status);
-        model.addAttribute("isDelete", isDelete);
+        model.addAttribute("sellers", sellers);
         
-        // Add filter options
-        model.addAttribute("statuses", com.badat.study1.model.Shop.Status.values());
+        // Calculate revenue for each seller
+        List<Map<String, Object>> sellerRevenue = sellers.stream()
+            .map(seller -> {
+                // Get all completed orders for this seller
+                List<Order> completedOrders = orderRepository.findBySellerIdOrderByCreatedAtDesc(seller.getId())
+                    .stream()
+                    .filter(order -> order.getStatus() == Order.Status.COMPLETED)
+                    .collect(Collectors.toList());
+                
+                // Calculate total revenue
+                BigDecimal totalRevenue = completedOrders.stream()
+                    .map(order -> order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+                // Count total orders (all statuses)
+                long totalOrders = orderRepository.findBySellerIdOrderByCreatedAtDesc(seller.getId()).size();
+                
+                // Count completed orders
+                long completedOrdersCount = completedOrders.size();
+                
+                // Get seller's shop info
+                var shop = shopRepository.findByUserId(seller.getId()).orElse(null);
+                String shopName = shop != null ? shop.getShopName() : "Chưa có shop";
+                
+                // Get seller's stalls count
+                long stallsCount = shop != null ? 
+                    stallRepository.countByShopIdAndIsDeleteFalse(shop.getId()) : 0;
+                
+                Map<String, Object> sellerData = new java.util.HashMap<>();
+                sellerData.put("seller", seller);
+                sellerData.put("shopName", shopName);
+                sellerData.put("totalRevenue", totalRevenue);
+                sellerData.put("totalOrders", totalOrders);
+                sellerData.put("completedOrders", completedOrdersCount);
+                sellerData.put("stallsCount", stallsCount);
+                
+                return sellerData;
+            })
+            .collect(Collectors.toList());
+        
+        model.addAttribute("sellerRevenue", sellerRevenue);
+        
+        // Get top 5 sellers by revenue
+        List<Map<String, Object>> topSellers = sellerRevenue.stream()
+            .sorted((a, b) -> ((BigDecimal) b.get("totalRevenue")).compareTo((BigDecimal) a.get("totalRevenue")))
+            .limit(5)
+            .collect(Collectors.toList());
+        
+        model.addAttribute("topSellers", topSellers);
+        
+        // Calculate total platform revenue
+        BigDecimal totalPlatformRevenue = sellerRevenue.stream()
+            .map(data -> (BigDecimal) data.get("totalRevenue"))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        model.addAttribute("totalPlatformRevenue", totalPlatformRevenue);
         
         return "admin/stalls";
     }
@@ -288,4 +271,111 @@ public class AdminController {
         
         return "admin/withdraw-requests";
     }
+    
+    @PostMapping("/admin/stalls/approve")
+    public String approveStall(@RequestParam Long stallId, 
+                              @RequestParam(required = false) String reason,
+                              RedirectAttributes redirectAttributes) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user is admin
+        if (!user.getRole().name().equals("ADMIN")) {
+            return "redirect:/";
+        }
+        
+        try {
+            Stall stall = stallRepository.findById(stallId).orElse(null);
+            if (stall == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
+                return "redirect:/admin/stalls";
+            }
+            
+            stall.setStatus("CLOSED");
+            stall.setActive(false);
+            stall.setApprovedAt(Instant.now());
+            stall.setApprovedBy(user.getId());
+            stall.setApprovalReason(reason);
+            
+            stallRepository.save(stall);
+            
+            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được duyệt thành công!");
+            
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi duyệt gian hàng!");
+        }
+        
+        return "redirect:/admin/stalls";
+    }
+    
+    @PostMapping("/admin/stalls/reject")
+    public String rejectStall(@RequestParam Long stallId, 
+                             @RequestParam String reason,
+                             RedirectAttributes redirectAttributes) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
+                                !authentication.getName().equals("anonymousUser");
+        
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
+        
+        User user = (User) authentication.getPrincipal();
+        
+        // Check if user is admin
+        if (!user.getRole().name().equals("ADMIN")) {
+            return "redirect:/";
+        }
+        
+        try {
+            Stall stall = stallRepository.findById(stallId).orElse(null);
+            if (stall == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
+                return "redirect:/admin/stalls";
+            }
+            
+            stall.setStatus("REJECTED");
+            stall.setActive(false);
+            stall.setApprovedAt(Instant.now());
+            stall.setApprovedBy(user.getId());
+            stall.setApprovalReason(reason);
+            
+            stallRepository.save(stall);
+            
+            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã bị từ chối!");
+            
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi từ chối gian hàng!");
+        }
+        
+        return "redirect:/admin/stalls";
+    }
+    
+    @GetMapping("/admin/stalls/{id}/image")
+    public ResponseEntity<byte[]> getStallImage(@PathVariable("id") Long stallId) {
+        try {
+            Stall stall = stallRepository.findById(stallId).orElse(null);
+            if (stall == null || stall.getStallImageData() == null || stall.getStallImageData().length == 0) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            byte[] imageBytes = stall.getStallImageData();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_JPEG);
+            headers.setCacheControl("max-age=3600, must-revalidate");
+
+            return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
 }

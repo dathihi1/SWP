@@ -405,8 +405,22 @@
                         // Show success message
                         alert('Đăng nhập thành công!');
                         
-                        // Redirect to home immediately
-                        window.location.href = '/';
+                        // Check user role and redirect accordingly
+                        try {
+                            const userResponse = await fetch('/api/auth/me');
+                            if (userResponse.ok) {
+                                const userData = await userResponse.json();
+                                if (userData.role === 'ADMIN') {
+                                    window.location.href = '/admin';
+                                } else {
+                                    window.location.href = '/';
+                                }
+                            } else {
+                                window.location.href = '/';
+                            }
+                        } catch (error) {
+                            window.location.href = '/';
+                        }
                     } else {
                         // Handle different error types based on status code
                         if (response.status === 400) {
