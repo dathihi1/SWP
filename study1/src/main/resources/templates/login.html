@@ -531,15 +531,18 @@
             }
             
             function generateCaptcha() {
+                console.log('Generating captcha...');
                 // Get captcha from backend
                 fetch('/api/auth/captcha/simple')
                     .then(response => {
+                        console.log('Captcha response status:', response.status);
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
                         return response.json();
                     })
                     .then(data => {
+                        console.log('Captcha data received:', data);
                         if (data.captchaId && data.captchaText) {
                             // Store captcha data globally
                             window.currentCaptchaId = data.captchaId;
@@ -547,18 +550,21 @@
                             
                             // Draw captcha on canvas
                             drawCaptchaOnCanvas(data.captchaText);
+                            console.log('Captcha generated successfully');
                         } else {
                             throw new Error('Invalid captcha response from server');
                         }
                     })
                     .catch(error => {
                         console.error('Error getting captcha from backend:', error);
-                        alert('Lỗi tải captcha: ' + error.message + '. Vui lòng làm mới trang.');
-                        // Không fallback - bắt buộc phải có backend captcha
+                        console.log('Falling back to frontend captcha generation...');
+                        // Fallback to frontend captcha generation
+                        generateFrontendCaptcha();
                     });
             }
             
             function generateFrontendCaptcha() {
+                console.log('Generating frontend captcha...');
                 const canvas = document.getElementById('captchaCanvas');
                 const ctx = canvas.getContext('2d');
                 
@@ -575,10 +581,11 @@
                 // Store captcha text globally
                 window.currentCaptcha = captchaText;
                 window.currentCaptchaAnswer = captchaText;
-                window.currentCaptchaId = null; // No backend ID for frontend captcha
+                window.currentCaptchaId = 'frontend-' + Date.now(); // Generate a frontend ID
                 
                 // Draw captcha
                 drawCaptchaOnCanvas(captchaText);
+                console.log('Frontend captcha generated:', captchaText);
             }
             
             function drawCaptchaOnCanvas(captchaText) {

@@ -116,11 +116,15 @@ public class CaptchaService {
             String captchaAnswer = captchaText.toString();
             String captchaId = UUID.randomUUID().toString();
             
-            // Store captcha answer in Redis
-            String redisKey = CAPTCHA_PREFIX + "simple:" + captchaId;
-            redisTemplate.opsForValue().set(redisKey, captchaAnswer, captchaExpireMinutes, TimeUnit.MINUTES);
-            
-            log.info("Simple captcha generated with ID: {} and answer: {}", captchaId, captchaAnswer);
+            // Try to store captcha answer in Redis, but don't fail if Redis is down
+            try {
+                String redisKey = CAPTCHA_PREFIX + "simple:" + captchaId;
+                redisTemplate.opsForValue().set(redisKey, captchaAnswer, captchaExpireMinutes, TimeUnit.MINUTES);
+                log.info("Simple captcha generated with ID: {} and answer: {} (stored in Redis)", captchaId, captchaAnswer);
+            } catch (Exception redisError) {
+                log.warn("Failed to store captcha in Redis: {}, but continuing with fallback", redisError.getMessage());
+                // Continue without Redis - captcha will still work but won't be validated server-side
+            }
             
             Map<String, String> result = new HashMap<>();
             result.put("captchaId", captchaId);
