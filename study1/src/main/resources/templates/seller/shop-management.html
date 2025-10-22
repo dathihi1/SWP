@@ -291,7 +291,17 @@
         <div class="sidebar-header">
             <div class="d-flex align-items-center justify-content-between">
                 <a class="navbar-brand d-flex align-items-center" th:href="@{/}" href="/">
-                    <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+                    <img th:if="${isAuthenticated}" 
+                         th:src="@{/api/avatar/my-avatar}" 
+                         class="rounded-circle me-2" 
+                         style="width: 32px; height: 32px; object-fit: cover;"
+                         alt="Avatar"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                    <i th:if="${isAuthenticated}" 
+                       class="fa-solid fa-user me-2 text-primary" 
+                       style="display: none;"></i>
+                    <i th:unless="${isAuthenticated}" 
+                       class="fa-solid fa-cart-shopping me-2 text-primary"></i>
                     MMO Market
                 </a>
             </div>

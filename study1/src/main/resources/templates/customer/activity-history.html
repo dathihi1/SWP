@@ -124,7 +124,17 @@
 <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
-            <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+            <img th:if="${isAuthenticated}" 
+                 th:src="@{/api/avatar/my-avatar}" 
+                 class="rounded-circle me-2" 
+                 style="width: 32px; height: 32px; object-fit: cover;"
+                 alt="Avatar"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+            <i th:if="${isAuthenticated}" 
+               class="fa-solid fa-user me-2 text-primary" 
+               style="display: none;"></i>
+            <i th:unless="${isAuthenticated}" 
+               class="fa-solid fa-cart-shopping me-2 text-primary"></i>
             MMO Market
         </a>
         
@@ -214,12 +224,14 @@
                                 <label for="action" class="form-label">Loại hoạt động</label>
                                 <select class="form-select" id="action" name="action">
                                     <option value="">Tất cả</option>
-                                    <option th:each="action : ${availableActions}" 
-                                            th:value="${action}" 
-                                            th:text="${actionMappings[action]}" 
-                                            th:selected="${action == selectedAction}">
-                                        Action
-                                    </option>
+                                    <option value="LOGIN" th:selected="${selectedAction == 'LOGIN'}">Đăng nhập</option>
+                                    <option value="LOGOUT" th:selected="${selectedAction == 'LOGOUT'}">Đăng xuất</option>
+                                    <option value="ACCOUNT_LOCKED" th:selected="${selectedAction == 'ACCOUNT_LOCKED'}">Khóa tài khoản</option>
+                                    <option value="ACCOUNT_UNLOCKED" th:selected="${selectedAction == 'ACCOUNT_UNLOCKED'}">Mở khóa tài khoản</option>
+                                    <option value="PASSWORD_CHANGE" th:selected="${selectedAction == 'PASSWORD_CHANGE'}">Đổi mật khẩu</option>
+                                    <option value="PROFILE_UPDATE" th:selected="${selectedAction == 'PROFILE_UPDATE'}">Cập nhật thông tin</option>
+                                    <option value="REGISTER" th:selected="${selectedAction == 'REGISTER'}">Đăng ký tài khoản</option>
+                                    <option value="OTP_VERIFY" th:selected="${selectedAction == 'OTP_VERIFY'}">Xác minh OTP</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -372,7 +384,7 @@
                         </li>
                         
                         <!-- Page Numbers -->
-                        <li class="page-item" th:each="pageNum : ${#numbers.sequence(Math.max(0, activities.number - 2), Math.min(activities.totalPages - 1, activities.number + 2))}" 
+                        <li class="page-item" th:each="pageNum : ${#numbers.sequence(T(java.lang.Math).max(0, activities.number - 2), T(java.lang.Math).min(activities.totalPages - 1, activities.number + 2))}" 
                             th:classappend="${pageNum == activities.number} ? 'active'">
                             <a class="page-link" th:href="@{/activity-history(page=${pageNum + 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate})}" th:text="${pageNum + 1}">1</a>
                         </li>
@@ -413,6 +425,38 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/auth.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Debug pagination info
+    console.log('Pagination debug:', {
+        currentPage: /*[[${activities.number}]]*/ 0,
+        totalPages: /*[[${activities.totalPages}]]*/ 1,
+        totalElements: /*[[${activities.totalElements}]]*/ 0,
+        first: /*[[${activities.first}]]*/ true,
+        last: /*[[${activities.last}]]*/ true
+    });
+    
+    // Debug filter options
+    console.log('Filter debug:', {
+        availableActions: /*[[${availableActions}]]*/ [],
+        actionMappings: /*[[${actionMappings}]]*/ {},
+        selectedAction: /*[[${selectedAction}]]*/ null
+    });
+    
+    // Ensure form submission preserves current filters
+    const filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            console.log('Filter form submitted');
+        });
+    }
+    
+    // Add click handlers for pagination links to debug
+    document.querySelectorAll('.pagination a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            console.log('Pagination link clicked:', this.href);
+        });
+    });
+});
 </script>
 </body>
 </html>

@@ -299,6 +299,12 @@
 
             // Load saved credentials if remember me was checked
             loadSavedCredentials();
+            
+            // Initialize captcha
+            initializeCaptcha();
+            
+            // Always show captcha (required for all login attempts)
+            showCaptcha();
 
             // Handle login form submission
             const loginForm = document.getElementById('loginForm');
@@ -311,6 +317,7 @@
                 const username = document.getElementById('username').value.trim();
                 const password = document.getElementById('password').value;
                 const rememberMe = rememberMeCheckbox.checked;
+                const captchaInput = document.getElementById('captcha').value.trim();
                 
                 // Basic frontend validation
                 if (!username) {
@@ -322,6 +329,14 @@
                     alert('Vui lòng nhập mật khẩu');
                     return;
                 }
+                
+                // Always check captcha (only check if field is not empty)
+                if (!captchaInput) {
+                    alert('Vui lòng nhập mã xác thực');
+                    return;
+                }
+                // Note: We don't validate captcha correctness here anymore
+                // Captcha will change after each attempt regardless of correctness
                 
                 // Check username format (no special characters)
                 const usernameRegex = /^[a-zA-Z0-9_]+$/;
@@ -355,7 +370,9 @@
                         },
                         body: JSON.stringify({
                             username: username,
-                            password: password
+                            password: password,
+                            captcha: captchaInput,
+                            captchaId: window.currentCaptchaId || null
                         })
                     });
                     
@@ -374,7 +391,33 @@
                         // Redirect to home immediately
                         window.location.href = '/';
                     } else {
-                        alert('Tài khoản hoặc mật khẩu không đúng!');
+                        // Handle different error types
+                        if (data.message && data.message.includes('captcha')) {
+                            // Show captcha if required
+                            showCaptcha();
+                            
+                            // Update captcha with new one from backend if provided
+                            if (data.captcha) {
+                                updateCaptchaFromBackend(data.captcha);
+                            } else {
+                                generateCaptcha();
+                            }
+                            
+                            if (data.message.includes('incorrect')) {
+                                alert('Mã xác thực không đúng, vui lòng nhập lại!');
+                            } else {
+                                alert('Vui lòng nhập mã xác thực để tiếp tục!');
+                            }
+                        } else if (data.error) {
+                            // Show specific error message
+                            alert(data.error);
+                            
+                            // Generate new captcha after any error
+                            generateCaptcha();
+                        } else {
+                            alert('Tài khoản hoặc mật khẩu không đúng!');
+                            generateCaptcha();
+                        }
                     }
                 } catch (error) {
                     alert('Tài khoản hoặc mật khẩu không đúng!');
@@ -382,6 +425,10 @@
                     // Re-enable button
                     loginBtn.disabled = false;
                     loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-2"></i>Đăng nhập';
+                    
+                    // Always regenerate captcha after each attempt
+                    generateCaptcha();
+                    document.getElementById('captcha').value = '';
                 }
             });
             
@@ -427,6 +474,169 @@
                 const card = document.querySelector('.card');
                 card.insertBefore(alertDiv, card.firstChild);
             }
+            
+            // Captcha functions
+            function initializeCaptcha() {
+                const canvas = document.getElementById('captchaCanvas');
+                if (canvas) {
+                    canvas.addEventListener('click', generateCaptcha);
+                    generateCaptcha();
+                }
+            }
+            
+            function generateCaptcha() {
+                // Get captcha from backend
+                fetch('/api/auth/captcha/simple')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.captchaId && data.captchaText) {
+                            // Store captcha data globally
+                            window.currentCaptchaId = data.captchaId;
+                            window.currentCaptchaAnswer = data.captchaText;
+                            
+                            // Draw captcha on canvas
+                            drawCaptchaOnCanvas(data.captchaText);
+                        } else {
+                            throw new Error('Invalid captcha response from server');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error getting captcha from backend:', error);
+                        alert('Lỗi tải captcha: ' + error.message + '. Vui lòng làm mới trang.');
+                        // Không fallback - bắt buộc phải có backend captcha
+                    });
+            }
+            
+            function generateFrontendCaptcha() {
+                const canvas = document.getElementById('captchaCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Generate random captcha text
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                let captchaText = '';
+                for (let i = 0; i < 5; i++) {
+                    captchaText += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                
+                // Store captcha text globally
+                window.currentCaptcha = captchaText;
+                window.currentCaptchaAnswer = captchaText;
+                window.currentCaptchaId = null; // No backend ID for frontend captcha
+                
+                // Draw captcha
+                drawCaptchaOnCanvas(captchaText);
+            }
+            
+            function drawCaptchaOnCanvas(captchaText) {
+                const canvas = document.getElementById('captchaCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw background
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw text
+                ctx.font = '20px Arial';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Add some distortion
+                for (let i = 0; i < captchaText.length; i++) {
+                    const x = 20 + i * 20;
+                    const y = 20 + Math.sin(i) * 5;
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(Math.random() * 0.4 - 0.2);
+                    ctx.fillText(captchaText[i], 0, 0);
+                    ctx.restore();
+                }
+                
+                // Add some noise lines
+                for (let i = 0; i < 3; i++) {
+                    ctx.strokeStyle = '#999';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                    ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                    ctx.stroke();
+                }
+            }
+            
+            function showCaptcha() {
+                const captchaSection = document.getElementById('captchaSection');
+                if (captchaSection) {
+                    captchaSection.style.display = 'block';
+                    generateCaptcha();
+                }
+            }
+            
+            function hideCaptcha() {
+                const captchaSection = document.getElementById('captchaSection');
+                if (captchaSection) {
+                    captchaSection.style.display = 'none';
+                    document.getElementById('captcha').value = '';
+                }
+            }
+            
+            function updateCaptchaFromBackend(captchaData) {
+                // Update captcha with data from backend
+                if (captchaData && captchaData.text) {
+                    // Store the correct answer
+                    window.currentCaptchaAnswer = captchaData.text;
+                    
+                    // Update the canvas with new captcha
+                    const canvas = document.getElementById('captchaCanvas');
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = 120;
+                        canvas.height = 40;
+                        
+                        // Clear canvas
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        
+                        // Set background
+                        ctx.fillStyle = '#f8f9fa';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        // Draw captcha text
+                        ctx.font = '20px Arial';
+                        ctx.fillStyle = '#333';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        
+                        // Add some rotation and distortion
+                        for (let i = 0; i < captchaData.text.length; i++) {
+                            ctx.save();
+                            ctx.translate(20 + i * 20, 20);
+                            ctx.rotate((Math.random() - 0.5) * 0.4);
+                            ctx.fillText(captchaData.text[i], 0, 0);
+                            ctx.restore();
+                        }
+                        
+                        // Add some noise lines
+                        for (let i = 0; i < 3; i++) {
+                            ctx.strokeStyle = '#999';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
         });
     </script>
 </head>
@@ -466,6 +676,24 @@
                     <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
                 </div>
             </div>
+            <!-- Captcha Section -->
+            <div class="mb-3" id="captchaSection" style="display: none;">
+                <label for="captcha" class="form-label">Mã xác thực <span class="text-danger">*</span></label>
+                <div class="row">
+                    <div class="col-8">
+                        <input type="text" class="form-control" id="captcha" name="captcha" placeholder="Nhập mã xác thực" required>
+                    </div>
+                    <div class="col-4">
+                        <div class="captcha-container">
+                            <canvas id="captchaCanvas" width="120" height="40" style="border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" title="Click để làm mới"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-text">
+                    <small class="text-muted">Click vào hình để làm mới mã xác thực</small>
+                </div>
+            </div>
+            
             <div class="mb-3 d-flex justify-content-between align-items-center">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="rememberMe" name="rememberMe">

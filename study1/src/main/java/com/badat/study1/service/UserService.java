@@ -19,16 +19,15 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.redis.core.RedisTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 
 @Slf4j
 @Service
@@ -37,18 +36,20 @@ public class UserService {
     private final WalletRepository walletRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final OtpService otpService;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
     
-    // Temporary storage for OTP and registration data
+    // Temporary storage for OTP and registration data (legacy - not used anymore)
     private final Map<String, String> otpStorage = new HashMap<>();
-    private final Map<String, UserCreateRequest> pendingRegistrations = new HashMap<>();
-    
-    // Temporary storage for forgot password OTP
-    private final Map<String, String> forgotPasswordOtpStorage = new HashMap<>();
 
-    public UserService(UserRepository userRepository, WalletRepository walletRepository, EmailService emailService) {
+    public UserService(UserRepository userRepository, WalletRepository walletRepository, EmailService emailService, OtpService otpService, RedisTemplate<String, Object> redisTemplate, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.emailService = emailService;
+        this.otpService = otpService;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
@@ -62,30 +63,36 @@ public class UserService {
             throw new RuntimeException("Username already taken");
         }
 
-        // Generate OTP
-        String otp = generateOTP();
+        // Store pending registration data in Redis
+        String registrationKey = "pending_registration:" + request.getEmail();
+        redisTemplate.opsForValue().set(registrationKey, request, 10, java.util.concurrent.TimeUnit.MINUTES);
         
-        // Store OTP and registration data temporarily
-        otpStorage.put(request.getEmail(), otp);
-        pendingRegistrations.put(request.getEmail(), request);
-        
-        // Send OTP via email asynchronously
-        sendOTPAsync(request.getEmail(), otp, "kích hoạt tài khoản");
+        // Use OtpService to send OTP with rate limiting
+        otpService.sendOtp(request.getEmail(), "register");
         
         log.info("Registration OTP queued for email: {}", request.getEmail());
     }
     
     public void verify(String email, String otp) {
-        // Check if OTP exists and matches
-        String storedOtp = otpStorage.get(email);
-        if (storedOtp == null || !storedOtp.equals(otp)) {
-            throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn");
+        // Use OtpService to verify OTP with attempt tracking
+        boolean isValid = otpService.verifyOtp(email, otp, "register");
+        if (!isValid) {
+            throw new RuntimeException("Mã OTP không hợp lệ, đã hết hạn hoặc đã vượt quá số lần thử (5 lần)");
         }
         
-        // Get pending registration data
-        UserCreateRequest request = pendingRegistrations.get(email);
+        // Get pending registration data from Redis
+        String registrationKey = "pending_registration:" + email;
+        Object rawData = redisTemplate.opsForValue().get(registrationKey);
+        if (rawData == null) {
+            throw new RuntimeException("Không tìm thấy thông tin đăng ký hoặc đã hết hạn");
+        }
+        
+        log.info("Raw data type: {}", rawData.getClass().getName());
+        log.info("Raw data content: {}", rawData);
+        
+        UserCreateRequest request = convertToUserCreateRequest(rawData);
         if (request == null) {
-            throw new RuntimeException("Không tìm thấy thông tin đăng ký");
+            throw new RuntimeException("Dữ liệu đăng ký không hợp lệ");
         }
         
         // Create user with ACTIVE status
@@ -119,16 +126,12 @@ public class UserService {
         
         // Clean up OTP and pending registration
         otpStorage.remove(email);
-        pendingRegistrations.remove(email);
+        // Clean up temporary data from Redis
+        redisTemplate.delete(registrationKey);
         
         log.info("User account activated for email: {}", email);
     }
     
-    private String generateOTP() {
-        Random random = new Random();
-        int otp = 100000 + random.nextInt(900000); // 6-digit OTP
-        return String.valueOf(otp);
-    }
     
     // Profile CRUD operations
     public ProfileResponse getProfile(String username) {
@@ -249,22 +252,16 @@ public class UserService {
             throw new RuntimeException("Email không tồn tại trong hệ thống");
         }
         
-        // Generate OTP
-        String otp = generateOTP();
-        
-        // Store OTP temporarily
-        forgotPasswordOtpStorage.put(email, otp);
-        
-        // Send OTP via email asynchronously
-        sendForgotPasswordOTPAsync(email, otp);
+        // Use OtpService to send OTP with rate limiting
+        otpService.sendOtp(email, "forgot_password");
         
         log.info("Forgot password OTP queued for email: {}", email);
     }
     
     public void verifyForgotPasswordOtp(String email, String otp) {
-        // Check if OTP exists and matches
-        String storedOtp = forgotPasswordOtpStorage.get(email);
-        if (storedOtp == null || !storedOtp.equals(otp)) {
+        // Use OtpService to verify OTP with attempt tracking
+        boolean isValid = otpService.verifyOtp(email, otp, "forgot_password");
+        if (!isValid) {
             throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn");
         }
         
@@ -277,21 +274,16 @@ public class UserService {
         log.info("Forgot password OTP verified for email: {}", email);
     }
     
-    public void resetPassword(String email, String otp, String newPassword, String repassword) {
-        // Validate passwords match
-        if (!newPassword.equals(repassword)) {
-            throw new RuntimeException("Mật khẩu mới và xác nhận mật khẩu không khớp");
-        }
-        
+    public void resetPassword(String email, String resetToken, String newPassword) {
         // Validate password strength
         if (newPassword.length() < 6) {
             throw new RuntimeException("Mật khẩu phải có ít nhất 6 ký tự");
         }
         
-        // Check if OTP exists and matches
-        String storedOtp = forgotPasswordOtpStorage.get(email);
-        if (storedOtp == null || !storedOtp.equals(otp)) {
-            throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn");
+        // Validate reset token
+        boolean isValidToken = otpService.validateResetToken(resetToken, email);
+        if (!isValidToken) {
+            throw new RuntimeException("Token không hợp lệ hoặc đã hết hạn");
         }
         
         // Find user
@@ -305,8 +297,8 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         
-        // Clean up OTP
-        forgotPasswordOtpStorage.remove(email);
+        // Invalidate reset token
+        otpService.invalidateResetToken(resetToken, email);
         
         log.info("Password reset successfully for email: {}", email);
     }
@@ -353,19 +345,6 @@ public class UserService {
         }
     }
     
-    @Async
-    public void sendForgotPasswordOTPAsync(String email, String otp) {
-        try {
-            String subject = "Mã OTP đặt lại mật khẩu";
-            String body = "Mã OTP để đặt lại mật khẩu của bạn là: " + otp + 
-                         "\nMã này sẽ hết hạn sau 10 phút." +
-                         "\nNếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.";
-            emailService.sendEmail(email, subject, body);
-            log.info("Forgot password OTP email sent successfully to: {}", email);
-        } catch (Exception e) {
-            log.error("Failed to send forgot password OTP email to {}: {}", email, e.getMessage());
-        }
-    }
 
     // Avatar management methods
     @Transactional
@@ -377,59 +356,14 @@ public class UserService {
         
         User user = userOpt.get();
         
-        // Generate unique filename
-        String originalFilename = file.getOriginalFilename();
-        String fileExtension = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        }
-        String filename = "avatar_" + userId + "_" + System.currentTimeMillis() + fileExtension;
+        // Convert file to byte array
+        byte[] avatarBytes = file.getBytes();
         
-        // Use external directory for file storage (outside classpath)
-        String projectRoot = System.getProperty("user.dir");
-        String profileDir = projectRoot + File.separator + "uploads" + File.separator + "avatars";
-        log.info("Using external profile directory: {}", profileDir);
-        
-        log.info("Final profile directory: {}", profileDir);
-        log.info("Directory exists: {}", new File(profileDir).exists());
-        
-        // Create profile directory if it doesn't exist
-        File directory = new File(profileDir);
-        if (!directory.exists()) {
-            boolean created = directory.mkdirs();
-            if (created) {
-                log.info("Created profile directory: {}", profileDir);
-            } else {
-                log.warn("Failed to create profile directory: {}", profileDir);
-            }
-        }
-        
-        // Save file to filesystem
-        String filePath = profileDir + File.separator + filename;
-        File avatarFile = new File(filePath);
-        log.info("Attempting to save file to: {}", filePath);
-        log.info("File parent directory exists: {}", avatarFile.getParentFile().exists());
-        log.info("File parent directory writable: {}", avatarFile.getParentFile().canWrite());
-        log.info("File size: {} bytes", file.getSize());
-        
-        try {
-            file.transferTo(avatarFile);
-            log.info("Avatar file saved successfully: {}", filePath);
-            log.info("File exists after save: {}", avatarFile.exists());
-            log.info("File size after save: {} bytes", avatarFile.length());
-        } catch (Exception e) {
-            log.error("Failed to save avatar file: {}", e.getMessage());
-            log.error("Exception details: ", e);
-            throw new IOException("Failed to save avatar file: " + e.getMessage(), e);
-        }
-        
-        // Update user with file path instead of byte data
-        user.setAvatarUrl("/uploads/avatars/" + filename);
-        user.setAvatarData(null); // Clear byte data when using file storage
+        // Update user with byte data
+        user.setAvatarData(avatarBytes);
         userRepository.save(user);
         
-        log.info("Avatar uploaded for user ID: {} to file: {}", userId, filename);
-        log.info("Avatar URL set to: {}", user.getAvatarUrl());
+        log.info("Avatar uploaded for user ID: {} as byte array ({} bytes)", userId, avatarBytes.length);
     }
     
     public byte[] getAvatar(Long userId) {
@@ -441,20 +375,7 @@ public class UserService {
 
             User user = userOpt.get();
 
-            // Priority: avatarUrl (file) > avatarData (legacy) > default avatar
-            if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
-                // Use external directory path
-                String projectRoot = System.getProperty("user.dir");
-                String filePath = projectRoot + File.separator + "uploads" + File.separator + "avatars" + File.separator + new File(user.getAvatarUrl()).getName();
-                File avatarFile = new File(filePath);
-                if (avatarFile.exists()) {
-                    return Files.readAllBytes(avatarFile.toPath());
-                } else {
-                    log.warn("Avatar file not found: {}", filePath);
-                }
-            }
-
-            // Legacy: check avatarData
+            // Use avatarData (byte array) or default avatar
             if (user.getAvatarData() != null && user.getAvatarData().length > 0) {
                 return user.getAvatarData();
             }
@@ -475,27 +396,65 @@ public class UserService {
         
         User user = userOpt.get();
         
-        // Delete physical file if exists
-        if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
-            // Use external directory path
-            String projectRoot = System.getProperty("user.dir");
-            String filePath = projectRoot + File.separator + "uploads" + File.separator + "avatars" + File.separator + new File(user.getAvatarUrl()).getName();
-            File avatarFile = new File(filePath);
-            if (avatarFile.exists()) {
-                if (avatarFile.delete()) {
-                    log.info("Avatar file deleted: {}", filePath);
-                } else {
-                    log.warn("Failed to delete avatar file: {}", filePath);
-                }
-            }
-        }
-        
-        // Clear database references
+        // Clear database references (byte data only)
         user.setAvatarData(null);
-        user.setAvatarUrl(null);
         userRepository.save(user);
         
-        log.info("Avatar deleted for user ID: {}", userId);
+        log.info("Avatar deleted for user ID: {} (byte data cleared)", userId);
+    }
+    
+    private UserCreateRequest convertToUserCreateRequest(Object rawData) {
+        try {
+            if (rawData instanceof UserCreateRequest) {
+                return (UserCreateRequest) rawData;
+            }
+            
+            if (rawData instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) rawData;
+                
+                // Handle type conversion issues
+                UserCreateRequest request = new UserCreateRequest();
+                request.setEmail((String) map.get("email"));
+                request.setUsername((String) map.get("username"));
+                request.setPassword((String) map.get("password"));
+                
+                return request;
+            }
+            
+            // Try direct conversion with safe type handling
+            try {
+                return objectMapper.convertValue(rawData, UserCreateRequest.class);
+            } catch (Exception e) {
+                log.error("ObjectMapper conversion failed, trying manual conversion: {}", e.getMessage());
+                
+                // Fallback: manual conversion
+                if (rawData instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) rawData;
+                    UserCreateRequest request = new UserCreateRequest();
+                    request.setEmail(convertToString(map.get("email")));
+                    request.setUsername(convertToString(map.get("username")));
+                    request.setPassword(convertToString(map.get("password")));
+                    return request;
+                }
+                
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("Failed to convert raw data to UserCreateRequest: {}", e.getMessage());
+            log.error("Raw data type: {}", rawData != null ? rawData.getClass().getName() : "null");
+            log.error("Raw data content: {}", rawData);
+            return null;
+        }
+    }
+    
+    private String convertToString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return value.toString();
     }
     
     public byte[] getDefaultAvatar() {

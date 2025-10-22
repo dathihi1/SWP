@@ -379,64 +379,82 @@ public class ViewController {
 
         // Load wallet history for current user, apply filters and pagination
         final int currentPageParam = page;
-        walletRepository.findByUserId(user.getId()).ifPresent(wallet -> {
-            List<WalletHistory> all = walletHistoryService.getWalletHistoryByWalletId(wallet.getId());
+        try {
+            walletRepository.findByUserId(user.getId()).ifPresent(wallet -> {
+                try {
+                    List<WalletHistory> all = walletHistoryService.getWalletHistoryByWalletId(wallet.getId());
 
-            List<WalletHistory> filtered = all.stream()
-                    .filter(h -> {
-                        // fromDate (HTML5 yyyy-MM-dd)
-                        if (fromDate != null && !fromDate.trim().isEmpty()) {
-                            try {
-                                LocalDate fd = LocalDate.parse(fromDate);
-                                if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isBefore(fd)) {
-                                    return false;
+                    List<WalletHistory> filtered = all.stream()
+                            .filter(h -> {
+                                // fromDate (HTML5 yyyy-MM-dd)
+                                if (fromDate != null && !fromDate.trim().isEmpty()) {
+                                    try {
+                                        LocalDate fd = LocalDate.parse(fromDate);
+                                        if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isBefore(fd)) {
+                                            return false;
+                                        }
+                                    } catch (Exception ignored) {}
                                 }
-                            } catch (Exception ignored) {}
-                        }
-                        // toDate
-                        if (toDate != null && !toDate.trim().isEmpty()) {
-                            try {
-                                LocalDate td = LocalDate.parse(toDate);
-                                if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isAfter(td)) {
-                                    return false;
+                                // toDate
+                                if (toDate != null && !toDate.trim().isEmpty()) {
+                                    try {
+                                        LocalDate td = LocalDate.parse(toDate);
+                                        if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isAfter(td)) {
+                                            return false;
+                                        }
+                                    } catch (Exception ignored) {}
                                 }
-                            } catch (Exception ignored) {}
-                        }
-                        // type
-                        if (transactionType != null && !transactionType.trim().isEmpty() && !"ALL".equals(transactionType)) {
-                            if (!h.getType().name().equals(transactionType)) return false;
-                        }
-                        // status
-                        if (transactionStatus != null && !transactionStatus.trim().isEmpty() && !"ALL".equals(transactionStatus)) {
-                            if (!h.getStatus().name().equals(transactionStatus)) return false;
-                        }
-                        return true;
-                    })
-                    .collect(Collectors.toList());
+                                // type
+                                if (transactionType != null && !transactionType.trim().isEmpty() && !"ALL".equals(transactionType)) {
+                                    if (!h.getType().name().equals(transactionType)) return false;
+                                }
+                                // status
+                                if (transactionStatus != null && !transactionStatus.trim().isEmpty() && !"ALL".equals(transactionStatus)) {
+                                    if (!h.getStatus().name().equals(transactionStatus)) return false;
+                                }
+                                return true;
+                            })
+                            .collect(Collectors.toList());
 
-            int pageSize = 5;
-            int totalPages = (int) Math.ceil((double) filtered.size() / pageSize);
-            int safePage = currentPageParam;
-            if (safePage < 1) safePage = 1;
-            if (safePage > totalPages && totalPages > 0) safePage = totalPages;
-            int startIndex = (safePage - 1) * pageSize;
-            int endIndex = Math.min(startIndex + pageSize, filtered.size());
-            List<WalletHistory> pageData = filtered.subList(startIndex, endIndex);
+                    int pageSize = 5;
+                    int totalPages = (int) Math.ceil((double) filtered.size() / pageSize);
+                    int safePage = currentPageParam;
+                    if (safePage < 1) safePage = 1;
+                    if (safePage > totalPages && totalPages > 0) safePage = totalPages;
+                    int startIndex = (safePage - 1) * pageSize;
+                    int endIndex = Math.min(startIndex + pageSize, filtered.size());
+                    List<WalletHistory> pageData = filtered.subList(startIndex, endIndex);
 
-            model.addAttribute("walletHistory", pageData);
-            model.addAttribute("currentPage", safePage);
-            model.addAttribute("totalPages", totalPages);
-            model.addAttribute("hasNextPage", safePage < totalPages);
-            model.addAttribute("hasPrevPage", safePage > 1);
-            model.addAttribute("nextPage", safePage + 1);
-            model.addAttribute("prevPage", safePage - 1);
+                    model.addAttribute("walletHistory", pageData);
+                    model.addAttribute("currentPage", safePage);
+                    model.addAttribute("totalPages", totalPages);
+                    model.addAttribute("hasNextPage", safePage < totalPages);
+                    model.addAttribute("hasPrevPage", safePage > 1);
+                    model.addAttribute("nextPage", safePage + 1);
+                    model.addAttribute("prevPage", safePage - 1);
 
-            // keep filter params
-            model.addAttribute("fromDate", fromDate);
-            model.addAttribute("toDate", toDate);
-            model.addAttribute("transactionType", transactionType);
-            model.addAttribute("transactionStatus", transactionStatus);
-        });
+                    // keep filter params
+                    model.addAttribute("fromDate", fromDate);
+                    model.addAttribute("toDate", toDate);
+                    model.addAttribute("transactionType", transactionType);
+                    model.addAttribute("transactionStatus", transactionStatus);
+                } catch (Exception e) {
+                    log.error("Error loading wallet history for user {}: {}", user.getId(), e.getMessage());
+                    model.addAttribute("walletHistory", List.of());
+                    model.addAttribute("currentPage", 1);
+                    model.addAttribute("totalPages", 0);
+                    model.addAttribute("hasNextPage", false);
+                    model.addAttribute("hasPrevPage", false);
+                }
+            });
+        } catch (Exception e) {
+            log.error("Error in payment history page: {}", e.getMessage());
+            model.addAttribute("walletHistory", List.of());
+            model.addAttribute("currentPage", 1);
+            model.addAttribute("totalPages", 0);
+            model.addAttribute("hasNextPage", false);
+            model.addAttribute("hasPrevPage", false);
+        }
 
         return "customer/payment-history";
     }
@@ -522,7 +540,12 @@ public class ViewController {
         model.addAttribute("totalOrders", 0);
 
         // Lấy lịch sử hoạt động gần đây (5 hoạt động mới nhất)
-        model.addAttribute("recentActivities", auditLogService.getRecentUserAuditLogs(freshUser.getId(), 5));
+        try {
+            model.addAttribute("recentActivities", auditLogService.getRecentUserAuditLogs(freshUser.getId(), 5));
+        } catch (Exception e) {
+            log.error("Error loading recent activities for user {}: {}", freshUser.getId(), e.getMessage());
+            model.addAttribute("recentActivities", List.of());
+        }
 
         return "customer/profile";
     }
@@ -580,7 +603,7 @@ public class ViewController {
                 try {
                     log.info("Attempting to get audit logs for user {} (attempt {})", user.getId(), retryCount + 1);
                     activities = auditLogService.getUserAuditLogsWithFilters(
-                            user.getId(), page, 5, finalAction, success, fromDate, toDate);
+                            user.getId(), page, 5, finalAction, success, fromDate, toDate, null);
                     
                     if (activities != null) {
                         log.info("Successfully retrieved {} activities for user {}", activities.getTotalElements(), user.getId());
@@ -634,6 +657,8 @@ public class ViewController {
             
             model.addAttribute("actionMappings", actionMappings);
             model.addAttribute("availableActions", actionMappings.keySet());
+            
+            log.info("Available actions for user {}: {}", user.getUsername(), actionMappings.keySet());
 
             log.info("Activity history page loaded successfully for user {}", user.getUsername());
             return "customer/activity-history";

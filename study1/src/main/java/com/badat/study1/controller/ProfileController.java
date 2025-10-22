@@ -1,5 +1,6 @@
 package com.badat.study1.controller;
 
+import com.badat.study1.annotation.Auditable;
 import com.badat.study1.dto.request.UpdateProfileRequest;
 import com.badat.study1.model.User;
 import com.badat.study1.service.AuditLogService;
@@ -28,6 +29,7 @@ public class ProfileController {
     private final AuditLogService auditLogService;
     
     @PutMapping("/profile")
+    @Auditable(action = "PROFILE_UPDATE")
     public ResponseEntity<?> updateProfile(@Valid @RequestBody UpdateProfileRequest request, 
                                         HttpServletRequest httpRequest) {
         try {

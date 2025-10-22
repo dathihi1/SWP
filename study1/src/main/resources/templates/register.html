@@ -105,18 +105,23 @@
         }
 
         try {
-            const response = await fetch('/users/register', {
+            const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, email, password })
             });
 
             if (response.ok) {
+                const result = await response.json();
                 // Chuyển ngay sang trang verify-otp (email đang được gửi bất đồng bộ)
-                window.location.href = '/verify-otp?email=' + encodeURIComponent(email);
+                if (result.data && result.data.nextUrl) {
+                    window.location.href = result.data.nextUrl;
+                } else {
+                    window.location.href = '/verify-otp?email=' + encodeURIComponent(email);
+                }
             } else {
-                const errorText = await response.text();
-                alertBox.textContent = errorText || 'Đăng ký thất bại';
+                const errorData = await response.json();
+                alertBox.textContent = errorData.message || 'Đăng ký thất bại';
                 alertBox.classList.remove('d-none');
             }
         } catch (error) {
@@ -125,32 +130,6 @@
         }
     });
 
-    document.getElementById('otpForm').addEventListener('submit', async function (event) {
-        event.preventDefault();
-        const email = document.getElementById('email').value.trim();
-        const otp = document.getElementById('otp').value.trim();
-        const alertBox = document.getElementById('alert');
-        alertBox.classList.add('d-none');
-
-        try {
-            const response = await fetch('/users/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, otp })
-            });
-
-            if (response.ok) {
-                window.location.href = '/login';
-            } else {
-                const error = await response.json();
-                alertBox.textContent = error.message;
-                alertBox.classList.remove('d-none');
-            }
-        } catch (error) {
-            alertBox.textContent = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
-            alertBox.classList.remove('d-none');
-        }
-    });
 </script>
 </body>
 </html>

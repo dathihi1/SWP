@@ -31,7 +31,7 @@ public class PaymentController {
                                 !authentication.getName().equals("anonymousUser");
     
         
-        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("isAuthenticated", isAuthenticated);
         return "payment";
     }
     

@@ -117,8 +117,8 @@
 <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
-            <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
-            MMO Market
+            <i class="fa-solid fa-cart-shopping me-2 text-primary" style="font-size: 1.5rem;"></i>
+            <span class="fw-bold">MMO Market</span>
         </a>
         
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
@@ -145,7 +145,12 @@
                     
                     <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-user"></i>
+                            <img th:src="@{/api/avatar/my-avatar}" 
+                                 class="rounded-circle" 
+                                 style="width: 24px; height: 24px; object-fit: cover;"
+                                 alt="Avatar"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                            <i class="fa-solid fa-user" style="display: none;"></i>
                             <span th:text="${username}">User</span>
                         </button>
                         <ul class="dropdown-menu">
@@ -283,7 +288,7 @@
                 <div class="card-body text-center">
                     <div class="mb-4">
                         <div class="position-relative d-inline-block mb-3">
-                            <img th:src="${user.avatarUrl != null ? user.avatarUrl : '/images/default-avatar.svg'}" 
+                            <img th:src="${user.avatarData != null ? '/api/profile/avatar/me' : '/images/default-avatar.svg'}" 
                                  class="rounded-circle border border-2 border-primary" 
                                  style="width: 100px; height: 100px; object-fit: cover;"
                                  alt="Avatar">
@@ -458,7 +463,7 @@
                         <div class="col-md-6">
                             <label for="editFullName" class="form-label">Họ và tên <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="editFullName" required th:value="${user?.fullName}"
-                                   pattern="^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂĐÊÔƠƯăâđêôơư\s]{2,50}$"
+                                   pattern="^[\p{L}\s]{2,50}$"
                                    title="Họ và tên phải có từ 2-50 ký tự, chỉ chứa chữ cái và khoảng trắng">
                             <div class="invalid-feedback" id="fullNameError"></div>
                         </div>
@@ -508,10 +513,18 @@
         const fullNameElement = document.querySelector('[data-fullname]');
         const phoneElement = document.querySelector('[data-phone]');
         
-        const username = usernameElement?.dataset.username || usernameElement?.textContent?.trim() || '';
-        const email = emailElement?.dataset.email || emailElement?.textContent?.trim() || '';
-        const fullName = fullNameElement?.dataset.fullname || fullNameElement?.textContent?.trim() || '';
-        const phone = phoneElement?.dataset.phone || phoneElement?.textContent?.trim() || '';
+        const normalize = (val) => {
+            if (!val) return '';
+            const s = String(val).trim();
+            // If Thymeleaf didn't evaluate and left an expression like ${...}
+            if (s.startsWith('${') && s.endsWith('}')) return '';
+            return s;
+        };
+
+        const username = normalize(usernameElement?.dataset.username) || normalize(usernameElement?.textContent);
+        const email = normalize(emailElement?.dataset.email) || normalize(emailElement?.textContent);
+        const fullName = normalize(fullNameElement?.dataset.fullname) || normalize(fullNameElement?.textContent);
+        const phone = normalize(phoneElement?.dataset.phone) || normalize(phoneElement?.textContent);
         
         console.log('Data attributes:', {
             username: usernameElement?.dataset.username,
@@ -524,15 +537,17 @@
         if (!document.getElementById('editUsername').value) {
             document.getElementById('editUsername').value = username;
         }
-        if (!document.getElementById('editEmail').value) {
-            document.getElementById('editEmail').value = email || '';
-        }
-        if (!document.getElementById('editFullName').value) {
-            document.getElementById('editFullName').value = fullName || '';
-        }
-        if (!document.getElementById('editPhone').value) {
-            document.getElementById('editPhone').value = phone || '';
-        }
+        const editEmail = document.getElementById('editEmail');
+        const editFullName = document.getElementById('editFullName');
+        const editPhone = document.getElementById('editPhone');
+
+        if (!editEmail.value) editEmail.value = email || '';
+        if (!editFullName.value) editFullName.value = fullName || '';
+        if (!editPhone.value) editPhone.value = phone || '';
+
+        // Set helpful placeholders when empty
+        if (!editFullName.value) editFullName.placeholder = 'Chưa cập nhật';
+        if (!editPhone.value) editPhone.placeholder = 'Chưa cập nhật';
         
         console.log('Form populated:', { username, email, fullName, phone });
     }
@@ -575,7 +590,7 @@
             
             // Validate full name (only if provided)
             if (fullName) {
-                const fullNameRegex = /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂĐÊÔƠƯăâđêôơư\s]{2,50}$/;
+                const fullNameRegex = /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈĨỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴÝỶỸĐăạảấầẩẫậắằẳẵặẹẻẽếềểễệỉĩịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹđ\s]{2,50}$/;
                 if (!fullNameRegex.test(fullName)) {
                     showFieldError('editFullName', 'Họ và tên phải có từ 2-50 ký tự, chỉ chứa chữ cái và khoảng trắng');
                     return;
