@@ -38,6 +38,23 @@
             color: white;
             border-color: #0d6efd;
         }
+        .item-data-container {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .item-data-content {
+            font-family: 'Courier New', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #495057;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
     </style>
     <script src="/js/auth.js"></script>
     <script>
@@ -109,6 +126,7 @@
                                    order.status === 'REFUNDED' ? 'warning' : 'warning';
                 
                 const createdAt = new Date(order.createdAt).toLocaleString('vi-VN');
+                const itemCount = order.itemCount || (order.orderItems ? order.orderItems.length : 0);
                 
                 html += `
                     <div class="card order-card ${statusClass} mb-3">
@@ -130,7 +148,7 @@
                                 </div>
                                 <div class="col-md-3">
                                     <h5 class="text-primary mb-0">${formatMoney(order.totalAmount)} ₫</h5>
-                                    <small class="text-muted">Số lượng: ${order.quantity}</small>
+                                    <small class="text-muted">${itemCount} sản phẩm</small>
                                 </div>
                                 <div class="col-md-2 text-end">
                                     <button class="btn btn-outline-primary btn-sm" onclick="toggleOrderDetails('order${order.id}')">
@@ -141,42 +159,109 @@
                         </div>
                         <!-- Order Details (Hidden by default) -->
                         <div id="order${order.id}-details" class="card-body border-top" style="display: none;">
-                            <h6 class="mb-3">Chi tiết sản phẩm</h6>
                             <div class="row mb-3">
-                                <div class="col-12">
-                                    <div class="bg-light rounded p-3">
-                                        <h6 class="mb-2">
-                                            <i class="fa-solid fa-info-circle me-2 text-info"></i>
-                                            Thông tin sản phẩm (Warehouse ID: ${order.warehouseId})
-                                        </h6>
-                                        <div class="border rounded p-2 bg-white">
-                                            <pre class="mb-0" style="white-space: pre-wrap; font-family: monospace; font-size: 0.9rem;">${order.itemData}</pre>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
                                 <div class="col-md-6">
-                                    <div class="row text-center">
-                                        <div class="col-4">
-                                            <small class="text-muted">Số lượng</small>
-                                            <div class="fw-bold">${order.quantity}</div>
-                                        </div>
-                                        <div class="col-4">
-                                            <small class="text-muted">Đơn giá</small>
-                                            <div class="fw-bold text-success">${formatMoney(order.unitPrice)} ₫</div>
-                                        </div>
-                                        <div class="col-4">
-                                            <small class="text-muted">Thành tiền</small>
-                                            <div class="fw-bold text-primary">${formatMoney(order.totalAmount)} ₫</div>
-                                        </div>
-                                    </div>
+                                    <h6 class="mb-3">
+                                        <i class="fa-solid fa-list me-2 text-primary"></i>
+                                        Danh sách sản phẩm (${itemCount} sản phẩm)
+                                    </h6>
                                 </div>
                                 <div class="col-md-6 text-end">
                                     <small class="text-muted">
                                         <i class="fa-solid fa-calendar me-1"></i>
                                         Ngày mua: ${createdAt}
                                     </small>
+                                </div>
+                            </div>
+                            
+                            ${order.orderItems && order.orderItems.length > 0 ? order.orderItems.map(item => `
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h6 class="mb-1">${item.productName || 'Sản phẩm'}</h6>
+                                                <small class="text-muted">ID: ${item.productId}</small>
+                                            </div>
+                                            <div class="col-md-2 text-center">
+                                                <small class="text-muted">Số lượng</small>
+                                                <div class="fw-bold">${item.quantity}</div>
+                                            </div>
+                                            <div class="col-md-2 text-center">
+                                                <small class="text-muted">Đơn giá</small>
+                                                <div class="fw-bold text-success">${formatMoney(item.unitPrice)} ₫</div>
+                                            </div>
+                                            <div class="col-md-2 text-center">
+                                                <small class="text-muted">Thành tiền</small>
+                                                <div class="fw-bold text-primary">${formatMoney(item.totalAmount)} ₫</div>
+                                            </div>
+                                        </div>
+                                        ${item.warehouse && item.warehouse.itemData ? `
+                                            <div class="mt-3">
+                                                <div class="item-data-container">
+                                                    <div class="p-3">
+                                                        <div class="item-data-content">${item.warehouse.itemData}</div>
+                                                        <div class="mt-3 d-flex align-items-center justify-content-between">
+                                                            <small class="text-muted">
+                                                                <i class="fa-solid fa-info-circle me-1"></i>
+                                                                Đây là dữ liệu chi tiết về sản phẩm bạn đã mua
+                                                            </small>
+                                                            <button class="btn btn-outline-primary btn-sm" onclick="copyItemData('${item.warehouseId}')">
+                                                                <i class="fa-solid fa-copy me-1"></i>Copy
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ` : `
+                                            <div class="mt-3">
+                                                <div class="alert alert-warning">
+                                                    <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                                                    <strong>Không có thông tin chi tiết</strong>
+                                                    <br>
+                                                    <small>Sản phẩm này không có thông tin chi tiết (item_data) trong warehouse.</small>
+                                                </div>
+                                            </div>
+                                        `}
+                                    </div>
+                                </div>
+                            `).join('') : `
+                                <div class="alert alert-warning">
+                                    <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                                    Không có thông tin chi tiết sản phẩm
+                                </div>
+                            `}
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-8">
+                                    <div class="bg-light rounded p-3">
+                                        <h6 class="mb-2">
+                                            <i class="fa-solid fa-receipt me-2 text-success"></i>
+                                            Tổng kết đơn hàng
+                                        </h6>
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <small class="text-muted">Tổng tiền</small>
+                                                <div class="fw-bold text-primary">${formatMoney(order.totalAmount)} ₫</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted">Phí dịch vụ</small>
+                                                <div class="fw-bold text-warning">${formatMoney(order.totalCommissionAmount)} ₫</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted">Người bán nhận</small>
+                                                <div class="fw-bold text-success">${formatMoney(order.totalSellerAmount)} ₫</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="mt-3">
+                                        <small class="text-muted">Phương thức thanh toán</small>
+                                        <div class="fw-bold">
+                                            <i class="fa-solid fa-wallet me-1"></i>
+                                            ${order.paymentMethod || 'Ví điện tử'}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -226,7 +311,7 @@
         }
 
         function startAutoRefresh() {
-            refreshInterval = setInterval(loadOrders, 10000); // Refresh every 10 seconds
+            refreshInterval = setInterval(loadOrders, 30000); // Refresh every 30 seconds
         }
 
         function stopAutoRefresh() {
@@ -241,7 +326,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             loadAll();
-            startAutoRefresh();
+            // startAutoRefresh(); // Tắt auto-refresh, chỉ refresh khi người dùng click nút
         });
 
         // Stop auto refresh when page is hidden
@@ -249,7 +334,7 @@
             if (document.hidden) {
                 stopAutoRefresh();
             } else {
-                startAutoRefresh();
+                // startAutoRefresh(); // Tắt auto-refresh khi page visible lại
             }
         });
 
@@ -264,6 +349,32 @@
             } else {
                 detailsElement.style.display = 'none';
                 button.innerHTML = '<i class="fa-solid fa-eye me-1"></i>Chi tiết';
+            }
+        }
+
+        // Copy item data to clipboard
+        function copyItemData(warehouseId) {
+            // Find the item data content for this warehouse ID
+            const itemDataElements = document.querySelectorAll('.item-data-content');
+            let itemData = '';
+            
+            for (let element of itemDataElements) {
+                const container = element.closest('.item-data-container');
+                if (container && container.textContent.includes(`ID: ${warehouseId}`)) {
+                    itemData = element.textContent;
+                    break;
+                }
+            }
+            
+            if (itemData) {
+                navigator.clipboard.writeText(itemData).then(() => {
+                    showNotification('Đã copy thông tin sản phẩm vào clipboard!', 'success');
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    showNotification('Không thể copy thông tin. Vui lòng thử lại.', 'danger');
+                });
+            } else {
+                showNotification('Không tìm thấy thông tin sản phẩm để copy.', 'danger');
             }
         }
     </script>
@@ -309,7 +420,8 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'ADMIN'}"><a class="dropdown-item" th:href="@{/admin}" href="/admin"><i class="fa-solid fa-cogs me-2"></i>Quản lý</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
@@ -347,7 +459,7 @@
 
     <div class="alert alert-info">
         <i class="fa-solid fa-info-circle me-2"></i>
-        <strong>Thông tin đơn hàng:</strong> Hiển thị chi tiết sản phẩm đã mua, giá tiền và ngày giao dịch.
+        <strong>Thông tin đơn hàng:</strong> Hiển thị chi tiết các sản phẩm đã mua, bao gồm thông tin warehouse (item_data) - đây là dữ liệu chi tiết về sản phẩm game mà bạn đã mua. Bạn có thể copy thông tin này để sử dụng.
     </div>
 
     <div class="card card-shadow">

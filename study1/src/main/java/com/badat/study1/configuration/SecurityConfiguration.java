@@ -20,9 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.beans.factory.annotation.Autowired;
-import com.badat.study1.service.AuditLogService;
-import com.badat.study1.util.RequestMetadataUtil;
 
 @Configuration
 @EnableWebSecurity
@@ -33,17 +30,17 @@ public class SecurityConfiguration {
 
     private static final String[] AUTH_WHITELIST = {"/", "/index", "/home", 
             "/products/**", 
+            "/product/**", 
             "/cart", 
             "/auth/**", 
-            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/verify-register-otp", "/api/auth/reset-password",
-            "/api/auth/captcha/**", "/api/avatar/**",
+            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/reset-password",
             "/api/cart/test", // Thêm test endpoint vào whitelist
             "/users/**", 
             "/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", 
             "/seller/register", 
             "/terms", "/faqs", 
             "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico",
-            "/api/avatar/**", // Allow avatar endpoints
+            "/stall-image/**",
             "/oauth2/**", "/login/oauth2/**",
             "/error", // Thêm /error vào whitelist để tránh authentication loop
             "/admin-simple", "/admin/test-withdraw", "/api/admin/withdraw/requests-simple", "/api/admin/withdraw/approve-simple/**", "/api/admin/withdraw/reject-simple/**"};
@@ -54,8 +51,7 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final JwtService jwtService;
-    @Autowired(required = false)
-    private AuditLogService auditLogService;
+    private final AdminAuthenticationSuccessHandler adminAuthenticationSuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -65,15 +61,18 @@ public class SecurityConfiguration {
                 .csrf(CsrfConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(AUTH_WHITELIST).permitAll()
-                        .requestMatchers("/api/audit-logs/me").authenticated()
                         .requestMatchers(API_PROTECTED_PATHS).authenticated()
                         .requestMatchers("/seller/**").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/admin/audit-logs").hasRole("ADMIN")
                         .requestMatchers("/withdraw").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers("/api/withdraw/**").hasAnyRole("SELLER", "ADMIN")
                         .anyRequest().authenticated()
+                )
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .successHandler(adminAuthenticationSuccessHandler)
+                        .permitAll()
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
@@ -101,8 +100,7 @@ public class SecurityConfiguration {
 
     @Bean
     public AuthenticationManager authenticationManager() {
-        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
-        authenticationProvider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider(userDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder());
         return new ProviderManager(authenticationProvider);
     }
@@ -135,15 +133,27 @@ public class SecurityConfiguration {
                     response.setHeader("Set-Cookie", cookieValue);
 
                     try {
-                        // Redirect to home page with success message
-                        response.sendRedirect("/?login=success");
-                        
-                        // Audit OAuth2 login
-                        if (auditLogService != null) {
-                            String ip = RequestMetadataUtil.extractClientIp(request);
-                            String ua = RequestMetadataUtil.extractUserAgent(request);
-                            auditLogService.logLoginAttempt(oauth2User.getUser(), ip, true, null, ua);
+                        // Check if user is admin and redirect accordingly
+                        if (oauth2User.getUser().getRole().name().equals("ADMIN")) {
+                            response.sendRedirect("/admin");
+                        } else {
+                            response.sendRedirect("/?login=success");
                         }
+                        
+                        // Log OAuth2 login to audit
+                        String ip = request.getHeader("X-Forwarded-For");
+                        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                            ip = request.getHeader("X-Real-IP");
+                        }
+                        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                            ip = request.getRemoteAddr();
+                        }
+                        String ua = request.getHeader("User-Agent");
+                        // Defer to AuditLogService via ApplicationContext if available is complicated here; simply attach to JWT and log elsewhere.
+                        // For now, set headers for a downstream filter/service to log.
+                        response.setHeader("X-Auth-Logged", "oauth2");
+                        response.setHeader("X-Client-IP", ip);
+                        if (ua != null) response.setHeader("X-Client-UA", ua);
                     } catch (Exception e) {
                         log.error("Error in OAuth2 success handler: {}", e.getMessage());
                         try {

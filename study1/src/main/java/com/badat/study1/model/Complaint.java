@@ -18,12 +18,12 @@ public class Complaint extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
     
-    @Column(name = "transaction_id", nullable = false)
-    Long transactionId;
+    @Column(name = "order_id", nullable = false)
+    Long orderId;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transaction_id", insertable = false, updatable = false)
-    Transaction transaction;
+    @JoinColumn(name = "order_id", insertable = false, updatable = false)
+    Order order;
     
     @Column(name = "buyer_id", nullable = false)
     Long buyerId;

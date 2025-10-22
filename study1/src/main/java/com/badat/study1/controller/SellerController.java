@@ -6,6 +6,7 @@ import com.badat.study1.model.User;
 import com.badat.study1.repository.BankAccountRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.WalletRepository;
+import com.badat.study1.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -23,13 +24,16 @@ public class SellerController {
     private final ShopRepository shopRepository;
     private final BankAccountRepository bankAccountRepository;
     private final WalletRepository walletRepository;
+    private final UserRepository userRepository;
 
     public SellerController(ShopRepository shopRepository,
                             BankAccountRepository bankAccountRepository,
-                            WalletRepository walletRepository) {
+                            WalletRepository walletRepository,
+                            UserRepository userRepository) {
         this.shopRepository = shopRepository;
         this.bankAccountRepository = bankAccountRepository;
         this.walletRepository = walletRepository;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/seller/register")
@@ -101,6 +105,12 @@ public class SellerController {
         shop.setCreatedAtLower(Instant.now());
         shop.setDelete(false);
         shopRepository.save(shop);
+
+        // Update user role to SELLER immediately
+        if (user.getRole() != User.Role.SELLER) {
+            user.setRole(User.Role.SELLER);
+            userRepository.save(user);
+        }
 
         // Render register page with success notice
         redirectAttributes.addFlashAttribute("submitSuccess", true);

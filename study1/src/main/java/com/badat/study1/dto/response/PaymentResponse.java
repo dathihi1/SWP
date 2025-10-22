@@ -14,4 +14,5 @@ public class PaymentResponse {
     private String orderId;
     private String message;
     private boolean success;
+    private Long paymentId;
 }

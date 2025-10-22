@@ -456,12 +456,21 @@
                 checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang xử lý...';
                 
                 // Prepare cart data for improved payment system
+                console.log('All cart items:', cartItems.map(item => ({ id: item.product?.id, name: item.product?.name })));
+                console.log('Selected items Set:', Array.from(selectedItems));
                 const selectedCartItems = cartItems.filter(item => selectedItems.has(item.product?.id));
+                console.log('Selected cart items:', selectedCartItems.map(item => ({ id: item.product?.id, name: item.product?.name })));
+                console.log('Total cart items:', cartItems.length);
+                
                 const cartData = selectedCartItems.map(item => ({
                     productId: item.product?.id,
                     quantity: item.quantity,
                     price: item.product?.price,
-                    name: item.product?.name
+                    name: item.product?.name,
+                    warehouseId: item.product?.id, // Sử dụng productId làm warehouseId tạm thời
+                    stallId: item.product?.stallId,
+                    shopId: item.product?.shopId,
+                    sellerId: item.product?.shop?.userId || item.product?.shopId
                 }));
                 
                 const totalAmount = selectedCartItems.reduce((sum, item) => {
@@ -469,6 +478,9 @@
                     const qty = Number(item.quantity || 1);
                     return sum + (price * qty);
                 }, 0);
+                
+                console.log('Cart data to send:', cartData);
+                console.log('Total amount:', totalAmount);
                 
                 // Call improved payment API
                 const response = await fetch('/api/improved-payment/process-cart', {
@@ -497,7 +509,7 @@
                 }
                 
                 const result = await response.json();
-                
+
                 if (result.success) {
                     showNotification('Đơn hàng đã được gửi vào hàng đợi xử lý! Tiền sẽ được giữ trong 1 phút.', 'success');
                     
@@ -505,9 +517,30 @@
                     selectedItems.clear();
                     await loadCart();
                     
-                    // Show payment status modal
-                    showPaymentStatusModal();
+                    // Show payment status modal with payment ID
+                    if (result.paymentId) {
+                        showPaymentStatusModal(result.paymentId);
+                    } else {
+                        showPaymentStatusModal(null);
+                    }
                 } else {
+                    // Hiển thị thông báo cụ thể khi không đủ số dư ví
+                    if (result.message && result.message.includes('Số dư ví không đủ')) {
+                        showNotification('Số dư ví không đủ để thanh toán. Vui lòng nạp tiền trước khi tiếp tục.', 'error');
+                        return;
+                    }
+                    // Hiển thị thông báo cụ thể khi hết hàng
+                    if (result.message && result.message.includes('Sản phẩm hết hàng')) {
+                        showNotification(result.message, 'error');
+                        return;
+                    }
+                    // Hiển thị thông báo khi có người khác mua trước (race condition)
+                    if (result.message && (result.message.includes('có thể đã có người khác mua trước') || 
+                                          result.message.includes('không thể khóa đủ số lượng'))) {
+                        showNotification('Xin lỗi! Có người khác đã mua sản phẩm này trước bạn. Vui lòng kiểm tra lại giỏ hàng.', 'error');
+                        await loadCart(); // Reload cart để cập nhật trạng thái
+                        return;
+                    }
                     throw new Error(result.message || 'Lỗi xử lý thanh toán');
                 }
                 
@@ -522,43 +555,49 @@
             }
         }
         
-        function showPaymentStatusModal() {
+        // Global variables for payment status tracking
+        let currentPaymentId = null;
+        let paymentStatusInterval = null;
+
+        function showPaymentStatusModal(paymentId) {
+            currentPaymentId = paymentId;
+            
             // Create modal for payment status
             const modal = document.createElement('div');
             modal.className = 'modal fade';
             modal.id = 'paymentStatusModal';
+            modal.setAttribute('data-bs-backdrop', 'static');
+            modal.setAttribute('data-bs-keyboard', 'false');
             modal.innerHTML = `
-                <div class="modal-dialog">
+                <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">
                                 <i class="fa-solid fa-clock me-2 text-warning"></i>
                                 Đang xử lý thanh toán
                             </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
-                        <div class="modal-body">
+                        <div class="modal-body text-center">
                             <div class="alert alert-info">
                                 <i class="fa-solid fa-info-circle me-2"></i>
-                                Đơn hàng của bạn đang được xử lý. Tiền sẽ được giữ trong ví trong 1 phút.
+                                <strong>Đơn hàng của bạn đang được xử lý, vui lòng đợi trong chốc lát...</strong>
                             </div>
-                            <div class="d-flex align-items-center">
-                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <div class="d-flex align-items-center justify-content-center mb-3">
+                                <div class="spinner-border spinner-border-sm me-2 text-primary" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                                 <span>Đang kiểm tra kho hàng và khóa sản phẩm...</span>
                             </div>
+                            <div class="progress mb-3" style="height: 6px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%" id="paymentProgress"></div>
+                            </div>
+                            <small class="text-muted">Quá trình này thường mất 10-30 giây</small>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-                                <i class="fa-solid fa-check me-2"></i>Đã hiểu
+                        <div class="modal-footer justify-content-center">
+                            <button type="button" class="btn btn-outline-secondary" onclick="closePaymentModal()">
+                                <i class="fa-solid fa-times me-2"></i>Đóng
                             </button>
-                            <a href="/orders" class="btn btn-outline-warning">
-                                <i class="fa-solid fa-clock me-2"></i>Xem trạng thái
-                            </a>
-                            <a href="/orders" class="btn btn-outline-primary">
-                                <i class="fa-solid fa-list me-2"></i>Xem đơn hàng
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -568,11 +607,205 @@
             const bsModal = new bootstrap.Modal(modal);
             bsModal.show();
             
-            // Auto close after 5 seconds
+            // Start polling for payment status
+            startPaymentStatusPolling();
+            
+            // Update progress bar
+            updateProgressBar();
+        }
+
+        function startPaymentStatusPolling() {
+            if (paymentStatusInterval) {
+                clearInterval(paymentStatusInterval);
+            }
+            
+            let progress = 0;
+            paymentStatusInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/improved-payment/status/${currentPaymentId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    });
+                    
+                    if (response.ok) {
+                        const statusData = await response.json();
+                        
+                        if (statusData.success) {
+                            const status = statusData.status;
+                            
+                            if (status === 'COMPLETED') {
+                                // Payment successful
+                                clearInterval(paymentStatusInterval);
+                                showPaymentSuccessModal();
+                                return;
+                            } else if (status === 'FAILED') {
+                                // Payment failed
+                                clearInterval(paymentStatusInterval);
+                                showPaymentFailedModal(statusData.errorMessage || 'Không xác định được nguyên nhân');
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // Update progress
+                    progress += 5;
+                    if (progress > 90) progress = 90;
+                    updateProgressBar(progress);
+                    
+                } catch (error) {
+                    console.error('Error checking payment status:', error);
+                }
+            }, 2000); // Check every 2 seconds
+            
+            // Timeout after 60 seconds
             setTimeout(() => {
-                bsModal.hide();
+                if (paymentStatusInterval) {
+                    clearInterval(paymentStatusInterval);
+                    showPaymentTimeoutModal();
+                }
+            }, 60000);
+        }
+
+        function updateProgressBar(progress = 0) {
+            const progressBar = document.getElementById('paymentProgress');
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+            }
+        }
+
+        function showPaymentSuccessModal() {
+            const modal = document.getElementById('paymentStatusModal');
+            if (modal) {
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fa-solid fa-check-circle me-2 text-success"></i>
+                                    Đơn hàng đã được xử lý xong
+                                </h5>
+                            </div>
+                            <div class="modal-body text-center">
+                                <div class="alert alert-success">
+                                    <i class="fa-solid fa-check-circle me-2"></i>
+                                    <strong>Đơn hàng của bạn đã được xử lý thành công!</strong>
+                                </div>
+                                <div class="mb-3">
+                                    <i class="fa-solid fa-gift fa-3x text-success mb-3"></i>
+                                    <p class="mb-0">Bạn có thể xem chi tiết đơn hàng và nhận sản phẩm ngay bây giờ.</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer justify-content-center">
+                                <a href="/orders" class="btn btn-success">
+                                    <i class="fa-solid fa-eye me-2"></i>Xem đơn hàng
+                                </a>
+                                <button type="button" class="btn btn-outline-secondary" onclick="closePaymentModal()">
+                                    <i class="fa-solid fa-times me-2"></i>Đóng
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function showPaymentFailedModal(errorMessage) {
+            const modal = document.getElementById('paymentStatusModal');
+            if (modal) {
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fa-solid fa-exclamation-triangle me-2 text-danger"></i>
+                                    Xử lý thất bại
+                                </h5>
+                            </div>
+                            <div class="modal-body text-center">
+                                <div class="alert alert-danger">
+                                    <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                                    <strong>Đơn hàng của bạn xử lý thất bại!</strong>
+                                </div>
+                                <div class="mb-3">
+                                    <i class="fa-solid fa-times-circle fa-3x text-danger mb-3"></i>
+                                    <p class="mb-2"><strong>Nguyên nhân:</strong></p>
+                                    <p class="text-muted">${errorMessage}</p>
+                                </div>
+                                <div class="alert alert-info">
+                                    <i class="fa-solid fa-info-circle me-2"></i>
+                                    Tiền đã được hoàn về ví của bạn. Bạn có thể thử lại sau.
+                                </div>
+                            </div>
+                            <div class="modal-footer justify-content-center">
+                                <button type="button" class="btn btn-primary" onclick="closePaymentModal()">
+                                    <i class="fa-solid fa-redo me-2"></i>Thử lại
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="closePaymentModal()">
+                                    <i class="fa-solid fa-times me-2"></i>Đóng
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function showPaymentTimeoutModal() {
+            const modal = document.getElementById('paymentStatusModal');
+            if (modal) {
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fa-solid fa-clock me-2 text-warning"></i>
+                                    Xử lý quá lâu
+                                </h5>
+                            </div>
+                            <div class="modal-body text-center">
+                                <div class="alert alert-warning">
+                                    <i class="fa-solid fa-clock me-2"></i>
+                                    <strong>Đơn hàng đang xử lý quá lâu!</strong>
+                                </div>
+                                <div class="mb-3">
+                                    <i class="fa-solid fa-hourglass-half fa-3x text-warning mb-3"></i>
+                                    <p class="mb-0">Vui lòng kiểm tra trạng thái đơn hàng trong trang đơn hàng.</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer justify-content-center">
+                                <a href="/orders" class="btn btn-warning">
+                                    <i class="fa-solid fa-eye me-2"></i>Kiểm tra đơn hàng
+                                </a>
+                                <button type="button" class="btn btn-outline-secondary" onclick="closePaymentModal()">
+                                    <i class="fa-solid fa-times me-2"></i>Đóng
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function closePaymentModal() {
+            if (paymentStatusInterval) {
+                clearInterval(paymentStatusInterval);
+                paymentStatusInterval = null;
+            }
+            
+            const modal = document.getElementById('paymentStatusModal');
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                }
                 modal.remove();
-            }, 5000);
+            }
+            
+            currentPaymentId = null;
         }
 
         async function updateQty(productId, quantity) {
@@ -762,7 +995,8 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/shop}" href="/seller/shop"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'ADMIN'}"><a class="dropdown-item" th:href="@{/admin}" href="/admin"><i class="fa-solid fa-cogs me-2"></i>Quản lý</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>

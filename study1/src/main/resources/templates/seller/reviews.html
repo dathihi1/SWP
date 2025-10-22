@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đánh giá - MMO Market</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #333;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            border-right: 1px solid rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header .navbar-brand {
+            color: #0d6efd;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        
+        .sidebar-header .navbar-brand:hover {
+            color: #0b5ed7;
+        }
+        
+        .menu-section {
+            padding: 20px 0;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 20px 10px;
+            margin-bottom: 10px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #0d6efd;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            margin: 2px 0;
+            font-weight: 500;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+            color: #0b5ed7;
+            border-left-color: #0d6efd;
+            transform: translateX(5px);
+        }
+        
+        .menu-item.active {
+            background-color: rgba(13, 110, 253, 0.15);
+            color: #0b5ed7;
+            border-left-color: #0d6efd;
+            font-weight: 600;
+        }
+        
+        .menu-item i {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        .top-navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .content-area {
+            padding: 30px;
+        }
+        
+        .page-header {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .page-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0;
+        }
+        
+        .filter-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .review-card {
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .review-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .review-user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #0d6efd;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        .review-rating {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .star {
+            color: #ffc107;
+            font-size: 16px;
+        }
+        
+        .star.empty {
+            color: #e9ecef;
+        }
+        
+        .review-content {
+            margin-bottom: 15px;
+        }
+        
+        .review-comment {
+            color: #495057;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        
+        .review-product {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        
+        .review-date {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .seller-reply {
+            background: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .seller-reply-header {
+            font-weight: 600;
+            color: #0d6efd;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .seller-reply-content {
+            color: #495057;
+            line-height: 1.5;
+        }
+        
+        .reply-form {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .reply-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        
+        /* Stall Statistics Styles */
+        .stall-stats-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .stall-stats-section .card {
+            border: 1px solid #e9ecef;
+            transition: box-shadow 0.2s ease;
+        }
+        
+        .stall-stats-section .card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+        
+        .stall-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stall-card:hover {
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
+        }
+        
+        .stall-card.active {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+        
+        /* Custom scrollbar for reviews container */
+        #reviewsContainer::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #reviewsContainer::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        #reviewsContainer::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        #reviewsContainer::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        .stall-stats-section .stars {
+            font-size: 1.1rem;
+        }
+        
+        .stall-stats-section .rating-display {
+            flex: 1;
+        }
+        
+        .stall-stats-section .review-count {
+            margin-left: 10px;
+        }
+        
+        .reply-textarea:focus {
+            outline: none;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .pagination .page-link {
+            padding: 8px 16px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 6px;
+            margin: 0 4px;
+            border: 2px solid #e9ecef;
+            color: #495057;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        .pagination .page-link:hover {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+        }
+        
+        .pagination .page-item.active .page-link {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .pagination .page-item.disabled .page-link {
+            background-color: #f8f9fa;
+            border-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .pagination .page-item.disabled .page-link:hover {
+            transform: none;
+            box-shadow: none;
+            background-color: #f8f9fa;
+            border-color: #e9ecef;
+            color: #6c757d;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <a class="navbar-brand d-flex align-items-center" th:href="@{/}" href="/">
+                    <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+                    MMO Market
+                </a>
+            </div>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">SALE</div>
+            <a href="/seller/gross-sales" class="menu-item">
+                <i class="fas fa-shopping-cart"></i>
+                Doanh số
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">SHOP</div>
+            <a href="/seller/stall-management" class="menu-item">
+                <i class="fas fa-clipboard-list"></i>
+                Quản lý gian hàng
+            </a>
+            <a href="/seller/add-stall" class="menu-item">
+                <i class="fas fa-plus"></i>
+                Thêm gian hàng
+            </a>
+            <a href="/seller/orders" class="menu-item">
+                <i class="fas fa-file-invoice-dollar"></i>
+                Đơn hàng sản phẩm
+            </a>
+            <a href="/seller/reviews" class="menu-item active">
+                <i class="fas fa-comment"></i>
+                Đánh giá
+            </a>
+            <a href="#" class="menu-item">
+                <i class="fas fa-arrow-up"></i>
+                Gian hàng Top 1
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-secondary me-3" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <!-- Profile Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                        <i class="fa-solid fa-user"></i>
+                        <span th:text="${username}">User</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
+                        <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                        <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
+                        <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Success/Error Messages -->
+            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                <span th:text="${successMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <span th:text="${errorMessage}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="page-title">Đánh giá</h1>
+                    </div>
+                </div>
+            </div>
+            <!-- Stall Statistics Section -->
+            <div class="mb-4">
+                <div class="bg-white rounded-3 p-4 shadow-sm border">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0 text-dark">
+                            <i class="fas fa-store me-2 text-dark"></i>Danh sách gian hàng
+                        </h5>
+                    </div>
+                <div class="row">
+                        <div th:each="stallStat : ${stallStats}" class="col-md-6 col-lg-4 mb-2">
+                            <div class="card stall-card" th:data-stall-id="${stallStat.stall.id}" style="cursor: pointer; position: relative;">
+                                <div class="card-body p-2">
+                                    <!-- Unread count badge positioned at top-right -->
+                                    <div th:if="${stallStat.unreadCount > 0}" class="position-absolute top-0 end-0 m-2">
+                                        <span class="badge bg-danger text-white small" th:text="${stallStat.unreadCount} + ' mới'">3 mới</span>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="flex-grow-1">
+                                            <h6 class="card-title text-primary small mb-1" th:text="${stallStat.stall.stallName}">Tên gian hàng</h6>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="stars" style="font-size: 0.7rem;">
+                                        <span th:each="i : ${#numbers.sequence(1, 5)}" 
+                                              th:class="${i <= stallStat.averageRating} ? 'text-warning' : 'text-muted'"
+                                              th:text="'★'">★</span>
+                                    </div>
+                                                <small class="text-muted small" th:text="${stallStat.averageRating} + '/5'">4.5/5</small>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <small class="text-muted small">
+                                                <i class="fas fa-chevron-down"></i>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detailed Reviews Section (Hidden by default) -->
+            <div id="detailedReviewsSection" class="mb-4" style="display: none;">
+                <div class="bg-white rounded-3 p-4 shadow-sm border">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Chi tiết đánh giá gian hàng</h5>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-success btn-sm" onclick="markAllAsRead()">
+                                <i class="fas fa-check me-1"></i>Đánh dấu là đã đọc
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="hideDetailedReviews()">
+                                <i class="fas fa-times me-1"></i>Đóng
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Filter and Sort Section -->
+                    <div id="filterSection" class="filter-section mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-12">
+                                <h6 class="mb-3">Bộ lọc và sắp xếp</h6>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <!-- Star Rating Filter -->
+                                    <div class="d-flex align-items-center gap-3">
+                                        <label class="form-label me-2 mb-0">Lọc theo sao:</label>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm star-filter-btn" data-star="all">
+                                            Tất cả
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm star-filter-btn" data-star="5">
+                                            <i class="fas fa-star"></i> 5
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm star-filter-btn" data-star="4">
+                                            <i class="fas fa-star"></i> 4
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm star-filter-btn" data-star="3">
+                                            <i class="fas fa-star"></i> 3
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm star-filter-btn" data-star="2">
+                                            <i class="fas fa-star"></i> 2
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm star-filter-btn" data-star="1">
+                                            <i class="fas fa-star"></i> 1
+                                        </button>
+                            </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="reviewsContainer" style="max-height: 500px; overflow-y: auto;">
+                        <!-- Reviews will be loaded here via JavaScript -->
+                    </div>
+                </div>
+                    </div>
+            
+            <!-- Default Message -->
+            <div id="defaultMessage" class="text-center text-muted py-4">
+                <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                <h5>Chọn gian hàng để xem đánh giá</h5>
+                <p class="mb-0">Click vào gian hàng ở trên để xem chi tiết đánh giá</p>
+                </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables for filtering and sorting
+        let allReviews = [];
+        let filteredReviews = [];
+        let currentStallId = null;
+        let currentStarFilter = 'all'; // default star filter
+        let reviewsPerPage = 5; // Limit reviews per page
+        let currentPage = 0;
+        
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+                
+                // Update main content margin
+                if (sidebar.classList.contains('collapsed')) {
+                    mainContent.style.marginLeft = '0';
+                } else {
+                    mainContent.style.marginLeft = '280px';
+                }
+            });
+            
+            // Add click handlers to stall cards
+            const stallCards = document.querySelectorAll('.stall-card');
+            stallCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const stallId = this.getAttribute('data-stall-id');
+                    loadDetailedReviews(stallId);
+                });
+            });
+            
+            // Add event listeners for star filter buttons
+            document.querySelectorAll('.star-filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const starValue = this.getAttribute('data-star');
+                    setStarFilter(starValue);
+                });
+            });
+        });
+        
+        // Function to load detailed reviews for a specific stall
+        async function loadDetailedReviews(stallId) {
+            try {
+                currentStallId = stallId;
+                
+                // Show loading state
+                document.getElementById('reviewsContainer').innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Đang tải đánh giá...</p>
+                    </div>
+                `;
+                
+                // Show detailed reviews section
+                document.getElementById('detailedReviewsSection').style.display = 'block';
+                document.getElementById('filterSection').style.display = 'block'; // Show filter section
+                document.getElementById('defaultMessage').style.display = 'none';
+                
+                // Scroll to reviews section
+                document.getElementById('detailedReviewsSection').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+                
+                // Fetch reviews from server
+                const response = await fetch(`/api/seller/reviews/stall/${stallId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch reviews');
+                }
+                
+                const reviews = await response.json();
+                
+                // Store all reviews and apply initial filters
+                allReviews = reviews;
+                applyFilters();
+                
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                document.getElementById('reviewsContainer').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Không thể tải đánh giá. Vui lòng thử lại sau.
+                    </div>
+                `;
+            }
+        }
+        
+        // Function to set star filter
+        function setStarFilter(starValue) {
+            currentStarFilter = starValue;
+            
+            // Update button states
+            document.querySelectorAll('.star-filter-btn').forEach(btn => {
+                btn.classList.remove('btn-warning', 'btn-secondary');
+                btn.classList.add('btn-outline-warning', 'btn-outline-secondary');
+            });
+            
+            const activeBtn = document.querySelector(`[data-star="${starValue}"]`);
+            if (activeBtn) {
+                activeBtn.classList.remove('btn-outline-warning', 'btn-outline-secondary');
+                if (starValue === 'all') {
+                    activeBtn.classList.add('btn-warning', 'text-dark');
+                } else {
+                    activeBtn.classList.add('btn-warning');
+                }
+            }
+            
+            applyFilters();
+        }
+        
+        // Function to toggle reply form
+        function toggleReplyForm(reviewId) {
+            const form = document.getElementById(`reply-form-${reviewId}`);
+            if (form) {
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+        
+        // Function to apply filters and sorting
+        function applyFilters() {
+            if (!allReviews || allReviews.length === 0) {
+                renderReviews([]);
+                return;
+            }
+            
+            // Filter by star rating
+            filteredReviews = allReviews.filter(review => {
+                if (currentStarFilter === 'all') return true;
+                return review.rating == currentStarFilter;
+            });
+            
+            // Render filtered reviews
+            renderReviews(filteredReviews);
+        }
+        
+        // Function to clear all filters
+        function clearFilters() {
+            currentStarFilter = 'all';
+            
+            // Reset star filter buttons
+            document.querySelectorAll('.star-filter-btn').forEach(btn => {
+                btn.classList.remove('btn-warning', 'btn-secondary');
+                btn.classList.add('btn-outline-warning', 'btn-outline-secondary');
+            });
+            document.querySelector('[data-star="all"]').classList.remove('btn-outline-secondary');
+            document.querySelector('[data-star="all"]').classList.add('btn-warning', 'text-dark');
+            
+            applyFilters();
+        }
+        
+        // Function to render reviews
+        function renderReviews(reviews) {
+            const container = document.getElementById('reviewsContainer');
+            
+            if (!reviews || reviews.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Chưa có đánh giá nào</h5>
+                        <p class="text-muted">Gian hàng này chưa nhận được đánh giá từ khách hàng.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Reset current page when rendering new reviews
+            currentPage = 0;
+            
+            // Get reviews to display (limited by reviewsPerPage)
+            const reviewsToShow = reviews.slice(0, reviewsPerPage);
+            const hasMoreReviews = reviews.length > reviewsPerPage;
+            
+            let reviewsHtml = '';
+            reviewsToShow.forEach(review => {
+                const stars = generateStars(review.rating);
+                const replySection = review.replyContent ? 
+                    `<div class="seller-reply">
+                        <div class="seller-reply-header">
+                            <i class="fas fa-reply me-1"></i>
+                            Phản hồi từ người bán
+                        </div>
+                        <div class="seller-reply-content">${review.replyContent}</div>
+                    </div>` : 
+                    `<div class="reply-toggle-section">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleReplyForm(${review.id})">
+                            <i class="fas fa-reply me-1"></i>
+                            Trả lời đánh giá
+                        </button>
+                        <div id="reply-form-${review.id}" class="reply-form mt-3" style="display: none;">
+                            <form onsubmit="submitReply(event, ${review.id})">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Trả lời đánh giá:</label>
+                                    <textarea name="sellerReply" class="reply-textarea" 
+                                              placeholder="Viết phản hồi của bạn..." required></textarea>
+                                </div>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleReplyForm(${review.id})">
+                                        <i class="fas fa-times me-1"></i>
+                                        Hủy
+                                    </button>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-paper-plane me-1"></i>
+                                        Gửi phản hồi
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>`;
+                
+                reviewsHtml += `
+                    <div class="review-card">
+                        <div class="review-header">
+                            <div class="review-user">
+                                <div class="review-user-avatar">
+                                    <span>${review.buyer.username.charAt(0).toUpperCase()}</span>
+                                </div>
+                                <div>
+                                    <div class="fw-bold">${review.buyer.username}</div>
+                                    <div class="review-rating">${stars}</div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="review-date">${formatDate(review.createdAt)}</div>
+                                ${!review.isRead ? '<div class="badge bg-danger text-white small mt-1">Chưa đọc</div>' : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="review-content">
+                            <div class="review-product">
+                                <strong>Sản phẩm:</strong> <span>${review.product.name}</span>
+                            </div>
+                            <div class="review-comment">${review.content}</div>
+                        </div>
+                        
+                        ${replySection}
+                    </div>
+                `;
+            });
+            
+            // Add "Load More" button if there are more reviews
+            if (hasMoreReviews) {
+                reviewsHtml += `
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadMoreReviews()">
+                            <i class="fas fa-plus me-1"></i>Xem thêm đánh giá
+                        </button>
+                        <small class="text-muted d-block mt-1">
+                            Hiển thị ${reviewsToShow.length} / ${reviews.length} đánh giá
+                        </small>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = reviewsHtml;
+        }
+        
+        // Function to load more reviews
+        function loadMoreReviews() {
+            currentPage++;
+            const startIndex = currentPage * reviewsPerPage;
+            const endIndex = startIndex + reviewsPerPage;
+            const reviewsToAdd = filteredReviews.slice(startIndex, endIndex);
+            
+            if (reviewsToAdd.length === 0) return;
+            
+            const container = document.getElementById('reviewsContainer');
+            let additionalHtml = '';
+            
+            reviewsToAdd.forEach(review => {
+                const stars = generateStars(review.rating);
+                const replySection = review.replyContent ? 
+                    `<div class="seller-reply">
+                        <div class="seller-reply-header">
+                            <i class="fas fa-reply me-1"></i>
+                            Phản hồi từ người bán
+                        </div>
+                        <div class="seller-reply-content">${review.replyContent}</div>
+                    </div>` : 
+                    `<div class="reply-toggle-section">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleReplyForm(${review.id})">
+                            <i class="fas fa-reply me-1"></i>
+                            Trả lời đánh giá
+                        </button>
+                        <div id="reply-form-${review.id}" class="reply-form mt-3" style="display: none;">
+                            <form onsubmit="submitReply(event, ${review.id})">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Trả lời đánh giá:</label>
+                                    <textarea name="sellerReply" class="reply-textarea" 
+                                              placeholder="Viết phản hồi của bạn..." required></textarea>
+                                </div>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleReplyForm(${review.id})">
+                                        <i class="fas fa-times me-1"></i>
+                                        Hủy
+                                    </button>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-paper-plane me-1"></i>
+                                        Gửi phản hồi
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>`;
+                
+                additionalHtml += `
+                    <div class="review-card">
+                        <div class="review-header">
+                            <div class="review-user">
+                                <div class="review-user-avatar">
+                                    <span>${review.buyer.username.charAt(0).toUpperCase()}</span>
+                                </div>
+                                <div>
+                                    <div class="fw-bold">${review.buyer.username}</div>
+                                    <div class="review-rating">${stars}</div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="review-date">${formatDate(review.createdAt)}</div>
+                                ${!review.isRead ? '<div class="badge bg-danger text-white small mt-1">Chưa đọc</div>' : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="review-content">
+                            <div class="review-product">
+                                <strong>Sản phẩm:</strong> <span>${review.product.name}</span>
+                            </div>
+                            <div class="review-comment">${review.content}</div>
+                        </div>
+                        
+                        ${replySection}
+                    </div>
+                `;
+            });
+            
+            // Remove the "Load More" button and add new reviews
+            const loadMoreButton = container.querySelector('.text-center.mt-3');
+            if (loadMoreButton) {
+                loadMoreButton.remove();
+            }
+            
+            container.insertAdjacentHTML('beforeend', additionalHtml);
+            
+            // Add "Load More" button again if there are more reviews
+            const totalShown = (currentPage + 1) * reviewsPerPage;
+            if (totalShown < filteredReviews.length) {
+                const remainingReviews = filteredReviews.length - totalShown;
+                const loadMoreHtml = `
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadMoreReviews()">
+                            <i class="fas fa-plus me-1"></i>Xem thêm đánh giá
+                        </button>
+                        <small class="text-muted d-block mt-1">
+                            Hiển thị ${totalShown} / ${filteredReviews.length} đánh giá
+                        </small>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', loadMoreHtml);
+            } else {
+                // Show completion message
+                const completionHtml = `
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-check-circle me-1"></i>
+                            Đã hiển thị tất cả ${filteredReviews.length} đánh giá
+                        </small>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', completionHtml);
+            }
+        }
+        
+        // Function to generate star HTML
+        function generateStars(rating) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                const starClass = i <= rating ? 'fas fa-star star' : 'far fa-star star empty';
+                stars += `<i class="${starClass}"></i>`;
+            }
+            return stars;
+        }
+        
+        // Function to format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Function to mark all reviews as read
+        async function markAllAsRead() {
+            if (!currentStallId) {
+                alert('Không có gian hàng nào được chọn');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/seller/reviews/mark-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `stallId=${currentStallId}`
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to mark reviews as read');
+                }
+                
+                const result = await response.json();
+                
+                // Show success message
+                alert(`Đã đánh dấu ${result.count} đánh giá là đã đọc`);
+                
+                // Reload the page to update unread count
+                window.location.reload();
+                
+            } catch (error) {
+                console.error('Error marking reviews as read:', error);
+                alert('Có lỗi xảy ra khi đánh dấu đã đọc. Vui lòng thử lại.');
+            }
+        }
+        
+        // Function to hide detailed reviews
+        function hideDetailedReviews() {
+            document.getElementById('detailedReviewsSection').style.display = 'none';
+            document.getElementById('filterSection').style.display = 'none'; // Hide filter section
+            document.getElementById('defaultMessage').style.display = 'block';
+            
+            // Clear current stall selection but keep filters
+            currentStallId = null;
+            allReviews = [];
+            filteredReviews = [];
+        }
+        
+        // Function to submit reply
+        async function submitReply(event, reviewId) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const replyContent = formData.get('sellerReply');
+            
+            try {
+                const response = await fetch(`/seller/reviews/${reviewId}/reply`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `sellerReply=${encodeURIComponent(replyContent)}`
+                });
+                
+                if (response.ok) {
+                    // Reload reviews for current stall
+                    if (currentStallId) {
+                        loadDetailedReviews(currentStallId);
+                    }
+                } else {
+                    alert('Có lỗi xảy ra khi gửi phản hồi');
+                }
+            } catch (error) {
+                console.error('Error submitting reply:', error);
+                alert('Có lỗi xảy ra khi gửi phản hồi');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -139,6 +139,9 @@
         .stat-card.success {
             border-left-color: #198754; /* green for revenue */
         }
+        .stat-card.warning {
+            border-left-color: #fd7e14; /* orange for pending */
+        }
         
         .stat-card:hover {
             transform: translateY(-5px);
@@ -230,7 +233,7 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/shop-management" class="menu-item">
+            <a href="/seller/stall-management" class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
                 Quản lý gian hàng
             </a>
@@ -238,11 +241,11 @@
                 <i class="fas fa-plus"></i>
                 Thêm gian hàng
             </a>
-            <a href="#" class="menu-item">
+            <a href="/seller/orders" class="menu-item">
                 <i class="fas fa-file-invoice-dollar"></i>
                 Đơn hàng sản phẩm
             </a>
-            <a href="#" class="menu-item">
+            <a href="/seller/reviews" class="menu-item">
                 <i class="fas fa-comment"></i>
                 Đánh giá
             </a>
@@ -328,42 +331,83 @@
             
             <!-- Sales Chart -->
             <!-- Doanh số cửa hàng -->
+            <br>
             <div class="mb-3 text-center position-relative">
                 <hr class="border-primary border-2">
                 <h5 class="text-primary mb-0 position-absolute top-50 start-50 translate-middle bg-light px-3">Doanh số cửa hàng</h5>
             </div>
-            
+            <br>
             <div class="chart-container">
                 <div class="chart-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 d-flex align-items-center gap-2">
                         <i class="fa-solid fa-chart-line text-primary"></i>
                         <span>30 ngày gần nhất</span>
                     </h6>
-                    <input type="month" id="monthPicker" class="form-control form-control-sm" style="width: 150px;" aria-label="Chọn tháng/năm">
                 </div>
                 <div class="chart-body">
                     <canvas id="salesChart" width="400" height="200"></canvas>
                 </div>
             </div>
+            <br>
+            <br>
+        
             
+            <!-- Stall Sales Overview -->
+            <div class="row mb-4">
+                <div class="col-12 col-md-3">
+                    <div class="stat-card w-100 h-100">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon me-3">
+                                <i class="fas fa-shopping-cart fa-2x text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="stat-number stall-orders-number">0</div>
+                                <div class="stat-label">Số đơn hàng</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 mt-3 mt-md-0">
+                    <div class="stat-card success w-100 h-100">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon me-3">
+                                <i class="fas fa-dollar-sign fa-2x" style="color:#198754;"></i>
+                            </div>
+                            <div>
+                                <div class="stat-number stall-revenue-number" style="color:#198754;">0 VNĐ</div>
+                                <div class="stat-label">Doanh số</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-3 mt-3 mt-md-0">
+                    <div class="stat-card warning w-100 h-100">
+                        <div class="d-flex align-items-center">
+                            <div class="stat-icon me-3">
+                                <i class="fas fa-clock fa-2x" style="color:#ffc107;"></i>
+                            </div>
+                            <div>
+                                <div class="stat-number stall-pending-number" style="color:#ffc107;">0 VNĐ</div>
+                                <div class="stat-label">Tiền tạm giữ</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-none d-md-block col-md-3"></div>
+            </div>
+
             <!-- Doanh số gian hàng -->
             <div class="mb-3 mt-5 text-center position-relative">
                 <hr class="border-primary border-2">
                 <h5 class="text-primary mb-0 position-absolute top-50 start-50 translate-middle bg-light px-3">Doanh số gian hàng</h5>
             </div>
-            
+            <br>
             <div class="chart-container">
                 <div class="chart-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 d-flex align-items-center gap-2">
                         <i class="fa-solid fa-chart-bar text-primary"></i>
                         <span>30 ngày gần nhất</span>
                     </h6>
-                    <div class="d-flex gap-2">
-                        <select id="stallFilter" class="form-select form-select-sm" style="width: 200px;" aria-label="Chọn gian hàng">
-                            <option value="">Tất cả gian hàng</option>
-                        </select>
-                        <input type="month" id="stallMonthPicker" class="form-control form-control-sm" style="width: 150px;" aria-label="Chọn tháng/năm">
-                    </div>
                 </div>
                 <div class="chart-body">
                     <canvas id="stallSalesChart" width="400" height="200"></canvas>
@@ -447,16 +491,19 @@
              // Stall Sales Chart
              let stallChart;
              
-            async function loadAndRenderStallSales(monthParam, stallIdParam) {
+            async function loadAndRenderStallSales() {
                 let url = '/api/seller/stall-sales';
-                const params = new URLSearchParams();
-                if (monthParam) params.append('month', monthParam);
-                if (stallIdParam) params.append('stallId', stallIdParam);
-                if (params.toString()) url += `?${params.toString()}`;
                  const res = await fetch(url);
                  const json = await res.json();
-                 const labels = json.labels.map(d => new Date(d).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }));
-                 const data = json.totals;
+                const labels = json.labels.map(d => new Date(d).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }));
+                const data = json.totals;
+                // Update stall small cards
+                const stallOrdersEl = document.querySelector('.stall-orders-number');
+                if (stallOrdersEl) stallOrdersEl.textContent = (json.ordersSum || 0).toLocaleString('vi-VN');
+                const stallRevenueEl = document.querySelector('.stall-revenue-number');
+                if (stallRevenueEl) stallRevenueEl.textContent = ((json.revenueSum || 0).toLocaleString('vi-VN')) + ' VNĐ';
+                const stallPendingEl = document.querySelector('.stall-pending-number');
+                if (stallPendingEl) stallPendingEl.textContent = ((json.pendingSum || 0).toLocaleString('vi-VN')) + ' VNĐ';
                  
                  const ctx = document.getElementById('stallSalesChart').getContext('2d');
                  if (stallChart) stallChart.destroy();
@@ -492,56 +539,11 @@
                  });
              }
              
-            // Load stalls for filter
-            async function loadStalls() {
-                try {
-                    const response = await fetch('/api/seller/stalls');
-                    const stalls = await response.json();
-                    
-                    const stallFilter = document.getElementById('stallFilter');
-                    stallFilter.innerHTML = '<option value="">Tất cả gian hàng</option>';
-                    
-                    stalls.forEach(stall => {
-                        const option = document.createElement('option');
-                        option.value = stall.id;
-                        option.textContent = stall.name;
-                        stallFilter.appendChild(option);
-                    });
-                } catch (error) {
-                    console.error('Error loading stalls:', error);
-                }
-            }
-            
-            // Stall filter event
-            document.getElementById('stallFilter').addEventListener('change', function() {
-                loadAndRenderStallSales(document.getElementById('stallMonthPicker').value, this.value);
-            });
-            
-            // Stall month picker event
-            document.getElementById('stallMonthPicker').addEventListener('change', function() {
-                loadAndRenderStallSales(this.value, document.getElementById('stallFilter').value);
-            });
-            
-            // Load stalls and initial stall sales
-            loadStalls();
+            // Load initial stall sales
             loadAndRenderStallSales();
 
-             // filter by month/year: when changed, refetch (server currently returns last 30 days; extend later)
-             const monthPicker = document.getElementById('monthPicker');
-             monthPicker.addEventListener('change', function() {
-                 loadAndRender(this.value);
-                 // Update small cards (orders & revenue) with sums from API
-                 // Fetch again to get sums matching the selected month
-                 fetch(this.value ? (`/api/seller/sales?month=${this.value}`) : '/api/seller/sales')
-                     .then(r => r.json())
-                     .then(j => {
-                         const ordersEl = document.querySelector('.stat-card .stat-number');
-                         if (ordersEl) ordersEl.textContent = (j.ordersSum || 0).toLocaleString('vi-VN');
-                         const revenueEl = document.querySelector('.stat-card.success .stat-number');
-                         if (revenueEl) revenueEl.textContent = ((j.revenueSum || 0).toLocaleString('vi-VN')) + ' VNĐ';
-                     })
-                     .catch(() => {});
-             });
+             // Load initial sales data
+             loadAndRender();
          })();
     </script>
 <script src="/js/auth.js"></script>
