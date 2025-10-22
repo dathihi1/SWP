@@ -51,6 +51,7 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final JwtService jwtService;
+    private final AdminAuthenticationSuccessHandler adminAuthenticationSuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -67,6 +68,11 @@ public class SecurityConfiguration {
                         .requestMatchers("/withdraw").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers("/api/withdraw/**").hasAnyRole("SELLER", "ADMIN")
                         .anyRequest().authenticated()
+                )
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .successHandler(adminAuthenticationSuccessHandler)
+                        .permitAll()
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
@@ -127,8 +133,12 @@ public class SecurityConfiguration {
                     response.setHeader("Set-Cookie", cookieValue);
 
                     try {
-                        // Redirect to home page with success message
-                        response.sendRedirect("/?login=success");
+                        // Check if user is admin and redirect accordingly
+                        if (oauth2User.getUser().getRole().name().equals("ADMIN")) {
+                            response.sendRedirect("/admin");
+                        } else {
+                            response.sendRedirect("/?login=success");
+                        }
                         
                         // Log OAuth2 login to audit
                         String ip = request.getHeader("X-Forwarded-For");

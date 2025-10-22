@@ -213,31 +213,23 @@ public class WithdrawController {
     
     @GetMapping("/api/admin/withdraw/requests")
     @ResponseBody
-    public ResponseEntity<?> getAllPendingWithdrawRequests() {
+    public ResponseEntity<?> getAllWithdrawRequests(@RequestParam(required = false) String status) {
         try {
-            List<WithdrawRequestResponse> requests = withdrawService.getAllPendingWithdrawRequests();
+            List<WithdrawRequestResponse> requests;
+            if (status != null && !status.isEmpty()) {
+                com.badat.study1.model.WithdrawRequest.Status requestStatus = 
+                    com.badat.study1.model.WithdrawRequest.Status.valueOf(status.toUpperCase());
+                requests = withdrawService.getWithdrawRequestsByStatus(requestStatus);
+            } else {
+                requests = withdrawService.getAllPendingWithdrawRequests();
+            }
             return ResponseEntity.ok(requests);
         } catch (Exception e) {
-            log.error("Error getting pending withdraw requests: {}", e.getMessage());
+            log.error("Error getting withdraw requests: {}", e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
     }
     
-    @GetMapping("/admin/withdraw-requests")
-    public String adminWithdrawRequestsPage(Model model) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
-        if (!isAuthenticated) {
-            return "redirect:/login";
-        }
-        
-        // Add common attributes
-        model.addAttribute("isAuthenticated", true);
-        
-        return "admin/withdraw-requests";
-    }
 }
