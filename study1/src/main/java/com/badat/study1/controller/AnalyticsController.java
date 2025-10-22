@@ -1,8 +1,8 @@
 package com.badat.study1.controller;
 
-import com.badat.study1.model.Order;
+import com.badat.study1.model.OrderItem;
 import com.badat.study1.model.User;
-import com.badat.study1.repository.OrderRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AnalyticsController {
 
-    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final StallRepository stallRepository;
     private final ShopRepository shopRepository;
 
@@ -46,8 +46,11 @@ public class AnalyticsController {
         }
 
         LocalDateTime startDateTime = start.atStartOfDay();
-        List<Order> orders = orderRepository.findBySellerIdAndCreatedAtAfter(user.getId(), startDateTime);
-        List<Order> completed = orders.stream().filter(o -> o.getStatus() == Order.Status.COMPLETED).collect(Collectors.toList());
+        List<OrderItem> orderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
+        List<OrderItem> completed = orderItems.stream()
+                .filter(oi -> oi.getCreatedAt().isAfter(startDateTime))
+                .filter(oi -> oi.getStatus() == OrderItem.Status.COMPLETED)
+                .collect(Collectors.toList());
 
         // Prepare labels per day
         List<String> labels = new ArrayList<>();
@@ -62,11 +65,11 @@ public class AnalyticsController {
             labels.add(day.toString());
             // Use totalAmount instead of sellerAmount for gross revenue
             BigDecimal dayTotal = completed.stream()
-                    .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(day) && !o.getCreatedAt().toLocalDate().isAfter(day))
-                    .map(o -> o.getTotalAmount() != null ? o.getTotalAmount() : BigDecimal.ZERO)
+                    .filter(oi -> !oi.getCreatedAt().toLocalDate().isBefore(day) && !oi.getCreatedAt().toLocalDate().isAfter(day))
+                    .map(oi -> oi.getTotalAmount() != null ? oi.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             long dayCount = completed.stream()
-                    .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(day) && !o.getCreatedAt().toLocalDate().isAfter(day))
+                    .filter(oi -> !oi.getCreatedAt().toLocalDate().isBefore(day) && !oi.getCreatedAt().toLocalDate().isAfter(day))
                     .count();
             totals.add(dayTotal);
             counts.add(dayCount);
@@ -75,13 +78,14 @@ public class AnalyticsController {
         }
 
         // Calculate pending amount (PENDING orders limited by selected date range)
-        BigDecimal pendingSum = orders.stream()
-                .filter(o -> o.getStatus() == Order.Status.PENDING)
-                .filter(o -> {
-                    LocalDate od = o.getCreatedAt().toLocalDate();
+        BigDecimal pendingSum = orderItems.stream()
+                .filter(oi -> oi.getStatus() == OrderItem.Status.PENDING)
+                .filter(oi -> oi.getCreatedAt().isAfter(startDateTime))
+                .filter(oi -> {
+                    LocalDate od = oi.getCreatedAt().toLocalDate();
                     return !od.isBefore(start) && !od.isAfter(end);
                 })
-                .map(o -> o.getTotalAmount() != null ? o.getTotalAmount() : BigDecimal.ZERO)
+                .map(oi -> oi.getTotalAmount() != null ? oi.getTotalAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> body = new HashMap<>();
@@ -147,10 +151,11 @@ public class AnalyticsController {
         }
 
         LocalDateTime startDt = start.atStartOfDay();
-        List<Order> orders = orderRepository.findBySellerIdAndCreatedAtAfter(user.getId(), startDt);
-        List<Order> filtered = orders.stream()
-                .filter(o -> o.getStatus() == Order.Status.COMPLETED)
-                .filter(o -> stallId == null || stallId.equals(o.getStallId()))
+        List<OrderItem> orderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
+        List<OrderItem> filtered = orderItems.stream()
+                .filter(oi -> oi.getCreatedAt().isAfter(startDt))
+                .filter(oi -> oi.getStatus() == OrderItem.Status.COMPLETED)
+                .filter(oi -> stallId == null || stallId.equals(oi.getProduct().getStallId()))
                 .collect(Collectors.toList());
 
         List<String> labels = new ArrayList<>();
@@ -164,11 +169,11 @@ public class AnalyticsController {
             labels.add(day.toString());
             // gross: totalAmount
             BigDecimal dayTotal = filtered.stream()
-                    .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(day) && !o.getCreatedAt().toLocalDate().isAfter(day))
-                    .map(o -> o.getTotalAmount() != null ? o.getTotalAmount() : BigDecimal.ZERO)
+                    .filter(oi -> !oi.getCreatedAt().toLocalDate().isBefore(day) && !oi.getCreatedAt().toLocalDate().isAfter(day))
+                    .map(oi -> oi.getTotalAmount() != null ? oi.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             long dayCount = filtered.stream()
-                    .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(day) && !o.getCreatedAt().toLocalDate().isAfter(day))
+                    .filter(oi -> !oi.getCreatedAt().toLocalDate().isBefore(day) && !oi.getCreatedAt().toLocalDate().isAfter(day))
                     .count();
             totals.add(dayTotal);
             counts.add(dayCount);
@@ -177,14 +182,15 @@ public class AnalyticsController {
         }
 
         // pending sum for selected stall (or all stalls) limited by selected date range
-        BigDecimal pendingSum = orders.stream()
-                .filter(o -> o.getStatus() == Order.Status.PENDING)
-                .filter(o -> stallId == null || stallId.equals(o.getStallId()))
-                .filter(o -> {
-                    LocalDate od = o.getCreatedAt().toLocalDate();
+        BigDecimal pendingSum = orderItems.stream()
+                .filter(oi -> oi.getStatus() == OrderItem.Status.PENDING)
+                .filter(oi -> oi.getCreatedAt().isAfter(startDt))
+                .filter(oi -> stallId == null || stallId.equals(oi.getProduct().getStallId()))
+                .filter(oi -> {
+                    LocalDate od = oi.getCreatedAt().toLocalDate();
                     return !od.isBefore(start) && !od.isAfter(end);
                 })
-                .map(o -> o.getTotalAmount() != null ? o.getTotalAmount() : BigDecimal.ZERO)
+                .map(oi -> oi.getTotalAmount() != null ? oi.getTotalAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> body = new HashMap<>();

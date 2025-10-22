@@ -15,6 +15,8 @@ public interface WalletHoldRepository extends JpaRepository<WalletHold, Long> {
     
     List<WalletHold> findByUserIdAndStatus(Long userId, WalletHold.Status status);
     
+    List<WalletHold> findByUserIdAndOrderIdAndStatus(Long userId, String orderId, WalletHold.Status status);
+    
     List<WalletHold> findByStatusAndExpiresAtBefore(WalletHold.Status status, Instant expiresAt);
     
     Optional<WalletHold> findByOrderId(String orderId);

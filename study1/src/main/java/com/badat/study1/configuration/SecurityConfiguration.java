@@ -30,6 +30,7 @@ public class SecurityConfiguration {
 
     private static final String[] AUTH_WHITELIST = {"/", "/index", "/home", 
             "/products/**", 
+            "/product/**", 
             "/cart", 
             "/auth/**", 
             "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/reset-password",
@@ -39,6 +40,7 @@ public class SecurityConfiguration {
             "/seller/register", 
             "/terms", "/faqs", 
             "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico",
+            "/stall-image/**",
             "/oauth2/**", "/login/oauth2/**",
             "/error", // Thêm /error vào whitelist để tránh authentication loop
             "/admin-simple", "/admin/test-withdraw", "/api/admin/withdraw/requests-simple", "/api/admin/withdraw/approve-simple/**", "/api/admin/withdraw/reject-simple/**"};

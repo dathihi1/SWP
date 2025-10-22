@@ -3,11 +3,14 @@ package com.badat.study1.controller;
 import com.badat.study1.dto.response.CartDTO;
 import com.badat.study1.model.Cart;
 import com.badat.study1.service.CartService;
+import com.badat.study1.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class CartController {
 
     private final CartService cartService;
+    private final WarehouseRepository warehouseRepository;
 
     /**
      * Test endpoint để kiểm tra authentication
@@ -124,6 +128,25 @@ public class CartController {
         } catch (Exception e) {
             log.error("Error clearing cart", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error clearing cart: " + e.getMessage());
+        }
+    }
+    
+    @GetMapping("/check-stock/{productId}")
+    public ResponseEntity<?> checkStock(@PathVariable Long productId) {
+        try {
+            log.info("Checking stock for product: {}", productId);
+            
+            // Count available warehouse items for this product
+            long availableStock = warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(productId);
+            
+            return ResponseEntity.ok(Map.of(
+                "productId", productId,
+                "availableStock", availableStock,
+                "message", "Available stock: " + availableStock
+            ));
+        } catch (Exception e) {
+            log.error("Error checking stock for product: {}", productId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error checking stock: " + e.getMessage());
         }
     }
 }

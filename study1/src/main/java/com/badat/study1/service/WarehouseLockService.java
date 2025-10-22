@@ -11,8 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @RequiredArgsConstructor
@@ -80,8 +82,28 @@ public class WarehouseLockService {
         
         try {
             for (Long productId : productIds) {
-                Warehouse lockedItem = lockWarehouseItem(productId);
-                lockedItems.add(lockedItem);
+                try {
+                    Warehouse lockedItem = lockWarehouseItem(productId);
+                    lockedItems.add(lockedItem);
+                } catch (RuntimeException e) {
+                    log.warn("Failed to lock warehouse item for product {}: {}", productId, e.getMessage());
+                    // Nếu không lock được một item nào đó → rollback tất cả
+                    break;
+                }
+            }
+            
+            // Kiểm tra xem có lock được đủ số lượng không
+            if (lockedItems.size() < productIds.size()) {
+                log.warn("Only locked {}/{} items, rolling back all locks", lockedItems.size(), productIds.size());
+                // Rollback: unlock tất cả items đã lock
+                for (Warehouse item : lockedItems) {
+                    try {
+                        unlockWarehouseItem(item.getId());
+                    } catch (Exception rollbackEx) {
+                        log.error("Failed to unlock item during rollback: {}", item.getId(), rollbackEx);
+                    }
+                }
+                return new ArrayList<>(); // Trả về empty list
             }
             
             log.info("Successfully locked {} warehouse items", lockedItems.size());
@@ -97,7 +119,101 @@ public class WarehouseLockService {
                     log.error("Failed to unlock item during rollback: {}", item.getId(), rollbackEx);
                 }
             }
-            throw e;
+            return new ArrayList<>(); // Trả về empty list thay vì throw exception
+        }
+    }
+    
+    /**
+     * Lock warehouse items theo số lượng cụ thể cho mỗi product - OPTIMIZED VERSION
+     * Sử dụng batch operations thay vì N+1 queries
+     */
+    @Transactional
+    public List<Warehouse> lockWarehouseItemsWithQuantities(Map<Long, Integer> productQuantities) {
+        List<Warehouse> lockedItems = new ArrayList<>();
+        List<Warehouse> itemsToSave = new ArrayList<>();
+        
+        log.info("Locking warehouse items for {} products with quantities (OPTIMIZED)", productQuantities.size());
+        
+        try {
+            for (Map.Entry<Long, Integer> entry : productQuantities.entrySet()) {
+                Long productId = entry.getKey();
+                Integer requiredQuantity = entry.getValue();
+
+                log.info("Locking {} items for product {}", requiredQuantity, productId);
+
+                String lockKey = "warehouse:lock:" + productId;
+                Lock lock = redisLockRegistry.obtain(lockKey);
+
+                try {
+                    if (lock.tryLock(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                        log.info("Acquired lock for product: {}", productId);
+                        
+                        // 0. Kiểm tra số lượng có sẵn trước khi tìm
+                        long availableCount = warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(productId);
+                        log.info("Available stock for product {}: {} items", productId, availableCount);
+                        
+                        if (availableCount < requiredQuantity) {
+                            log.warn("Not enough stock for product {}. Required: {}, Available: {}", 
+                                productId, requiredQuantity, availableCount);
+                            throw new RuntimeException("Không đủ hàng cho sản phẩm: " + productId + 
+                                " (cần " + requiredQuantity + ", chỉ có " + availableCount + ")");
+                        }
+                        
+                        // 1. Tìm CHÍNH XÁC số lượng cần trong 1 query
+                        Pageable limit = Pageable.ofSize(requiredQuantity);
+                        List<Warehouse> foundItems = warehouseRepository
+                            .findByProductIdAndLockedFalseAndIsDeleteFalseOrderByCreatedAtAsc(productId, limit);
+                        
+                        log.info("Found {} items for product {} (requested: {})", foundItems.size(), productId, requiredQuantity);
+
+                        // 2. Kiểm tra có đủ hàng không
+                        if (foundItems.size() < requiredQuantity) {
+                            log.warn("Not enough stock for product {}. Required: {}, Found: {}", 
+                                productId, requiredQuantity, foundItems.size());
+                            // Nếu không đủ, ném lỗi để rollback toàn bộ @Transactional
+                            throw new RuntimeException("Không đủ hàng cho sản phẩm: " + productId + 
+                                " (cần " + requiredQuantity + ", chỉ có " + foundItems.size() + ")");
+                        }
+
+                        // 3. Khóa tất cả các item tìm thấy
+                        for (Warehouse item : foundItems) {
+                            item.setLocked(true);
+                            item.setLockedBy(getCurrentUserId());
+                            item.setLockedAt(LocalDateTime.now());
+                        }
+                        
+                        itemsToSave.addAll(foundItems);
+                        lockedItems.addAll(foundItems);
+                        
+                        log.info("Successfully prepared {} items for product {} to be locked", 
+                            foundItems.size(), productId);
+
+                    } else {
+                        log.warn("Failed to acquire lock for product: {} within timeout", productId);
+                        throw new RuntimeException("Failed to acquire lock for product: " + productId);
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            // 4. Lưu tất cả thay đổi vào CSDL trong 1 lần batch
+            if (!itemsToSave.isEmpty()) {
+                warehouseRepository.saveAll(itemsToSave);
+                log.info("Successfully saved {} warehouse items in batch", itemsToSave.size());
+            }
+
+            log.info("Successfully locked {} warehouse items with quantities (OPTIMIZED)", lockedItems.size());
+            return lockedItems;
+            
+        } catch (Exception e) {
+            // Nếu có bất kỳ lỗi nào (không đủ hàng, không lấy được lock...),
+            // @Transactional sẽ tự động rollback tất cả các thay đổi
+            log.error("Failed to lock warehouse items with quantities, rolling back...", e);
+            
+            // Không cần phải unlock thủ công ở đây vì @Transactional sẽ lo việc đó.
+            // Trả về rỗng để báo hiệu thất bại.
+            return new ArrayList<>();
         }
     }
     

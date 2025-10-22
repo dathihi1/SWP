@@ -4,21 +4,28 @@ import com.badat.study1.model.*;
 import com.badat.study1.repository.CartItemRepository;
 import com.badat.study1.repository.CartRepository;
 import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
+    private final WarehouseRepository warehouseRepository;
 
     /**
      * Lấy người dùng hiện tại từ Spring Security Context.
@@ -142,17 +149,105 @@ public class CartService {
         return getOrCreateMyCart(true);
     }
 
+    @Transactional(readOnly = true)
+    public Cart getMyCartWithItems() {
+        return getOrCreateMyCart(true);
+    }
+
+    /**
+     * Xóa tất cả sản phẩm khỏi giỏ hàng
+     */
     @Transactional
     public Cart clearCart() {
-        Cart cart = getOrCreateMyCart();
-
-        // Xóa tất cả CartItems liên kết với Cart này
-        if (cart.getItems() != null) {
-            cart.getItems().forEach(cartItemRepository::delete);
-            cart.getItems().clear(); // Dọn dẹp list trong đối tượng Cart
+        Cart cart = getOrCreateMyCart(false);
+        
+        if (cart.getItems() != null && !cart.getItems().isEmpty()) {
+            cartItemRepository.deleteAll(cart.getItems());
+            cart.getItems().clear();
+            cartRepository.save(cart);
         }
+        
+        return cart;
+    }
+    @Transactional(readOnly = true)
+    public CartPaymentInfo getCartPaymentInfo() {
+        Cart cart = getOrCreateMyCart(true);
+        
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
+            return CartPaymentInfo.builder()
+                    .cartId(cart.getId())
+                    .totalItems(0)
+                    .totalAmount(BigDecimal.ZERO)
+                    .cartItems(new java.util.ArrayList<>())
+                    .build();
+        }
+        
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        List<Map<String, Object>> cartItems = new java.util.ArrayList<>();
+        
+        for (CartItem item : cart.getItems()) {
+            BigDecimal itemTotal = item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            totalAmount = totalAmount.add(itemTotal);
+            
+            // Lấy warehouseId thực tế từ warehouse đầu tiên có sẵn
+            Long warehouseId = item.getProduct().getId(); // Default fallback
+            try {
+                Optional<Warehouse> warehouse = warehouseRepository.findFirstByProductIdAndLockedFalseAndIsDeleteFalse(item.getProduct().getId());
+                if (warehouse.isPresent()) {
+                    warehouseId = warehouse.get().getId();
+                }
+            } catch (Exception e) {
+                log.warn("Failed to get warehouse for product {}, using productId as fallback", item.getProduct().getId());
+            }
+            
+            Map<String, Object> cartItemData = new java.util.HashMap<>();
+            cartItemData.put("productId", item.getProduct().getId());
+            cartItemData.put("name", item.getProduct().getName());
+            cartItemData.put("quantity", item.getQuantity());
+            cartItemData.put("price", item.getProduct().getPrice());
+            cartItemData.put("warehouseId", warehouseId);
+            
+            // Lấy stallId an toàn
+            Long stallId = null;
+            try {
+                if (item.getProduct().getStall() != null) {
+                    stallId = item.getProduct().getStall().getId();
+                } else {
+                    stallId = item.getProduct().getStallId(); // Fallback
+                }
+            } catch (Exception e) {
+                log.warn("Failed to get stallId for product {}, using fallback", item.getProduct().getId());
+                stallId = item.getProduct().getStallId();
+            }
+            cartItemData.put("stallId", stallId);
+            
+            cartItemData.put("shopId", item.getProduct().getShopId());
+            cartItemData.put("sellerId", item.getProduct().getShop() != null ? item.getProduct().getShop().getUserId() : null);
+            
+            log.debug("Created cart item data: {}", cartItemData);
+            
+            cartItems.add(cartItemData);
+        }
+        
+        return CartPaymentInfo.builder()
+                .cartId(cart.getId())
+                .totalItems(cart.getItems().size())
+                .totalAmount(totalAmount)
+                .cartItems(cartItems)
+                .build();
+    }
 
-        // Trả về Cart đã được tải đầy đủ (Fetch Join) (hiện tại sẽ là giỏ hàng rỗng)
-        return getOrCreateMyCart(true);
+    /**
+     * DTO cho thông tin cart thanh toán
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CartPaymentInfo {
+        private Long cartId;
+        private Integer totalItems;
+        private BigDecimal totalAmount;
+        private List<Map<String, Object>> cartItems;
     }
 }

@@ -59,20 +59,38 @@ public class WalletHistoryService {
 	                       WalletHistory.Status status,
 	                       String description) {
         try {
-            WalletHistory history = walletHistoryRepository.findFirstByReferenceId(vnpTxnRef)
-                .orElseGet(() -> WalletHistory.builder()
+            // Always create new history record for seller/admin payouts
+            // Only reuse existing record for deposit transactions
+            WalletHistory history;
+            if (type == WalletHistory.Type.DEPOSIT) {
+                history = walletHistoryRepository.findFirstByReferenceId(vnpTxnRef)
+                    .orElseGet(() -> WalletHistory.builder()
+                        .walletId(walletId)
+                        .type(type)
+                        .amount(amount)
+                        .referenceId(vnpTxnRef)
+                        .isDelete(false)
+                        .createdBy("system")
+                        .createdAt(java.time.Instant.now())
+                        .build());
+                
+                history.setDescription(description);
+                history.setStatus(status);
+                history.setUpdatedAt(java.time.Instant.now());
+            } else {
+                // For SALE_SUCCESS, COMMISSION, etc. - always create new record
+                history = WalletHistory.builder()
                     .walletId(walletId)
                     .type(type)
                     .amount(amount)
                     .referenceId(vnpTxnRef)
+                    .description(description)
                     .isDelete(false)
                     .createdBy("system")
                     .createdAt(java.time.Instant.now())
-                    .build());
-
-            history.setDescription(description);
-            history.setStatus(status);
-            history.setUpdatedAt(java.time.Instant.now());
+                    .status(status)
+                    .build();
+            }
 
             walletHistoryRepository.save(history);
 		} catch (Exception ex) {
