@@ -351,4 +351,12 @@ public class WithdrawService {
         log.info("Simple admin rejected withdraw request: {} and returned amount: {} VND to wallet. Bank account: {} - {}", 
                 requestId, request.getAmount(), request.getBankName(), request.getBankAccountNumber());
     }
+    
+    public List<WithdrawRequestResponse> getWithdrawRequestsByStatus(WithdrawRequest.Status status) {
+        List<WithdrawRequest> requests = withdrawRequestRepository.findByStatus(status);
+        return requests.stream()
+                .map(WithdrawRequestResponse::fromEntity)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt())) // Sort by newest first
+                .collect(java.util.stream.Collectors.toList());
+    }
 }
