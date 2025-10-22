@@ -45,15 +45,6 @@
             position: relative;
             overflow: hidden;
         }
-        .item-data-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #0d6efd, #198754, #ffc107);
-        }
         .item-data-content {
             font-family: 'Courier New', 'Monaco', monospace;
             font-size: 0.9rem;
@@ -63,13 +54,6 @@
             word-break: break-word;
             max-height: 300px;
             overflow-y: auto;
-        }
-        .item-data-header {
-            background: linear-gradient(135deg, #0d6efd 0%, #198754 100%);
-            color: white;
-            padding: 0.75rem 1rem;
-            margin: -1rem -1rem 1rem -1rem;
-            border-radius: 0.5rem 0.5rem 0 0;
         }
     </style>
     <script src="/js/auth.js"></script>
@@ -214,15 +198,6 @@
                                         ${item.warehouse && item.warehouse.itemData ? `
                                             <div class="mt-3">
                                                 <div class="item-data-container">
-                                                    <div class="item-data-header">
-                                                        <div class="d-flex align-items-center justify-content-between">
-                                                            <div>
-                                                                <i class="fa-solid fa-box me-2"></i>
-                                                                <strong>Thông tin chi tiết sản phẩm đã mua</strong>
-                                                            </div>
-                                                            <small class="opacity-75">ID: ${item.warehouseId}</small>
-                                                        </div>
-                                                    </div>
                                                     <div class="p-3">
                                                         <div class="item-data-content">${item.warehouse.itemData}</div>
                                                         <div class="mt-3 d-flex align-items-center justify-content-between">
