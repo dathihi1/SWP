@@ -114,7 +114,7 @@
                         <!-- Current Balance -->
                         <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                             <i class="fa-solid fa-wallet"></i>
-                            <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'POINT', 0, 'COMMA')}">0</span>
+                            <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
                         </div>
 
                         <!-- User Profile Dropdown -->
@@ -171,7 +171,7 @@
                             <i class="fa-solid fa-wallet fa-3x text-primary"></i>
                         </div>
                         <h4 class="card-title">Số dư hiện tại</h4>
-                        <h2 class="text-primary fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'POINT', 0, 'COMMA')} + ' VNĐ'">0 VNĐ</h2>
+                        <h2 class="text-primary fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">0 VNĐ</h2>
                     </div>
                 </div>
             </div>
@@ -216,7 +216,7 @@
                                 <label for="amount" class="form-label">Số tiền cần rút (VNĐ) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" id="amount" name="amount" 
                                        placeholder="Nhập số tiền cần rút" min="1" required>
-                                <div class="form-text">Số dư hiện tại: <span id="currentBalance" th:text="${#numbers.formatDecimal(walletBalance, 0, 'POINT', 0, 'COMMA')} + ' VNĐ'">0 VNĐ</span></div>
+                                <div class="form-text">Số dư hiện tại: <span id="currentBalance" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">0 VNĐ</span></div>
                             </div>
                             <div class="col-md-6">
                                 <label for="bankAccountNumber" class="form-label">Số tài khoản <span class="text-danger">*</span></label>

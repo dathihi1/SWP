@@ -563,10 +563,17 @@ public class ShopController {
                         }
                         
                         if (isDuplicate) {
-                    if (item.getIsDelete()) {
-                                // Item đã bị xóa mềm và chưa được mua - có thể restore
-                                existingItem = item;
-                                break;
+                            if (item.getIsDelete()) {
+                                // Item đã bị xóa mềm - kiểm tra trạng thái locked
+                                if (item.getLocked()) {
+                                    // Item đã bị xóa mềm và bị khóa - không thể restore
+                                    existingItem = item;
+                                    break;
+                                } else {
+                                    // Item đã bị xóa mềm và chưa bị khóa - có thể restore
+                                    existingItem = item;
+                                    break;
+                                }
                             } else {
                                 // Item đã tồn tại và chưa được mua - không thể thêm duplicate
                                 existingItem = item;
@@ -592,14 +599,25 @@ public class ShopController {
                         continue;
                     }
                     
+                    // Kiểm tra trường hợp item bị xóa mềm và bị khóa
+                    if (existingItem != null && existingItem.getIsDelete() && existingItem.getLocked()) {
+                        failureCount++;
+                        if (itemKey != null) {
+                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã bị khóa và không thể khôi phục (").append(itemType).append(" với ").append(itemKey).append(")\n");
+                        } else {
+                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã bị khóa và không thể khôi phục (").append(itemType).append(")\n");
+                        }
+                        continue;
+                    }
+                    
                     // Thêm item vào danh sách đã xử lý để tránh duplicate trong file
                     processedItemsInFile.add(itemData);
                     if (itemKey != null) {
                         processedItemKeys.add(itemKey);
                     }
                     
-                    if (existingItem != null && existingItem.getIsDelete()) {
-                        // Restore warehouse item đã bị xóa mềm
+                    if (existingItem != null && existingItem.getIsDelete() && !existingItem.getLocked()) {
+                        // Restore warehouse item đã bị xóa mềm và chưa bị khóa
                         existingItem.setIsDelete(false);
                         existingItem.setDeletedBy(null);
                         warehouseRepository.save(existingItem);

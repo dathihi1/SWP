@@ -220,7 +220,7 @@
         }
         
         .btn-cancel {
-            background: #6c757d;
+            background: #dc3545;
             border: none;
             color: white;
             padding: 8px 16px;
@@ -231,7 +231,7 @@
         }
         
         .btn-cancel:hover {
-            background: #5a6268;
+            background: #c82333;
             color: white;
         }
         
@@ -505,7 +505,7 @@
                     
                     <!-- Submit Buttons -->
                     <div class="d-flex justify-content-end gap-3">
-                        <a href="/seller/stall-management" class="btn btn-cancel">Hủy</a>
+                        <button type="button" class="btn btn-cancel" onclick="clearForm()">Xóa</button>
                         <button type="submit" class="btn btn-submit">
                             <i class="fas fa-save me-2"></i>
                             Tạo gian hàng
@@ -770,6 +770,32 @@
                 });
             }
         });
+        
+        // Function to clear all form fields
+        function clearForm() {
+            // Clear text inputs
+            document.getElementById('stallName').value = '';
+            document.getElementById('shortDescription').value = '';
+            document.getElementById('detailedDescription').value = '';
+            
+            // Clear file inputs
+            document.getElementById('stallImage').value = '';
+            
+            // Clear any preview images
+            const preview = document.getElementById('imagePreview');
+            if (preview) {
+                preview.innerHTML = '';
+            }
+            
+            // Reset form validation
+            const form = document.querySelector('form');
+            if (form) {
+                form.reset();
+            }
+            
+            // Show success message
+            alert('Đã xóa hết các lựa chọn!');
+        }
     </script>
 </body>
 </html>
