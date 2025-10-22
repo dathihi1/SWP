@@ -63,12 +63,12 @@ public class AuthenticationController {
                 ));
             }
             
-            // 🔒 2. Check captcha (validate correctness)
+            // 🔒 2. Check captcha FIRST (validate correctness)
             String captchaCode = loginRequest.getCaptchaCode();
             String captchaId = loginRequest.getCaptchaId();
             
-            if (captchaCode == null) {
-                // Try to get from simple captcha field (for frontend compatibility)
+            // If captchaCode is null, try to get from simple captcha field (for frontend compatibility)
+            if (captchaCode == null || captchaCode.trim().isEmpty()) {
                 captchaCode = loginRequest.getCaptcha();
             }
             
@@ -99,6 +99,7 @@ public class AuthenticationController {
                 ));
             }
             
+            // If captcha is invalid, return immediately without checking credentials
             if (!captchaValid) {
                 securityEventService.logCaptchaRequired(ipAddress, username);
                 return ResponseEntity.status(400).body(Map.of(
@@ -109,7 +110,7 @@ public class AuthenticationController {
                 ));
             }
             
-            // 🔒 3. Attempt login
+            // 🔒 3. Only if captcha is valid, then check username/password
             try {
                 LoginResponse loginResponse = authenticationService.login(loginRequest, ipAddress, userAgent);
                 
@@ -136,9 +137,6 @@ public class AuthenticationController {
                 ipLockoutService.recordFailedAttempt(ipAddress, username);
                 securityEventService.logLoginAttempt(ipAddress, username, false, e.getMessage(), userAgent);
                 
-                // Check if captcha should be required for next attempt
-                boolean nextAttemptRequiresCaptcha = ipLockoutService.requiresCaptcha(ipAddress);
-                
                 Map<String, Object> response = new HashMap<>();
                 
                 // Determine error type based on exception message
@@ -155,6 +153,8 @@ public class AuthenticationController {
                 response.put("captchaRequired", true);
                 response.put("message", "captcha required");
                 response.put("captcha", captchaService.generateCaptcha());
+                
+                log.info("Generated new captcha after failed login attempt for user: {} from IP: {}", username, ipAddress);
                 
                 return ResponseEntity.status(401).body(response);
             }

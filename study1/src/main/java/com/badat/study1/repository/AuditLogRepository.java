@@ -82,4 +82,16 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     // Get all categories for a user
     @Query("SELECT DISTINCT a.category FROM AuditLog a WHERE a.userId = :userId")
     List<AuditLog.Category> findDistinctCategoriesByUserId(@Param("userId") Long userId);
+    
+    // Get distinct actions and categories for admin filter dropdowns
+    @Query("SELECT DISTINCT a.action FROM AuditLog a ORDER BY a.action")
+    List<String> findDistinctActions();
+    
+    @Query("SELECT DISTINCT a.category FROM AuditLog a ORDER BY a.category")
+    List<String> findDistinctCategories();
+    
+    // Dashboard statistics methods
+    long countByCreatedAtAfter(LocalDateTime dateTime);
+    long countByActionAndSuccess(String action, Boolean success);
+    long countByCategory(AuditLog.Category category);
 }

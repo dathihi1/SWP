@@ -243,6 +243,27 @@ public class UserService {
         userRepository.save(user);
         log.info("Password changed successfully for user: {}", username);
     }
+    
+    // Change password by user ID
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User not found");
+        }
+        User user = userOpt.get();
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Mật khẩu hiện tại không đúng");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("Mật khẩu mới phải có ít nhất 6 ký tự");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new RuntimeException("Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password changed successfully for user ID: {}", userId);
+    }
 
     // Forgot password methods
     public void sendForgotPasswordOtp(String email) {
@@ -410,6 +431,7 @@ public class UserService {
             }
             
             if (rawData instanceof Map) {
+                @SuppressWarnings("unchecked")
                 Map<String, Object> map = (Map<String, Object>) rawData;
                 
                 // Handle type conversion issues
@@ -429,6 +451,7 @@ public class UserService {
                 
                 // Fallback: manual conversion
                 if (rawData instanceof Map) {
+                    @SuppressWarnings("unchecked")
                     Map<String, Object> map = (Map<String, Object>) rawData;
                     UserCreateRequest request = new UserCreateRequest();
                     request.setEmail(convertToString(map.get("email")));

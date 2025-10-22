@@ -12,6 +12,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
+        /* Sidebar Styles */
         .sidebar {
             position: fixed;
             top: 0;
@@ -156,8 +157,24 @@
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
         
-        .stats-icon.withdrawals {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        .stats-icon.audit {
+            background: linear-gradient(135deg, #6f42c1, #e83e8c);
+        }
+        
+        .stats-icon.today {
+            background: linear-gradient(135deg, #20c997, #17a2b8);
+        }
+        
+        .stats-icon.failed {
+            background: linear-gradient(135deg, #fd7e14, #dc3545);
+        }
+        
+        .stats-icon.security {
+            background: linear-gradient(135deg, #dc3545, #6f42c1);
+        }
+        
+        .stats-icon.view-all {
+            background: linear-gradient(135deg, #0d6efd, #6c757d);
         }
         
         .stats-number {
@@ -323,40 +340,7 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="d-flex align-items-center justify-content-between">
-                <a class="navbar-brand d-flex align-items-center" th:href="@{/}" href="/">
-                    <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
-                    MMO Market
-                </a>
-            </div>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">ADMIN</div>
-            <a href="/admin" class="menu-item active">
-                <i class="fas fa-tachometer-alt"></i>
-                Dashboard
-            </a>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">QUẢN LÝ</div>
-            <a href="/admin/users" class="menu-item">
-                <i class="fas fa-users"></i>
-                Quản lý người dùng
-            </a>
-            <a href="/admin/stalls" class="menu-item">
-                <i class="fas fa-store"></i>
-                Quản lý gian hàng
-            </a>
-            <a href="/admin/withdraw-requests" class="menu-item">
-                <i class="fas fa-money-bill-transfer"></i>
-                Yêu cầu rút tiền
-            </a>
-        </div>
-    </div>
+    <div th:replace="~{fragments/admin-sidebar :: admin-sidebar}"></div>
     
     <!-- Main Content -->
     <div class="main-content">
@@ -373,9 +357,10 @@
                 <!-- Profile Dropdown -->
                 <div class="dropdown">
                     <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                        <img th:src="${user != null} ? @{/api/profile/avatar/me} : '/images/default-avatar.svg'" 
+                        <img th:src="@{/api/profile/avatar/me}" 
                              class="rounded-circle" 
                              style="width: 24px; height: 24px; object-fit: cover;"
+                             onerror="this.src='/images/default-avatar.svg';"
                              alt="Avatar">
                         <span th:text="${username}">Admin</span>
                     </button>
@@ -415,7 +400,7 @@
             
             <!-- Stats Cards -->
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="stats-card">
                         <div class="d-flex align-items-center">
                             <div class="stats-icon users">
@@ -428,7 +413,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="stats-card">
                         <div class="d-flex align-items-center">
                             <div class="stats-icon stalls">
@@ -441,7 +426,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="stats-card">
                         <div class="d-flex align-items-center">
                             <div class="stats-icon withdrawals">
@@ -454,7 +439,77 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="d-flex align-items-center">
+                            <div class="stats-icon audit">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <div class="ms-3">
+                                <div class="stats-number" th:text="${totalAuditLogs ?: 0}">0</div>
+                                <div class="stats-label">Tổng Audit Logs</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+            
+            <!-- Audit Log Stats -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="d-flex align-items-center">
+                            <div class="stats-icon today">
+                                <i class="fas fa-calendar-day"></i>
+                            </div>
+                            <div class="ms-3">
+                                <div class="stats-number" th:text="${todayAuditLogs ?: 0}">0</div>
+                                <div class="stats-label">Hôm nay</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="d-flex align-items-center">
+                            <div class="stats-icon failed">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="ms-3">
+                                <div class="stats-number" th:text="${failedLogins ?: 0}">0</div>
+                                <div class="stats-label">Đăng nhập thất bại</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="d-flex align-items-center">
+                            <div class="stats-icon security">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="ms-3">
+                                <div class="stats-number" th:text="${securityEvents ?: 0}">0</div>
+                                <div class="stats-label">Sự kiện bảo mật</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="d-flex align-items-center">
+                            <div class="stats-icon view-all">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="ms-3">
+                                <div class="stats-number" th:text="${totalAuditLogs + totalUsers + totalStalls}">0</div>
+                                <div class="stats-label">Tổng hoạt động</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             
             <!-- Recent Activities -->
             <div class="table-container">
@@ -504,28 +559,46 @@
                     </table>
                 </div>
             </div>
+            
+            <!-- Quick Actions -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-bolt me-2"></i>Thao tác nhanh
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <a href="/admin/users" class="btn btn-outline-primary w-100">
+                                        <i class="fas fa-users me-2"></i>Quản lý người dùng
+                                    </a>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <a href="/admin/stalls" class="btn btn-outline-success w-100">
+                                        <i class="fas fa-store me-2"></i>Quản lý gian hàng
+                                    </a>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <a href="/admin/withdraw-requests" class="btn btn-outline-warning w-100">
+                                        <i class="fas fa-money-bill-transfer me-2"></i>Yêu cầu rút tiền
+                                    </a>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <a href="/admin/audit-logs" class="btn btn-outline-info w-100">
+                                        <i class="fas fa-clipboard-list me-2"></i>Audit Logs
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Sidebar toggle functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const sidebar = document.querySelector('.sidebar');
-            const mainContent = document.querySelector('.main-content');
-            
-            sidebarToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('collapsed');
-                
-                // Update main content margin
-                if (sidebar.classList.contains('collapsed')) {
-                    mainContent.style.marginLeft = '0';
-                } else {
-                    mainContent.style.marginLeft = '280px';
-                }
-            });
-        });
-    </script>
+    <div th:replace="~{fragments/admin-scripts :: admin-scripts}"></div>
 </body>
 </html>

@@ -12,6 +12,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
+        /* Sidebar Styles */
         .sidebar {
             position: fixed;
             top: 0;
@@ -278,40 +279,7 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="d-flex align-items-center justify-content-between">
-                <a class="navbar-brand d-flex align-items-center" th:href="@{/}" href="/">
-                    <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
-                    MMO Market
-                </a>
-            </div>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">ADMIN</div>
-            <a href="/admin" class="menu-item">
-                <i class="fas fa-tachometer-alt"></i>
-                Dashboard
-            </a>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">QUẢN LÝ</div>
-            <a href="/admin/users" class="menu-item">
-                <i class="fas fa-users"></i>
-                Quản lý người dùng
-            </a>
-            <a href="/admin/stalls" class="menu-item active">
-                <i class="fas fa-store"></i>
-                Quản lý gian hàng
-            </a>
-            <a href="/admin/withdraw-requests" class="menu-item">
-                <i class="fas fa-money-bill-transfer"></i>
-                Yêu cầu rút tiền
-            </a>
-        </div>
-    </div>
+    <div th:replace="~{fragments/admin-sidebar :: admin-sidebar}"></div>
     
     <!-- Main Content -->
     <div class="main-content">
@@ -328,9 +296,10 @@
                 <!-- Profile Dropdown -->
                 <div class="dropdown">
                     <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                        <img th:src="${user != null} ? @{/api/profile/avatar/me} : '/images/default-avatar.svg'" 
+                        <img th:src="@{/api/profile/avatar/me}" 
                              class="rounded-circle" 
                              style="width: 24px; height: 24px; object-fit: cover;"
+                             onerror="this.src='/images/default-avatar.svg';"
                              alt="Avatar">
                         <span th:text="${username}">Admin</span>
                     </button>
@@ -338,7 +307,7 @@
                         <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                         <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                     </ul>
                 </div>
             </div>
@@ -363,7 +332,85 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h1 class="page-title">Quản lý gian hàng</h1>
-                        <small class="text-muted" th:text="'Tổng cộng: ' + ${#lists.size(stalls)} + ' gian hàng'">Tổng cộng: 0 gian hàng</small>
+                        <small class="text-muted" th:text="'Tổng cộng: ' + ${totalElements} + ' gian hàng'">Tổng cộng: 0 gian hàng</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                            <i class="fas fa-filter me-2"></i>Bộ lọc
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filter Modal -->
+            <div class="modal fade" id="filterModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Bộ lọc gian hàng</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form method="get" action="/admin/stalls">
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Tìm kiếm</label>
+                                        <input type="text" class="form-control" name="search" th:value="${search}" placeholder="Tên gian hàng, mô tả, địa chỉ...">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Trạng thái</label>
+                                        <select class="form-select" name="status">
+                                            <option value="">Tất cả trạng thái</option>
+                                            <option th:each="status : ${statuses}" 
+                                                    th:value="${status.name()}" 
+                                                    th:text="${status.name() == 'ACTIVE'} ? 'Hoạt động' : 
+                                                            (${status.name() == 'INACTIVE'} ? 'Không hoạt động' : 
+                                                            (${status.name() == 'SUSPENDED'} ? 'Tạm khóa' : 'Chờ duyệt'))"
+                                                    th:selected="${status.name() == status}">
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Trạng thái xóa</label>
+                                        <select class="form-select" name="isDelete">
+                                            <option value="">Tất cả</option>
+                                            <option value="false" th:selected="${isDelete == 'false'}">Chưa xóa</option>
+                                            <option value="true" th:selected="${isDelete == 'true'}">Đã xóa</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Sắp xếp theo</label>
+                                        <select class="form-select" name="sortBy">
+                                            <option value="id" th:selected="${sortBy == 'id'}">ID</option>
+                                            <option value="shopName" th:selected="${sortBy == 'shopName'}">Tên gian hàng</option>
+                                            <option value="createdAt" th:selected="${sortBy == 'createdAt'}">Ngày tạo</option>
+                                            <option value="status" th:selected="${sortBy == 'status'}">Trạng thái</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Thứ tự</label>
+                                        <select class="form-select" name="sortDir">
+                                            <option value="asc" th:selected="${sortDir == 'asc'}">Tăng dần</option>
+                                            <option value="desc" th:selected="${sortDir == 'desc'}">Giảm dần</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Số bản ghi/trang</label>
+                                        <select class="form-select" name="size">
+                                            <option value="5" th:selected="${pageSize == 5}">5</option>
+                                            <option value="10" th:selected="${pageSize == 10}">10</option>
+                                            <option value="25" th:selected="${pageSize == 25}">25</option>
+                                            <option value="50" th:selected="${pageSize == 50}">50</option>
+                                            <option value="100" th:selected="${pageSize == 100}">100</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                <button type="submit" class="btn btn-primary">Áp dụng bộ lọc</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -377,50 +424,100 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Tên gian hàng</th>
+                                <th>
+                                    <a th:href="@{/admin/stalls(sortBy='id', sortDir=${sortBy == 'id' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, status=${status}, isDelete=${isDelete}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        ID 
+                                        <i class="fas fa-sort" th:if="${sortBy != 'id'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'id' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'id' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a th:href="@{/admin/stalls(sortBy='shopName', sortDir=${sortBy == 'shopName' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, status=${status}, isDelete=${isDelete}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        Tên gian hàng
+                                        <i class="fas fa-sort" th:if="${sortBy != 'shopName'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'shopName' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'shopName' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
                                 <th>Chủ sở hữu</th>
-                                <th>Loại</th>
-                                <th>Hoa hồng</th>
-                                <th>Số sản phẩm</th>
-                                <th>Ngày tạo</th>
-                                <th>Trạng thái</th>
+                                <th>CCCD</th>
+                                <th>Địa chỉ</th>
+                                <th>Liên hệ</th>
+                                <th>
+                                    <a th:href="@{/admin/stalls(sortBy='createdAt', sortDir=${sortBy == 'createdAt' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, status=${status}, isDelete=${isDelete}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        Ngày tạo
+                                        <i class="fas fa-sort" th:if="${sortBy != 'createdAt'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'createdAt' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'createdAt' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a th:href="@{/admin/stalls(sortBy='status', sortDir=${sortBy == 'status' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, status=${status}, isDelete=${isDelete}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        Trạng thái
+                                        <i class="fas fa-sort" th:if="${sortBy != 'status'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'status' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'status' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="stall : ${stalls}">
                                 <td th:text="${stall.id}">1</td>
-                                <td th:text="${stall.stallName}">Tên gian hàng</td>
-                                <td th:text="${stall.user.username}">Chủ sở hữu</td>
-                                <td th:text="${stall.stallCategory == 'Tài Khoản' ? 'Tài khoản Email' : stall.stallCategory}">Loại gian hàng</td>
-                                <td th:text="${stall.discountPercentage} + '%'">Hoa hồng</td>
-                                <td th:text="${stall.productCount ?: 0}">0</td>
-                                <td th:text="${#temporals.format(stall.createdAt, 'dd/MM/yyyy')}">Ngày tạo</td>
+                                <td>
+                                    <div>
+                                        <strong th:text="${stall.shopName}">Tên gian hàng</strong>
+                                        <br>
+                                        <small class="text-muted" th:text="${stall.description != null ? stall.description : 'Chưa có mô tả'}" th:if="${stall.description != null && stall.description.length() > 50}">Mô tả dài...</small>
+                                        <small class="text-muted" th:text="${stall.description}" th:if="${stall.description != null && stall.description.length() <= 50}">Mô tả ngắn</small>
+                                    </div>
+                                </td>
+                                <td th:text="${stall.userId}">User ID</td>
+                                <td th:text="${stall.cccd != null ? stall.cccd : 'Chưa cập nhật'}">CCCD</td>
+                                <td th:text="${stall.address != null ? stall.address : 'Chưa cập nhật'}">Địa chỉ</td>
+                                <td>
+                                    <div th:if="${stall.phone != null || stall.email != null}">
+                                        <div th:if="${stall.phone != null}" th:text="'📞 ' + ${stall.phone}">Phone</div>
+                                        <div th:if="${stall.email != null}" th:text="'✉️ ' + ${stall.email}">Email</div>
+                                    </div>
+                                    <div th:if="${stall.phone == null && stall.email == null}">
+                                        <small class="text-muted">Chưa cập nhật</small>
+                                    </div>
+                                </td>
+                                <td th:text="${#temporals.format(stall.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2025 10:30</td>
                                 <td>
                                     <span class="status-badge" 
-                                          th:classappend="${stall.status == 'OPEN'} ? 'status-active' : 
-                                                         (${stall.status == 'PENDING'} ? 'status-pending' : 'status-inactive')"
-                                          th:text="${stall.status == 'OPEN'} ? 'Mở' : 
-                                                  (${stall.status == 'PENDING'} ? 'Chờ duyệt' : 'Đóng')">
+                                          th:classappend="${stall.status.name() == 'ACTIVE'} ? 'status-active' : 
+                                                         (${stall.status.name() == 'PENDING'} ? 'status-pending' : 'status-inactive')"
+                                          th:text="${stall.status.name() == 'ACTIVE'} ? 'Hoạt động' : 
+                                                  (${stall.status.name() == 'PENDING'} ? 'Chờ duyệt' : 
+                                                  (${stall.status.name() == 'SUSPENDED'} ? 'Tạm khóa' : 'Không hoạt động'))">
                                         Trạng thái
                                     </span>
+                                    <br>
+                                    <small class="text-muted" th:text="${stall.isDelete ? 'Đã xóa' : 'Chưa xóa'}">Trạng thái xóa</small>
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn btn-action btn-view" title="Xem chi tiết">
+                                        <button class="btn btn-action btn-view" title="Xem chi tiết" th:onclick="'viewShop(' + ${stall.id} + ')'">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button class="btn btn-action btn-approve" title="Duyệt" th:if="${stall.status == 'PENDING'}" th:onclick="'approveStall(' + ${stall.id} + ')'">
+                                        <button class="btn btn-action btn-approve" title="Duyệt" th:if="${stall.status.name() == 'PENDING'}" th:onclick="'approveShop(' + ${stall.id} + ')'">
                                             <i class="fas fa-check"></i>
                                         </button>
-                                        <button class="btn btn-action btn-reject" title="Từ chối" th:if="${stall.status == 'PENDING'}" th:onclick="'rejectStall(' + ${stall.id} + ')'">
+                                        <button class="btn btn-action btn-reject" title="Từ chối" th:if="${stall.status.name() == 'PENDING'}" th:onclick="'rejectShop(' + ${stall.id} + ')'">
                                             <i class="fas fa-times"></i>
                                         </button>
-                                        <button class="btn btn-action btn-edit" title="Chỉnh sửa">
+                                        <button class="btn btn-action btn-edit" title="Chỉnh sửa" th:onclick="'editShop(' + ${stall.id} + ')'">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-action btn-delete" title="Xóa" th:onclick="'deleteStall(' + ${stall.id} + ')'">
+                                        <button class="btn btn-action btn-delete" title="Xóa" th:onclick="'deleteShop(' + ${stall.id} + ')'">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -435,49 +532,160 @@
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center p-3 border-top" th:if="${totalPages > 1}">
+                    <div class="text-muted">
+                        Hiển thị <span th:text="${currentPage * pageSize + 1}">1</span> - 
+                        <span th:text="${Math.min((currentPage + 1) * pageSize, totalElements)}">10</span> 
+                        trong tổng số <span th:text="${totalElements}">100</span> bản ghi
+                    </div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination pagination-sm mb-0">
+                            <!-- Previous button -->
+                            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                <a class="page-link" 
+                                   th:href="@{/admin/stalls(page=${currentPage - 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir}, search=${search}, status=${status}, isDelete=${isDelete})}"
+                                   th:if="${currentPage > 0}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                                <span class="page-link" th:if="${currentPage == 0}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </span>
+                            </li>
+                            
+                            <!-- Page numbers -->
+                            <li th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}" 
+                                class="page-item" 
+                                th:classappend="${pageNum == currentPage} ? 'active'">
+                                <a class="page-link" 
+                                   th:href="@{/admin/stalls(page=${pageNum}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir}, search=${search}, status=${status}, isDelete=${isDelete})}"
+                                   th:text="${pageNum + 1}">1</a>
+                            </li>
+                            
+                            <!-- Next button -->
+                            <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                                <a class="page-link" 
+                                   th:href="@{/admin/stalls(page=${currentPage + 1}, size=${pageSize}, sortBy=${sortBy}, sortDir=${sortDir}, search=${search}, status=${status}, isDelete=${isDelete})}"
+                                   th:if="${currentPage < totalPages - 1}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                                <span class="page-link" th:if="${currentPage == totalPages - 1}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </span>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
             </div>
         </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Sidebar toggle functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const sidebar = document.querySelector('.sidebar');
-            const mainContent = document.querySelector('.main-content');
-            
-            sidebarToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('collapsed');
-                
-                // Update main content margin
-                if (sidebar.classList.contains('collapsed')) {
-                    mainContent.style.marginLeft = '0';
-                } else {
-                    mainContent.style.marginLeft = '280px';
-                }
-            });
-        });
+    <div th:replace="~{fragments/admin-scripts :: admin-scripts}"></div>
         
         // Action button functions
-        function approveStall(stallId) {
+        function viewShop(shopId) {
+            // Implement view shop functionality
+            console.log('View shop:', shopId);
+            // You can redirect to shop detail page or show modal
+            window.location.href = '/admin/shops/' + shopId;
+        }
+        
+        function editShop(shopId) {
+            // Implement edit shop functionality
+            console.log('Edit shop:', shopId);
+            // You can redirect to edit page or show modal
+            window.location.href = '/admin/shops/' + shopId + '/edit';
+        }
+        
+        function approveShop(shopId) {
             if (confirm('Bạn có chắc chắn muốn duyệt gian hàng này?')) {
-                // Implement approve functionality
-                console.log('Approve stall:', stallId);
+                fetch('/admin/shops/' + shopId + '/approve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Có lỗi xảy ra khi duyệt gian hàng');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi duyệt gian hàng');
+                });
             }
         }
         
-        function rejectStall(stallId) {
+        function rejectShop(shopId) {
             if (confirm('Bạn có chắc chắn muốn từ chối gian hàng này?')) {
-                // Implement reject functionality
-                console.log('Reject stall:', stallId);
+                fetch('/admin/shops/' + shopId + '/reject', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Có lỗi xảy ra khi từ chối gian hàng');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi từ chối gian hàng');
+                });
             }
         }
         
-        function deleteStall(stallId) {
+        function deleteShop(shopId) {
             if (confirm('Bạn có chắc chắn muốn xóa gian hàng này?')) {
-                // Implement delete functionality
-                console.log('Delete stall:', stallId);
+                fetch('/admin/shops/' + shopId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Có lỗi xảy ra khi xóa gian hàng');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi xóa gian hàng');
+                });
+            }
+        }
+        
+        // Logout function
+        function logout() {
+            if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/login';
+                    } else {
+                        // Fallback to direct logout
+                        window.location.href = '/logout';
+                    }
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    // Fallback to direct logout
+                    window.location.href = '/logout';
+                });
             }
         }
     </script>

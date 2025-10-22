@@ -190,6 +190,7 @@ public class OtpService {
             }
             
             if (rawData instanceof Map) {
+                @SuppressWarnings("unchecked")
                 Map<String, Object> map = (Map<String, Object>) rawData;
                 
                 // Handle type conversion issues manually

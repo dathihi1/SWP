@@ -102,8 +102,8 @@ public class SellerController {
         shop.setCccd(identity);
         shop.setBankAccountId(bankAccount.getId());
         // set required not-null fields per DB
-        shop.setCreatedAtLower(Instant.now());
-        shop.setDelete(false);
+        shop.setCreatedAt(Instant.now());
+        shop.setIsDelete(false);
         shopRepository.save(shop);
 
         // Update user role to SELLER immediately

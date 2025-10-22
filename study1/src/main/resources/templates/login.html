@@ -7,71 +7,78 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
-        body {
-            background: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        .login-page {
+        .navbar-brand span { color: #0d6efd; font-weight: 700; }
+        .auth-page {
             min-height: 100vh;
             display: flex;
+            background: #ffffff;
         }
-        .left-section {
+        .auth-left {
             flex: 1;
-            background: white;
+            background: ffffff;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 2rem;
+            padding: 3rem;
+            color: #0d6efd;
             position: relative;
+            overflow: hidden;
         }
-        .logo-container {
-            margin-bottom: 2rem;
+        .auth-left::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
         }
-        .logo {
+        .auth-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            background: white;
+        }
+        .auth-logo {
             width: 120px;
             height: 120px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 3rem;
             color: white;
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(13, 110, 253, 0.3);
+            position: relative;
+            z-index: 1;
         }
-        .brand-card {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
+        .auth-brand {
             text-align: center;
-            border: 2px solid #e9ecef;
-            max-width: 400px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-        }
-        .brand-title {
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            font-size: 2.5rem;
-            margin: 0;
-            color: #667eea;
-        }
-        .brand-subtitle {
-            font-size: 1.1rem;
-            color: #6c757d;
-            margin-top: 1rem;
-        }
-        .right-section {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
+            position: relative;
+            z-index: 1;
             background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        .login-form-container {
+        .auth-brand h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #0d6efd;
+        }
+        .auth-brand p {
+            font-size: 1.2rem;
+            color: #0d6efd;
+            margin-bottom: 0;
+        }
+        .login-container {
             max-width: 400px;
             width: 100%;
         }
@@ -83,13 +90,27 @@
             overflow: hidden;
             padding: 2rem;
         }
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-title {
+            font-weight: 700;
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        .login-subtitle {
+            color: #6c757d;
+            font-size: 1rem;
+        }
         .form-label {
             font-weight: 600;
             color: #495057;
             margin-bottom: 0.5rem;
         }
         .input-group-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
             border: none;
             color: white;
             border-radius: 10px 0 0 10px;
@@ -102,8 +123,8 @@
             transition: all 0.3s ease;
         }
         .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
             transform: translateY(-2px);
         }
         .form-control.is-invalid {
@@ -128,14 +149,14 @@
             transition: all 0.3s ease;
         }
         .form-check-input:checked {
-            background-color: #667eea;
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
         }
         .form-check-input:focus {
             border-color: #86b7fe;
             outline: 0;
-            box-shadow: 0 0 0 .25rem rgba(102, 126, 234, 0.25);
+            box-shadow: 0 0 0 .25rem rgba(13, 110, 253, 0.25);
         }
         .form-check-label {
             color: #495057;
@@ -144,7 +165,7 @@
             margin-left: 0.5rem;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
             border: none;
             border-radius: 10px;
             padding: 0.75rem 1.5rem;
@@ -156,7 +177,7 @@
         }
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
         }
         .btn-primary:active {
             transform: translateY(0);
@@ -166,12 +187,12 @@
             transform: none;
         }
         .link-primary {
-            color: #667eea !important;
+            color: #0d6efd !important;
             font-weight: 500;
             transition: all 0.3s ease;
         }
         .link-primary:hover {
-            color: #764ba2 !important;
+            color: #0a58ca !important;
             text-decoration: underline !important;
         }
         .alert {
@@ -188,14 +209,6 @@
             background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
             color: #721c24;
         }
-        .password-strength {
-            margin-top: 0.5rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        .strength-weak { color: #dc3545; }
-        .strength-medium { color: #ffc107; }
-        .strength-strong { color: #198754; }
         .remember-forgot-container {
             display: flex;
             justify-content: space-between;
@@ -249,32 +262,36 @@
             margin-top: 1.5rem;
         }
         .footer-links a {
-            color: #667eea;
+            color: #0d6efd;
             text-decoration: none;
             font-weight: 500;
         }
         .footer-links a:hover {
-            color: #764ba2;
+            color: #0a58ca;
             text-decoration: underline;
         }
         @media (max-width: 768px) {
-            .login-page {
+            .auth-page {
                 flex-direction: column;
             }
-            .left-section {
-                padding: 1rem;
+            .auth-left {
                 min-height: 40vh;
-                background: #f8f9fa;
+                padding: 2rem 1rem;
+                background-color: white;
+                color: white;
+                background: white;
             }
-            .brand-card {
-                padding: 1.5rem;
-                border: 1px solid #e9ecef;
+            .auth-right {
+                padding: 2rem 1rem;
             }
-            .brand-title {
+            .auth-brand h1 {
                 font-size: 2rem;
             }
-            .right-section {
-                padding: 1rem;
+            .auth-logo {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+                box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
             }
             .remember-forgot-container {
                 flex-direction: column;
@@ -371,7 +388,7 @@
                         body: JSON.stringify({
                             username: username,
                             password: password,
-                            captcha: captchaInput,
+                            captchaCode: captchaInput,
                             captchaId: window.currentCaptchaId || null
                         })
                     });
@@ -391,43 +408,58 @@
                         // Redirect to home immediately
                         window.location.href = '/';
                     } else {
-                        // Handle different error types
-                        if (data.message && data.message.includes('captcha')) {
-                            // Show captcha if required
-                            showCaptcha();
+                        // Handle different error types based on status code
+                        if (response.status === 400) {
+                            // Captcha errors (400 status)
+                            if (data.message && data.message.includes('captcha')) {
+                                showCaptcha();
+                                
+                                if (data.message.includes('incorrect')) {
+                                    alert('Mã xác thực không đúng, vui lòng nhập lại!');
+                                } else if (data.message.includes('required')) {
+                                    alert('Vui lòng nhập mã xác thực!');
+                                } else {
+                                    alert('Mã xác thực không hợp lệ, vui lòng làm mới trang!');
+                                }
+                                
+                                // Update captcha with new one from backend if provided
+                                if (data.captcha) {
+                                    updateCaptchaFromBackend(data.captcha);
+                                } else {
+                                    loadCaptchaFromBackend();
+                                }
+                            } else {
+                                // Other 400 errors
+                                alert(data.error || 'Lỗi dữ liệu đầu vào!');
+                                loadCaptchaFromBackend();
+                            }
+                        } else if (response.status === 401) {
+                            // Authentication errors (401 status) - username/password wrong
+                            alert(data.error || 'Tài khoản hoặc mật khẩu không đúng!');
                             
-                            // Update captcha with new one from backend if provided
+                            // Use new captcha from backend response if available
                             if (data.captcha) {
                                 updateCaptchaFromBackend(data.captcha);
                             } else {
-                                generateCaptcha();
+                                loadCaptchaFromBackend();
                             }
-                            
-                            if (data.message.includes('incorrect')) {
-                                alert('Mã xác thực không đúng, vui lòng nhập lại!');
-                            } else {
-                                alert('Vui lòng nhập mã xác thực để tiếp tục!');
-                            }
-                        } else if (data.error) {
-                            // Show specific error message
-                            alert(data.error);
-                            
-                            // Generate new captcha after any error
-                            generateCaptcha();
                         } else {
-                            alert('Tài khoản hoặc mật khẩu không đúng!');
-                            generateCaptcha();
+                            // Other errors
+                            alert(data.error || 'Có lỗi xảy ra!');
+                            loadCaptchaFromBackend();
                         }
                     }
                 } catch (error) {
                     alert('Tài khoản hoặc mật khẩu không đúng!');
+                    // Generate new captcha on any error
+                    loadCaptchaFromBackend();
                 } finally {
                     // Re-enable button
                     loginBtn.disabled = false;
                     loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-2"></i>Đăng nhập';
                     
                     // Always regenerate captcha after each attempt
-                    generateCaptcha();
+                    loadCaptchaFromBackend();
                     document.getElementById('captcha').value = '';
                 }
             });
@@ -641,96 +673,148 @@
     </script>
 </head>
 <body>
-    <div class="login-page">
-        <!-- Left Section - Brand & Logo -->
-        <div class="left-section">
-            <div class="logo-container">
-                <div class="logo">
-                    <i class="fa-solid fa-cart-shopping"></i>
-                </div>
-            </div>
-            <div class="brand-card">
-                <h1 class="brand-title">MMO Market</h1>
-                <p class="brand-subtitle">Chào mừng bạn quay trở lại!</p>
-            </div>
-        </div>
-        
-        <!-- Right Section - Login Form -->
-        <div class="right-section">
-            <div class="login-form-container">
-                <div class="login-card">
-                    <div th:if="${param.error}" class="alert alert-danger" role="alert">Tên đăng nhập hoặc mật khẩu không đúng</div>
-                    <div th:if="${param.required}" class="alert alert-warning" role="alert">Vui lòng đăng nhập!</div>
-                    <form id="loginForm">
-            <div class="mb-3">
-                <label for="username" class="form-label">Tên đăng nhập</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                    <input type="text" class="form-control" id="username" name="username" placeholder="username" required>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Mật khẩu</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
-                </div>
-            </div>
-            <!-- Captcha Section -->
-            <div class="mb-3" id="captchaSection" style="display: none;">
-                <label for="captcha" class="form-label">Mã xác thực <span class="text-danger">*</span></label>
-                <div class="row">
-                    <div class="col-8">
-                        <input type="text" class="form-control" id="captcha" name="captcha" placeholder="Nhập mã xác thực" required>
-                    </div>
-                    <div class="col-4">
-                        <div class="captcha-container">
-                            <canvas id="captchaCanvas" width="120" height="40" style="border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" title="Click để làm mới"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-text">
-                    <small class="text-muted">Click vào hình để làm mới mã xác thực</small>
-                </div>
-            </div>
-            
-            <div class="mb-3 d-flex justify-content-between align-items-center">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="rememberMe" name="rememberMe">
-                    <label class="form-check-label" for="rememberMe">
-                        Lưu mật khẩu
-                    </label>
-                </div>
-                <a class="link-primary text-decoration-none" th:href="@{/forgot-password}" href="/forgot-password">Quên mật khẩu?</a>
-            </div>
-            <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary" id="loginBtn">
-                    <i class="fa-solid fa-right-to-bracket me-2"></i>Đăng nhập
-                </button>
-            </div>
-        </form>
-        
-        <div class="divider">
-            <span>hoặc</span>
-        </div>
-        
-        <a href="/oauth2/authorization/google" class="google-btn">
-            <i class="fab fa-google" style="color: #dc3545;"></i>
-            Đăng nhập với Google
+<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
+            <i class="fa-solid fa-cart-shopping me-2 text-primary" style="font-size: 1.5rem;"></i>
+            <span class="fw-bold">MMO Market</span>
         </a>
-        
-        <div class="footer-links">
-            <div>
-                <span class="text-muted">Chưa có tài khoản?</span>
-                <a th:href="@{/register}" href="/register" class="link-primary">Đăng ký</a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
+            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
+                <form role="search">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
+                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
+                <div class="d-flex align-items-center gap-2">
+                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
+                        <i class="fa-regular fa-user"></i>
+                        <span>Đăng nhập</span>
+                    </a>
+                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>Giỏ hàng</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-</div>
-</div>
+</nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/auth.js"></script>
+<main class="auth-page">
+    <div class="auth-left">
+        <div class="auth-logo">
+            <i class="fa-solid fa-cart-shopping"></i>
+        </div>
+        <div class="auth-brand">
+            <h1>MMO Market</h1>
+            <p>Chào mừng bạn quay trở lại!</p>
+        </div>
+    </div>
+    
+    <div class="auth-right">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <h1 class="login-title">Đăng nhập</h1>
+                    <p class="login-subtitle">Điền thông tin để tiếp tục</p>
+                </div>
+            
+            <div th:if="${param.error}" class="alert alert-danger" role="alert">Tên đăng nhập hoặc mật khẩu không đúng</div>
+            <div th:if="${param.required}" class="alert alert-warning" role="alert">Vui lòng đăng nhập!</div>
+            <div th:if="${param.logout}" class="alert alert-success" role="alert">
+                <i class="fas fa-check-circle me-2"></i>Đăng xuất thành công!
+            </div>
+            <div th:if="${param.error == 'logout_failed'}" class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>Có lỗi xảy ra khi đăng xuất!
+            </div>
+            
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Tên đăng nhập</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="username" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Mật khẩu</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+                <!-- Captcha Section -->
+                <div class="mb-3" id="captchaSection" style="display: none;">
+                    <label for="captcha" class="form-label">Mã xác thực <span class="text-danger">*</span></label>
+                    <div class="row">
+                        <div class="col-8">
+                            <input type="text" class="form-control" id="captcha" name="captcha" placeholder="Nhập mã xác thực" required>
+                        </div>
+                        <div class="col-4">
+                            <div class="captcha-container">
+                                <canvas id="captchaCanvas" width="120" height="40" style="border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" title="Click để làm mới"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-text">
+                        <small class="text-muted">Click vào hình để làm mới mã xác thực</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="rememberMe" name="rememberMe">
+                        <label class="form-check-label" for="rememberMe">
+                            Lưu mật khẩu
+                        </label>
+                    </div>
+                    <a class="link-primary text-decoration-none" th:href="@{/forgot-password}" href="/forgot-password">Quên mật khẩu?</a>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary" id="loginBtn">
+                        <i class="fa-solid fa-right-to-bracket me-2"></i>Đăng nhập
+                    </button>
+                </div>
+            </form>
+            
+            <div class="divider">
+                <span>hoặc</span>
+            </div>
+            
+            <a href="/oauth2/authorization/google" class="google-btn">
+                <i class="fab fa-google" style="color: #dc3545;"></i>
+                Đăng nhập với Google
+            </a>
+            
+                <div class="footer-links">
+                    <div>
+                        <span class="text-muted">Chưa có tài khoản?</span>
+                        <a th:href="@{/register}" href="/register" class="link-primary">Đăng ký</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="border-top py-3">
+    <div class="container d-flex justify-content-between align-items-center small">
+        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
+        <div class="text-muted">Liên hệ: support@example.com</div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
 </body>
 </html>
 

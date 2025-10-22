@@ -57,7 +57,6 @@ public class AvatarApiController {
             Object principal = authentication.getPrincipal();
             if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
                 // This is a UserDetails object, we need to get the actual User
-                String username = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
                 // You might need to fetch the user by username here
                 return getDefaultAvatarResponse();
             } else {

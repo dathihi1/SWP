@@ -2,6 +2,7 @@ package com.badat.study1.controller;
 
 import com.badat.study1.annotation.Auditable;
 import com.badat.study1.dto.request.UpdateProfileRequest;
+import com.badat.study1.dto.request.ChangePasswordRequest;
 import com.badat.study1.model.User;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
@@ -70,6 +71,43 @@ public class ProfileController {
             return ResponseEntity.status(500).body(Map.of(
                 "success", false,
                 "error", "Có lỗi xảy ra khi cập nhật thông tin: " + e.getMessage()
+            ));
+        }
+    }
+    
+    @PostMapping("/profile/change-password")
+    @Auditable(action = "PASSWORD_CHANGE")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request, 
+                                          HttpServletRequest httpRequest) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() || 
+                authentication.getName().equals("anonymousUser")) {
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+            }
+            
+            User currentUser = (User) authentication.getPrincipal();
+            String ipAddress = getClientIpAddress(httpRequest);
+            
+            log.info("Password change request for user: {}, IP: {}", currentUser.getUsername(), ipAddress);
+            
+            // Change password
+            userService.changePassword(currentUser.getId(), request.getCurrentPassword(), request.getNewPassword());
+            
+            // Log the password change
+            auditLogService.logPasswordChange(currentUser, ipAddress, "Đổi mật khẩu");
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Đổi mật khẩu thành công");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error changing password: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Có lỗi xảy ra khi đổi mật khẩu: " + e.getMessage()
             ));
         }
     }

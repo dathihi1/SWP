@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,6 +28,102 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
     private final Logger fileLogger = LoggerFactory.getLogger("com.badat.study1.audit");
+
+    @Async("auditExecutor")
+    public void logRoleChange(User adminUser, User targetUser, User.Role oldRole, User.Role newRole, String reason) {
+        try {
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(adminUser.getId())
+                    .action("ROLE_CHANGE")
+                    .category(AuditLog.Category.SYSTEM_EVENT)
+                    .details(String.format("Admin %s đã thay đổi vai trò của user %s từ %s thành %s. Lý do: %s", 
+                        adminUser.getUsername(), targetUser.getUsername(), oldRole.name(), newRole.name(), 
+                        reason != null ? reason : "Không có lý do"))
+                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .success(true)
+                    .failureReason(null)
+                    .deviceInfo("Admin Panel")
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            
+            // Log to file
+            fileLogger.info("ROLE_CHANGE: Admin {} changed user {} role from {} to {}. Reason: {}", 
+                adminUser.getUsername(), targetUser.getUsername(), oldRole.name(), newRole.name(), reason);
+                
+        } catch (Exception e) {
+            log.error("Error logging role change: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async("auditExecutor")
+    public void logUserEdit(User adminUser, User targetUser, Map<String, String> changes) {
+        try {
+            StringBuilder details = new StringBuilder();
+            details.append("Admin ").append(adminUser.getUsername())
+                   .append(" đã chỉnh sửa thông tin của user ").append(targetUser.getUsername())
+                   .append(". Các thay đổi: ");
+            
+            boolean hasChanges = false;
+            for (Map.Entry<String, String> entry : changes.entrySet()) {
+                if (!entry.getKey().equals("userId") && entry.getValue() != null && !entry.getValue().trim().isEmpty()) {
+                    if (hasChanges) details.append(", ");
+                    details.append(entry.getKey()).append("=").append(entry.getValue());
+                    hasChanges = true;
+                }
+            }
+            
+            if (!hasChanges) {
+                details.append("Không có thay đổi nào");
+            }
+            
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(adminUser.getId())
+                    .action("USER_EDIT")
+                    .category(AuditLog.Category.ADMIN_ACTION)
+                    .details(details.toString())
+                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .success(true)
+                    .failureReason(null)
+                    .deviceInfo("Admin Panel")
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            
+            // Log to file
+            fileLogger.info("USER_EDIT: Admin {} edited user {} information. Changes: {}", 
+                adminUser.getUsername(), targetUser.getUsername(), details.toString());
+                
+        } catch (Exception e) {
+            log.error("Error logging user edit: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async("auditExecutor")
+    public void logUserCreation(User adminUser, User newUser) {
+        try {
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(adminUser.getId())
+                    .action("USER_CREATE")
+                    .category(AuditLog.Category.ADMIN_ACTION)
+                    .details(String.format("Admin %s đã tạo tài khoản mới cho user %s (Email: %s)", 
+                        adminUser.getUsername(), newUser.getUsername(), newUser.getEmail()))
+                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .success(true)
+                    .failureReason(null)
+                    .deviceInfo("Admin Panel")
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            
+            // Log to file
+            fileLogger.info("USER_CREATE: Admin {} created new user {} (Email: {})", 
+                adminUser.getUsername(), newUser.getUsername(), newUser.getEmail());
+                
+        } catch (Exception e) {
+            log.error("Error logging user creation: {}", e.getMessage(), e);
+        }
+    }
 
     @Async("auditExecutor")
     public void logLoginAttempt(User user, String ipAddress, boolean success, String failureReason, String deviceInfo) {
@@ -170,7 +267,7 @@ public class AuditLogService {
 
     public Page<AuditLogResponse> getUserAuditLogs(Long userId, int page, int size) {
         try {
-            Pageable pageable = PageRequest.of(page - 1, size);
+            Pageable pageable = PageRequest.of(page, size);
             Page<AuditLog> auditLogs = auditLogRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
             
             return auditLogs.map(AuditLogResponse::fromAuditLog);
@@ -221,7 +318,7 @@ public class AuditLogService {
             try {
                 log.info("Attempting to get audit logs for user {} (attempt {})", userId, retryCount + 1);
                 
-                Pageable pageable = PageRequest.of(page - 1, size, Sort.by("createdAt").descending());
+                Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
                 
                 LocalDateTime fromDate = null;
                 LocalDateTime toDate = null;
@@ -295,7 +392,7 @@ public class AuditLogService {
                                                                String action, Boolean success,
                                                                String fromDateStr, String toDateStr) {
         try {
-            Pageable pageable = PageRequest.of(page - 1, size, Sort.by("createdAt").descending());
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
             LocalDateTime fromDate = null;
             LocalDateTime toDate = null;
@@ -324,6 +421,31 @@ public class AuditLogService {
         } catch (Exception e) {
             log.error("Failed to get available categories for user {}: {}", userId, e.getMessage());
             return List.of();
+        }
+    }
+    
+    @Async("auditExecutor")
+    public void logPasswordChange(User user, String ipAddress, String details) {
+        try {
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(user.getId())
+                    .action("PASSWORD_CHANGE")
+                    .category(AuditLog.Category.USER_ACTION)
+                    .details(details)
+                    .ipAddress(ipAddress)
+                    .success(true)
+                    .failureReason(null)
+                    .deviceInfo("Web Browser")
+                    .build();
+
+            auditLogRepository.save(auditLog);
+
+            // Log to file
+            fileLogger.info("PASSWORD_CHANGE: User {} changed password successfully. IP: {}", 
+                user.getUsername(), ipAddress);
+
+        } catch (Exception e) {
+            log.error("Error logging password change: {}", e.getMessage(), e);
         }
     }
 }

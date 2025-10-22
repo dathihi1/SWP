@@ -27,7 +27,7 @@ public class AuditLogController {
 
     @GetMapping("/audit-logs/me")
     public ResponseEntity<Page<AuditLogResponse>> getMyAuditLogs(
-            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) Boolean success,
@@ -47,7 +47,7 @@ public class AuditLogController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<AuditLogResponse>> getAllAuditLogsForAdmin(
             @RequestParam Long userId,
-            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) Boolean success,
