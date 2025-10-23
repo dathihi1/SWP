@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mã OTP Đăng Ký - MMO Market</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .welcome-message {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .welcome-message h2 {
+            color: #0d6efd;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        .welcome-message p {
+            color: #6c757d;
+            margin: 0;
+            font-size: 16px;
+        }
+        .otp-display {
+            background: #f8f9fa;
+            border: 2px dashed #0d6efd;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .otp-code {
+            font-size: 48px;
+            font-weight: bold;
+            color: #dc3545;
+            letter-spacing: 8px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .validity-info {
+            background: #e3f2fd;
+            border-left: 4px solid #0d6efd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .validity-info h3 {
+            color: #0d6efd;
+            margin: 0 0 10px 0;
+        }
+        .validity-info p {
+            margin: 0;
+            color: #1565c0;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .warning-box h3 {
+            color: #856404;
+            margin: 0 0 10px 0;
+        }
+        .warning-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .warning-box li {
+            color: #856404;
+            margin: 5px 0;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .button {
+            display: inline-block;
+            background: #0d6efd;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: transform 0.3s ease;
+            border: none;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            background: #0a58ca;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .info-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .info-item h4 {
+            margin: 0 0 10px 0;
+            color: #0d6efd;
+        }
+        .info-item p {
+            margin: 0;
+            color: #6c757d;
+        }
+        .security-badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 5px;
+        }
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            .header, .content, .footer {
+                padding: 20px;
+            }
+            .otp-code {
+                font-size: 36px;
+                letter-spacing: 4px;
+            }
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>🎉 Chào Mừng Đến Với MMO Market!</h1>
+            <p>Xác thực tài khoản của bạn</p>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-message">
+                <h2>Xin chào!</h2>
+                <p>Cảm ơn bạn đã đăng ký tài khoản tại MMO Market. Để hoàn tất quá trình đăng ký, vui lòng sử dụng mã OTP bên dưới:</p>
+            </div>
+            
+            <div class="otp-display">
+                <p><strong>Mã OTP của bạn:</strong></p>
+                <div class="otp-code">{{OTP_CODE}}</div>
+                <p style="color: #6c757d; margin: 0;">Có hiệu lực trong {{VALIDITY_MINUTES}} phút</p>
+            </div>
+            
+            <div class="validity-info">
+                <h3>⏰ Thông tin quan trọng</h3>
+                <p>Mã OTP này sẽ hết hạn sau <strong>{{VALIDITY_MINUTES}} phút</strong>. Vui lòng nhập mã ngay để hoàn tất đăng ký tài khoản.</p>
+            </div>
+            
+            <div class="warning-box">
+                <h3>⚠️ Lưu ý bảo mật quan trọng:</h3>
+                <ul>
+                    <li>Mã OTP có hiệu lực trong <strong>{{VALIDITY_MINUTES}} phút</strong></li>
+                    <li><strong>KHÔNG</strong> chia sẻ mã này với bất kỳ ai</li>
+                    <li>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email</li>
+                    <li>Liên hệ hỗ trợ ngay nếu có nghi ngờ bảo mật</li>
+                </ul>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <h4>🕐 Thời gian hiệu lực</h4>
+                    <p>{{VALIDITY_MINUTES}} phút</p>
+                </div>
+                <div class="info-item">
+                    <h4>🔒 Bảo mật</h4>
+                    <p>Mã hóa SSL/TLS</p>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <span class="security-badge">🔐 Bảo mật cao</span>
+                <span class="security-badge">📱 Responsive</span>
+                <span class="security-badge">⚡ Nhanh chóng</span>
+            </div>
+            
+            <p style="text-align: center; color: #6c757d;">Sau khi xác thực thành công, bạn sẽ có thể truy cập đầy đủ các tính năng của MMO Market.</p>
+            
+            <div style="text-align: center;">
+                <a href="http://localhost:8080/verify-otp?email={{USER_EMAIL}}" class="button">Xác thực tài khoản ngay</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>MMO Market</strong> - Nền tảng thương mại điện tử uy tín</p>
+            <p>📧 Email: support@mmomarket.com | 📞 Hotline: 1900-xxxx</p>
+            <p style="font-size: 12px; margin-top: 15px;">
+                © {{CURRENT_YEAR}} MMO Market. Tất cả quyền được bảo lưu.<br>
+                Đây là email tự động, vui lòng không trả lời.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
