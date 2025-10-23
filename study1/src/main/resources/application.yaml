@@ -5,7 +5,7 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: 1234
+    password: root
   data:
     redis:
       host: localhost
@@ -29,13 +29,19 @@ spring:
       enabled: true
       pool:
         size: 2
-      thread-name-prefix: "scheduler-"
-    execution:
-      pool:
-        core-size: 2
-        max-size: 10
-        queue-capacity: 100
-      thread-name-prefix: "payment-"
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      write-durations-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+      fail-on-invalid-subtype: false
+      use-long-for-ints: true
+      use-big-decimal-for-floats: false
+    time-zone: Asia/Ho_Chi_Minh
+    # Force enable JSR310 module
+    modules:
+      - com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
   jpa:
     hibernate:
       ddl-auto: update
@@ -53,11 +59,6 @@ spring:
           starttls:
             enable: true
     default-encoding: UTF-8
-  web:
-    resources:
-      static-locations: classpath:/static/,classpath:/templates/
-      cache:
-        period: 0
   security:
     oauth2:
       client:
@@ -77,6 +78,19 @@ spring:
             user-name-attribute: "id"
 jwt:
   secret-key: "nVhBcHbv71BB6bdjaopOoa4LWx/tjz9c7wBREJdpLU7O+EQBGH3Np+PmgDpMziH4zLGbqtt9CWDPbVwToH/cGyDbZeIJ5rUsL1MAeVs0ER0="
+
+# Security Configuration
+security:
+  captcha:
+    expire-minutes: 5
+    length: 6
+  rate-limit:
+    ip-max-attempts: 10
+    ip-lockout-minutes: 30
+    captcha-required-attempts: 3
+    email-max-requests-per-hour: 3
+    otp-max-attempts: 5
+    otp-expire-minutes: 10
 
 
   

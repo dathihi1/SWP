@@ -1,11 +1,13 @@
 package com.badat.study1.controller;
 
+import com.badat.study1.model.AuditLog;
 import com.badat.study1.model.Stall;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.model.Product;
 import com.badat.study1.model.Review;
+import com.badat.study1.repository.AuditLogRepository;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
@@ -13,7 +15,6 @@ import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ReviewRepository;
-import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
@@ -27,8 +28,14 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -53,13 +60,13 @@ public class ViewController {
     private final UploadHistoryRepository uploadHistoryRepository;
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
-    private final OrderItemRepository orderItemRepository;
     private final OrderRepository orderRepository;
+    private final AuditLogRepository auditLogRepository;
 
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
 
-    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, ReviewRepository reviewRepository, OrderItemRepository orderItemRepository, OrderRepository orderRepository) {
+    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, ReviewRepository reviewRepository, OrderRepository orderRepository, AuditLogRepository auditLogRepository) {
         this.walletRepository = walletRepository;
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
@@ -69,8 +76,8 @@ public class ViewController {
         this.auditLogService = auditLogService;
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
-        this.orderItemRepository = orderItemRepository;
         this.orderRepository = orderRepository;
+        this.auditLogRepository = auditLogRepository;
     }
 
     // Inject common attributes (auth info and wallet balance) for all views
@@ -400,7 +407,7 @@ public class ViewController {
 
     @GetMapping("/payment-history")
     public String paymentHistoryPage(Model model,
-                                     @RequestParam(defaultValue = "1") int page,
+                                     @RequestParam(defaultValue = "0") int page,
                                      @RequestParam(required = false) String fromDate,
                                      @RequestParam(required = false) String toDate,
                                      @RequestParam(required = false) String transactionType,
@@ -427,64 +434,82 @@ public class ViewController {
 
         // Load wallet history for current user, apply filters and pagination
         final int currentPageParam = page;
-        walletRepository.findByUserId(user.getId()).ifPresent(wallet -> {
-            List<WalletHistory> all = walletHistoryService.getWalletHistoryByWalletId(wallet.getId());
+        try {
+            walletRepository.findByUserId(user.getId()).ifPresent(wallet -> {
+                try {
+                    List<WalletHistory> all = walletHistoryService.getWalletHistoryByWalletId(wallet.getId());
 
-            List<WalletHistory> filtered = all.stream()
-                    .filter(h -> {
-                        // fromDate (HTML5 yyyy-MM-dd)
-                        if (fromDate != null && !fromDate.trim().isEmpty()) {
-                            try {
-                                LocalDate fd = LocalDate.parse(fromDate);
-                                if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isBefore(fd)) {
-                                    return false;
+                    List<WalletHistory> filtered = all.stream()
+                            .filter(h -> {
+                                // fromDate (HTML5 yyyy-MM-dd)
+                                if (fromDate != null && !fromDate.trim().isEmpty()) {
+                                    try {
+                                        LocalDate fd = LocalDate.parse(fromDate);
+                                        if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isBefore(fd)) {
+                                            return false;
+                                        }
+                                    } catch (Exception ignored) {}
                                 }
-                            } catch (Exception ignored) {}
-                        }
-                        // toDate
-                        if (toDate != null && !toDate.trim().isEmpty()) {
-                            try {
-                                LocalDate td = LocalDate.parse(toDate);
-                                if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isAfter(td)) {
-                                    return false;
+                                // toDate
+                                if (toDate != null && !toDate.trim().isEmpty()) {
+                                    try {
+                                        LocalDate td = LocalDate.parse(toDate);
+                                        if (h.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate().isAfter(td)) {
+                                            return false;
+                                        }
+                                    } catch (Exception ignored) {}
                                 }
-                            } catch (Exception ignored) {}
-                        }
-                        // type
-                        if (transactionType != null && !transactionType.trim().isEmpty() && !"ALL".equals(transactionType)) {
-                            if (!h.getType().name().equals(transactionType)) return false;
-                        }
-                        // status
-                        if (transactionStatus != null && !transactionStatus.trim().isEmpty() && !"ALL".equals(transactionStatus)) {
-                            if (!h.getStatus().name().equals(transactionStatus)) return false;
-                        }
-                        return true;
-                    })
-                    .collect(Collectors.toList());
+                                // type
+                                if (transactionType != null && !transactionType.trim().isEmpty() && !"ALL".equals(transactionType)) {
+                                    if (!h.getType().name().equals(transactionType)) return false;
+                                }
+                                // status
+                                if (transactionStatus != null && !transactionStatus.trim().isEmpty() && !"ALL".equals(transactionStatus)) {
+                                    if (!h.getStatus().name().equals(transactionStatus)) return false;
+                                }
+                                return true;
+                            })
+                            .collect(Collectors.toList());
 
-            int pageSize = 5;
-            int totalPages = (int) Math.ceil((double) filtered.size() / pageSize);
-            int safePage = currentPageParam;
-            if (safePage < 1) safePage = 1;
-            if (safePage > totalPages && totalPages > 0) safePage = totalPages;
-            int startIndex = (safePage - 1) * pageSize;
-            int endIndex = Math.min(startIndex + pageSize, filtered.size());
-            List<WalletHistory> pageData = filtered.subList(startIndex, endIndex);
+                    int pageSize = 5;
+                    int totalPages = (int) Math.ceil((double) filtered.size() / pageSize);
+                    int safePage = currentPageParam;
+                    if (safePage < 1) safePage = 1;
+                    if (safePage > totalPages && totalPages > 0) safePage = totalPages;
+                    int startIndex = (safePage - 1) * pageSize;
+                    int endIndex = Math.min(startIndex + pageSize, filtered.size());
+                    List<WalletHistory> pageData = filtered.subList(startIndex, endIndex);
 
-            model.addAttribute("walletHistory", pageData);
-            model.addAttribute("currentPage", safePage);
-            model.addAttribute("totalPages", totalPages);
-            model.addAttribute("hasNextPage", safePage < totalPages);
-            model.addAttribute("hasPrevPage", safePage > 1);
-            model.addAttribute("nextPage", safePage + 1);
-            model.addAttribute("prevPage", safePage - 1);
+                    model.addAttribute("walletHistory", pageData);
+                    model.addAttribute("currentPage", safePage);
+                    model.addAttribute("totalPages", totalPages);
+                    model.addAttribute("hasNextPage", safePage < totalPages);
+                    model.addAttribute("hasPrevPage", safePage > 1);
+                    model.addAttribute("nextPage", safePage + 1);
+                    model.addAttribute("prevPage", safePage - 1);
 
-            // keep filter params
-            model.addAttribute("fromDate", fromDate);
-            model.addAttribute("toDate", toDate);
-            model.addAttribute("transactionType", transactionType);
-            model.addAttribute("transactionStatus", transactionStatus);
-        });
+                    // keep filter params
+                    model.addAttribute("fromDate", fromDate);
+                    model.addAttribute("toDate", toDate);
+                    model.addAttribute("transactionType", transactionType);
+                    model.addAttribute("transactionStatus", transactionStatus);
+                } catch (Exception e) {
+                    log.error("Error loading wallet history for user {}: {}", user.getId(), e.getMessage());
+                    model.addAttribute("walletHistory", List.of());
+                    model.addAttribute("currentPage", 1);
+                    model.addAttribute("totalPages", 0);
+                    model.addAttribute("hasNextPage", false);
+                    model.addAttribute("hasPrevPage", false);
+                }
+            });
+        } catch (Exception e) {
+            log.error("Error in payment history page: {}", e.getMessage());
+            model.addAttribute("walletHistory", List.of());
+            model.addAttribute("currentPage", 1);
+            model.addAttribute("totalPages", 0);
+            model.addAttribute("hasNextPage", false);
+            model.addAttribute("hasPrevPage", false);
+        }
 
         return "customer/payment-history";
     }
@@ -570,14 +595,19 @@ public class ViewController {
         model.addAttribute("totalOrders", 0);
 
         // Lấy lịch sử hoạt động gần đây (5 hoạt động mới nhất)
-        model.addAttribute("recentActivities", auditLogService.getRecentUserAuditLogs(freshUser.getId(), 5));
+        try {
+            model.addAttribute("recentActivities", auditLogService.getRecentUserAuditLogs(freshUser.getId(), 5));
+        } catch (Exception e) {
+            log.error("Error loading recent activities for user {}: {}", freshUser.getId(), e.getMessage());
+            model.addAttribute("recentActivities", List.of());
+        }
 
         return "customer/profile";
     }
 
     @GetMapping("/activity-history")
     public String activityHistoryPage(Model model, 
-                                    @RequestParam(defaultValue = "1") int page,
+                                    @RequestParam(defaultValue = "0") int page,
                                     @RequestParam(required = false) String action,
                                     @RequestParam(required = false) Boolean success,
                                     @RequestParam(required = false) String fromDate,
@@ -628,7 +658,7 @@ public class ViewController {
                 try {
                     log.info("Attempting to get audit logs for user {} (attempt {})", user.getId(), retryCount + 1);
                     activities = auditLogService.getUserAuditLogsWithFilters(
-                            user.getId(), page, 5, finalAction, success, fromDate, toDate);
+                            user.getId(), page, 5, finalAction, success, fromDate, toDate, null);
                     
                     if (activities != null) {
                         log.info("Successfully retrieved {} activities for user {}", activities.getTotalElements(), user.getId());
@@ -682,6 +712,8 @@ public class ViewController {
             
             model.addAttribute("actionMappings", actionMappings);
             model.addAttribute("availableActions", actionMappings.keySet());
+            
+            log.info("Available actions for user {}: {}", user.getUsername(), actionMappings.keySet());
 
             log.info("Activity history page loaded successfully for user {}", user.getUsername());
             return "customer/activity-history";
@@ -1402,4 +1434,272 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         return "redirect:/seller/reviews";
     }
 
+
+    @GetMapping("/admin/users/{id}/detail")
+    public String adminUserDetail(@PathVariable Long id, Model model,
+                                @RequestParam(defaultValue = "0") int page,
+                                @RequestParam(defaultValue = "25") int size,
+                                @RequestParam(required = false) String status,
+                                @RequestParam(required = false) String dateFrom,
+                                @RequestParam(required = false) String dateTo,
+                                @RequestParam(required = false) BigDecimal minAmount) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || 
+            "anonymousUser".equals(authentication.getName())) {
+            return "redirect:/login";
+        }
+
+        User currentUser = (User) authentication.getPrincipal();
+        if (!currentUser.getRole().equals(User.Role.ADMIN)) {
+            return "redirect:/";
+        }
+
+        // Get user details
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) {
+            return "redirect:/admin/users";
+        }
+
+        // Get user's wallet
+        Wallet wallet = walletRepository.findByUserId(id).orElse(null);
+        BigDecimal walletBalance = wallet != null ? wallet.getBalance() : BigDecimal.ZERO;
+
+        // Get user's orders with filters
+        // Pageable pageable = PageRequest.of(page, size); // Not used in mock implementation
+        
+        // Mock order data for now - you should implement real order filtering
+        List<Map<String, Object>> orders = new ArrayList<>();
+        
+        // Apply filters to mock data
+        if (status != null && !status.isEmpty()) {
+            // Filter by status
+            orders = orders.stream()
+                .filter(order -> order.get("status").equals(status))
+                .collect(java.util.stream.Collectors.toList());
+        }
+        
+        if (dateFrom != null && !dateFrom.isEmpty()) {
+            try {
+                java.time.LocalDate fromDate = java.time.LocalDate.parse(dateFrom);
+                orders = orders.stream()
+                    .filter(order -> {
+                        java.time.LocalDate orderDate = (java.time.LocalDate) order.get("orderDate");
+                        return orderDate.isAfter(fromDate) || orderDate.isEqual(fromDate);
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+            } catch (Exception e) {
+                log.warn("Invalid dateFrom format: {}", dateFrom);
+            }
+        }
+        
+        if (dateTo != null && !dateTo.isEmpty()) {
+            try {
+                java.time.LocalDate toDate = java.time.LocalDate.parse(dateTo);
+                orders = orders.stream()
+                    .filter(order -> {
+                        java.time.LocalDate orderDate = (java.time.LocalDate) order.get("orderDate");
+                        return orderDate.isBefore(toDate) || orderDate.isEqual(toDate);
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+            } catch (Exception e) {
+                log.warn("Invalid dateTo format: {}", dateTo);
+            }
+        }
+        
+        if (minAmount != null) {
+            orders = orders.stream()
+                .filter(order -> {
+                    BigDecimal orderAmount = (BigDecimal) order.get("totalAmount");
+                    return orderAmount.compareTo(minAmount) >= 0;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        }
+        
+        // Mock data for demonstration - replace with actual order queries
+        Map<String, Object> order1 = new HashMap<>();
+        order1.put("id", 1L);
+        order1.put("productName", "Gmail Premium 2024");
+        order1.put("productType", "Email");
+        order1.put("productImage", "/images/products/email.jpg");
+        order1.put("quantity", 1);
+        order1.put("totalPrice", new BigDecimal("50000"));
+        order1.put("status", "COMPLETED");
+        order1.put("createdAt", java.time.LocalDateTime.now().minusDays(5));
+        orders.add(order1);
+
+        Map<String, Object> order2 = new HashMap<>();
+        order2.put("id", 2L);
+        order2.put("productName", "Windows 11 Pro Key");
+        order2.put("productType", "Software");
+        order2.put("productImage", "/images/products/software.jpg");
+        order2.put("quantity", 1);
+        order2.put("totalPrice", new BigDecimal("200000"));
+        order2.put("status", "PENDING");
+        order2.put("createdAt", java.time.LocalDateTime.now().minusDays(2));
+        orders.add(order2);
+
+        // Calculate stats
+        BigDecimal totalSpent = orders.stream()
+            .map(o -> (BigDecimal) o.get("totalPrice"))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        int totalOrders = orders.size();
+
+        model.addAttribute("user", user);
+        model.addAttribute("walletBalance", walletBalance);
+        model.addAttribute("totalSpent", totalSpent);
+        model.addAttribute("totalOrders", totalOrders);
+        model.addAttribute("userCreatedAt", user.getCreatedAt());
+        model.addAttribute("orders", orders);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("pageSize", size);
+        model.addAttribute("totalItems", orders.size());
+        model.addAttribute("totalPages", Math.max(1, (int) Math.ceil((double) orders.size() / size)));
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("username", currentUser.getUsername());
+        model.addAttribute("userRole", currentUser.getRole().name());
+        
+        return "admin/user-detail";
+    }
+
+    @GetMapping("/admin/audit-logs")
+    public String adminAuditLogs(Model model,
+                               @RequestParam(defaultValue = "0") int page,
+                               @RequestParam(defaultValue = "25") int size,
+                               @RequestParam(required = false) String action,
+                               @RequestParam(required = false) String category,
+                               @RequestParam(required = false) String success,
+                               @RequestParam(required = false) String startDate,
+                               @RequestParam(required = false) String endDate) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || 
+            "anonymousUser".equals(authentication.getName())) {
+            return "redirect:/login";
+        }
+
+        User currentUser = (User) authentication.getPrincipal();
+        if (!currentUser.getRole().equals(User.Role.ADMIN)) {
+            return "redirect:/";
+        }
+
+        // Get audit logs with filters
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        
+        // Note: You'll need to implement filtering in your AuditLogRepository
+        // For now, we'll get all logs
+        Page<AuditLog> auditLogsPage = auditLogRepository.findAll(pageable);
+        
+        log.info("Audit logs query - Page: {}, Size: {}, Total elements: {}, Total pages: {}", 
+                page, size, auditLogsPage.getTotalElements(), auditLogsPage.getTotalPages());
+        
+        // Get unique actions and categories for filter dropdowns
+        List<String> actions = auditLogRepository.findDistinctActions();
+        List<String> categories = auditLogRepository.findDistinctCategories();
+        
+        // Convert success parameter to Boolean if needed
+        Boolean successBoolean = null;
+        if (success != null && !success.isEmpty()) {
+            successBoolean = Boolean.valueOf(success);
+        }
+        
+        model.addAttribute("auditLogs", auditLogsPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", auditLogsPage.getTotalPages());
+        model.addAttribute("totalElements", auditLogsPage.getTotalElements());
+        model.addAttribute("pageSize", size);
+        model.addAttribute("actions", actions);
+        model.addAttribute("categories", categories);
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("username", currentUser.getUsername());
+        model.addAttribute("userRole", currentUser.getRole().name());
+        
+        // Add filter parameters to model for pagination
+        model.addAttribute("action", action);
+        model.addAttribute("category", category);
+        model.addAttribute("success", success);
+        model.addAttribute("startDate", startDate);
+        model.addAttribute("endDate", endDate);
+        
+        return "admin/audit-logs";
+    }
+
+    @GetMapping("/admin/audit-logs/export")
+    public ResponseEntity<?> exportAuditLogs(@RequestParam(required = false) String action,
+                                            @RequestParam(required = false) String category,
+                                            @RequestParam(required = false) Boolean success,
+                                            @RequestParam(required = false) String startDate,
+                                            @RequestParam(required = false) String endDate) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || 
+            "anonymousUser".equals(authentication.getName())) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        User currentUser = (User) authentication.getPrincipal();
+        if (!currentUser.getRole().equals(User.Role.ADMIN)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+        }
+
+        try {
+            // Get all audit logs (no pagination for export)
+            List<AuditLog> auditLogs = auditLogRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+            
+            // Create CSV content
+            StringBuilder csv = new StringBuilder();
+            csv.append("ID,Thời gian,Hành động,Danh mục,Trạng thái,User ID,IP Address,Chi tiết\n");
+            
+            for (AuditLog log : auditLogs) {
+                csv.append(String.format("%d,%s,%s,%s,%s,%s,%s,\"%s\"\n",
+                    log.getId(),
+                    log.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),
+                    log.getAction(),
+                    log.getCategory().name(),
+                    log.getSuccess() ? "Thành công" : "Thất bại",
+                    log.getUserId() != null ? log.getUserId().toString() : "",
+                    log.getIpAddress(),
+                    log.getDetails().replace("\"", "\"\"") // Escape quotes
+                ));
+            }
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "audit-logs-" + 
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")) + ".csv");
+            
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(csv.toString().getBytes("UTF-8"));
+                
+        } catch (Exception e) {
+            log.error("Error exporting audit logs: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+        }
+    }
+    
+    @GetMapping("/logout")
+    public String logout(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            // Clear the access token cookie
+            boolean secure = request.isSecure();
+            ResponseCookie clearCookie = ResponseCookie.from("accessToken", "")
+                    .httpOnly(true)
+                    .secure(secure)
+                    .path("/")
+                    .sameSite("Lax")
+                    .maxAge(0)
+                    .build();
+            
+            response.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+            
+            // Clear Spring Security context
+            SecurityContextHolder.clearContext();
+            
+            log.info("User logged out successfully");
+            return "redirect:/login?logout=true";
+            
+        } catch (Exception e) {
+            log.error("Error during logout: {}", e.getMessage(), e);
+            return "redirect:/login?error=logout_failed";
+        }
+    }
 }

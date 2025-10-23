@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class AuditLogResponse {
     private Long id;
     private String action;
+    private AuditLog.Category category;
     private String details;
     private String ipAddress;
     private Boolean success;
@@ -29,6 +30,7 @@ public class AuditLogResponse {
         return AuditLogResponse.builder()
                 .id(auditLog.getId())
                 .action(auditLog.getAction())
+                .category(auditLog.getCategory())
                 .details(auditLog.getDetails())
                 .ipAddress(auditLog.getIpAddress())
                 .success(auditLog.getSuccess())

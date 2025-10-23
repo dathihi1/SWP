@@ -275,40 +275,7 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="d-flex align-items-center justify-content-between">
-                <a class="navbar-brand d-flex align-items-center" th:href="@{/admin}" href="/admin">
-                    <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
-                    MMO Market Admin
-                </a>
-            </div>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">ADMIN</div>
-            <a href="/admin" class="menu-item">
-                <i class="fas fa-tachometer-alt"></i>
-                Dashboard
-            </a>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">QUẢN LÝ</div>
-            <a href="/admin/users" class="menu-item active">
-                <i class="fas fa-users"></i>
-                Quản lý người dùng
-            </a>
-            <a href="/admin/stalls" class="menu-item">
-                <i class="fas fa-store"></i>
-                Quản lý gian hàng
-            </a>
-            <a href="/admin/withdraw-requests" class="menu-item">
-                <i class="fas fa-money-bill-transfer"></i>
-                Yêu cầu rút tiền
-            </a>
-        </div>
-    </div>
+    <div th:replace="~{fragments/admin-sidebar :: admin-sidebar}"></div>
     
     <!-- Main Content -->
     <div class="main-content">
@@ -374,12 +341,60 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Tên đăng nhập</th>
-                                <th>Email</th>
-                                <th>Vai trò</th>
-                                <th>Trạng thái</th>
-                                <th>Ngày tạo</th>
+                                <th>
+                                    <a th:href="@{/admin/users(sortBy='id', sortDir=${sortBy == 'id' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        ID 
+                                        <i class="fas fa-sort" th:if="${sortBy != 'id'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'id' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'id' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a th:href="@{/admin/users(sortBy='username', sortDir=${sortBy == 'username' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        Tên đăng nhập 
+                                        <i class="fas fa-sort" th:if="${sortBy != 'username'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'username' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'username' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a th:href="@{/admin/users(sortBy='email', sortDir=${sortBy == 'email' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        Email 
+                                        <i class="fas fa-sort" th:if="${sortBy != 'email'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'email' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'email' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a th:href="@{/admin/users(sortBy='role', sortDir=${sortBy == 'role' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        Vai trò 
+                                        <i class="fas fa-sort" th:if="${sortBy != 'role'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'role' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'role' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a th:href="@{/admin/users(sortBy='status', sortDir=${sortBy == 'status' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        Trạng thái 
+                                        <i class="fas fa-sort" th:if="${sortBy != 'status'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'status' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'status' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a th:href="@{/admin/users(sortBy='createdAt', sortDir=${sortBy == 'createdAt' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                       class="text-decoration-none text-dark">
+                                        Ngày tạo 
+                                        <i class="fas fa-sort" th:if="${sortBy != 'createdAt'}"></i>
+                                        <i class="fas fa-sort-up" th:if="${sortBy == 'createdAt' && sortDir == 'asc'}"></i>
+                                        <i class="fas fa-sort-down" th:if="${sortBy == 'createdAt' && sortDir == 'desc'}"></i>
+                                    </a>
+                                </th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
@@ -399,8 +414,8 @@
                                 </td>
                                 <td>
                                     <span class="status-badge" 
-                                          th:classappend="${user.isActive} ? 'status-active' : 'status-inactive'"
-                                          th:text="${user.isActive} ? 'Hoạt động' : 'Không hoạt động'">
+                                          th:classappend="${user.status.name() == 'ACTIVE'} ? 'status-active' : 'status-inactive'"
+                                          th:text="${user.status.name() == 'ACTIVE'} ? 'Hoạt động' : 'Khóa'">
                                         Trạng thái
                                     </span>
                                 </td>
@@ -433,24 +448,114 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+    <script th:inline="javascript">
         // Sidebar toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.querySelector('.sidebar');
             const mainContent = document.querySelector('.main-content');
             
-            sidebarToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('collapsed');
-                
-                // Update main content margin
-                if (sidebar.classList.contains('collapsed')) {
-                    mainContent.style.marginLeft = '0';
-                } else {
-                    mainContent.style.marginLeft = '280px';
+            if (sidebarToggle && sidebar && mainContent) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                    
+                    // Update main content margin
+                    if (sidebar.classList.contains('collapsed')) {
+                        mainContent.style.marginLeft = '0';
+                    } else {
+                        mainContent.style.marginLeft = '280px';
+                    }
+                });
+            }
+            
+            // Set active menu item based on current path
+            const currentPath = window.location.pathname;
+            const menuItems = document.querySelectorAll('.menu-item[data-path]');
+            
+            menuItems.forEach(function(item) {
+                const itemPath = item.getAttribute('data-path');
+                if (currentPath === itemPath || (itemPath !== '/admin' && currentPath.startsWith(itemPath))) {
+                    item.classList.add('active');
                 }
             });
         });
+        
+        // Sorting function
+        function sortTable(column) {
+            // Get current sort parameters from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentSortBy = urlParams.get('sortBy') || 'id';
+            const currentSortDir = urlParams.get('sortDir') || 'asc';
+            let newSortDir = 'asc';
+            
+            if (currentSortBy === column) {
+                newSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+            }
+            
+            const url = new URL(window.location);
+            url.searchParams.set('sortBy', column);
+            url.searchParams.set('sortDir', newSortDir);
+            url.searchParams.set('page', '0'); // Reset to first page
+            window.location.href = url.toString();
+        }
+        
+        // Add user function
+        window.confirmAddUser = function() {
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const role = document.getElementById('role').value;
+            
+            if (!username || !email || !password || !role) {
+                alert('Vui lòng điền đầy đủ thông tin!');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('Mật khẩu phải có ít nhất 6 ký tự!');
+                return;
+            }
+            
+            const formData = {
+                username: username,
+                email: email,
+                password: password,
+                role: role
+            };
+            
+            fetch('/api/admin/users/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Thêm người dùng thành công!');
+                    location.reload();
+                } else {
+                    return response.json().then(data => {
+                        // Check for specific error messages
+                        if (data.error && data.error.includes('username')) {
+                            alert('Lỗi: Tên đăng nhập đã tồn tại!');
+                        } else if (data.error && data.error.includes('email')) {
+                            alert('Lỗi: Email đã tồn tại!');
+                        } else if (data.error && data.error.includes('Username')) {
+                            alert('Lỗi: Tên đăng nhập đã tồn tại!');
+                        } else if (data.error && data.error.includes('Email')) {
+                            alert('Lỗi: Email đã tồn tại!');
+                        } else {
+                            alert('Lỗi: ' + (data.error || 'Có lỗi xảy ra'));
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi thêm người dùng');
+            });
+        };
         
         // Action button functions
         function deleteUser(userId) {
@@ -460,5 +565,8 @@
             }
         }
     </script>
+    
+    <!-- Include admin scripts -->
+    <div th:replace="~{fragments/admin-scripts :: admin-scripts}"></div>
 </body>
 </html>

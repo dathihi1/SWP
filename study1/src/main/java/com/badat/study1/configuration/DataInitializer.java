@@ -133,8 +133,8 @@ public class DataInitializer implements CommandLineRunner {
             shop.setUserId(seller.getId());
             shop.setCccd("123456789");
             shop.setBankAccountId(bankAccount.getId());
-            shop.setCreatedAtLower(Instant.now());
-            shop.setDelete(false);
+            shop.setCreatedAt(Instant.now());
+            shop.setIsDelete(false);
             shopRepository.save(shop);
         }
     }

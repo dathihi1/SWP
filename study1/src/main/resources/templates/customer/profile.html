@@ -11,11 +11,38 @@
         .profile-card {
             border: 1px solid #e9ecef;
             border-radius: 0.75rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: box-shadow 0.2s;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
         }
         .profile-card:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+        }
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: #ffffff; /* solid blue header band */
+            z-index: 1;
+        }
+        .profile-card .card-body {
+            position: relative;
+            z-index: 2;
+        }
+        .profile-card .avatar-in-shadow {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.6);
+            z-index: 3;
         }
         .info-item {
             border-bottom: 2px solid #e9ecef;
@@ -111,71 +138,47 @@
         .stats-card.info {
             background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
         }
+        
+        /* Email row vertical layout */
+        .email-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .email-row .info-label { 
+            margin-bottom: 0; 
+            color: black; 
+            font-weight: 600;
+        }
+        .email-row .info-value { 
+            margin-bottom: 0; 
+            padding-left: 0;
+        }
+        
+        /* Fixed circular crop frame */
+        .circle-crop-frame {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #0d6efd;
+            position: relative;
+            display: inline-block;
+            background: #e9f2ff;
+        }
+        .crop-instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #856404;
+        }
     </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
-    <div class="container">
-        <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
-            <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
-            MMO Market
-        </a>
-        
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
-            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
-                <form role="search">
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
-                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
-                    </div>
-                </form>
-            </div>
-            
-            <!-- Desktop navigation -->
-            <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
-                <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
-                    <!-- Current Balance (synced) -->
-                    <div class="btn btn-outline-success d-flex align-items-center gap-2">
-                        <i class="fa-solid fa-wallet"></i>
-                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
-                    </div>
-                    
-                    <div class="dropdown">
-                        <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-user"></i>
-                            <span th:text="${username}">User</span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
-                            <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
-                            <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
-                            <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
-                            <li><a class="dropdown-item" th:href="@{/activity-history}" href="/activity-history"><i class="fa-solid fa-clock-rotate-left me-2"></i>Lịch sử hoạt động</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
-                        </ul>
-                    </div>
-
-                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
-                        <i class="fa-solid fa-message"></i>
-                        <span>Tin nhắn</span>
-                    </a>
-                    
-                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
-                        <i class="fa-solid fa-cart-shopping"></i>
-                        <span>Giỏ hàng</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</nav>
+<div th:replace="fragments/layout :: site_header"></div>
 
 <main class="container py-4 py-md-5">
     <!-- Flash Messages -->
@@ -199,11 +202,11 @@
         <div class="col-lg-8">
             <div class="card profile-card">
                 <div class="card-body">
-                    <div class="info-item">
+                    <div class="info-item email-row">
                         <div class="info-label">
-                            <i class="fa-solid fa-envelope me-2 text-primary"></i>Email
+                            <i class="fa-solid fa-envelope me-2"></i>Email
                         </div>
-                        <div class="info-value" th:text="${user?.email ?: 'Chưa cập nhật'}" data-email="${user?.email}">
+                        <div class="info-value" data-email="${user?.email}">
                             <span th:if="${user?.email}" th:text="${user.email}"></span>
                             <span th:unless="${user?.email}" class="text-muted">Chưa cập nhật</span>
                         </div>
@@ -295,10 +298,11 @@
                 <div class="card-body text-center">
                     <div class="mb-4">
                         <div class="position-relative d-inline-block mb-3">
-                            <img th:src="${user.avatarUrl != null ? user.avatarUrl : '/images/default-avatar.svg'}" 
+                            <img th:src="@{/api/profile/avatar/me}" 
                                  class="rounded-circle border border-2 border-primary" 
                                  style="width: 100px; height: 100px; object-fit: cover;"
-                                 alt="Avatar">
+                                 alt="Avatar"
+                                 onerror="this.src='/images/default-avatar.svg'">
                             <button class="btn btn-sm btn-primary position-absolute bottom-0 end-0 rounded-circle" 
                                     style="width: 30px; height: 30px; padding: 0;"
                                     data-bs-toggle="modal" data-bs-target="#avatarModal"
@@ -408,12 +412,15 @@
             <div class="modal-body">
                 <form id="avatarForm" enctype="multipart/form-data">
                     <div class="text-center mb-3">
-                        <div class="position-relative d-inline-block">
+                        <div class="circle-crop-frame" id="cropFrame">
                             <img id="avatarPreview" 
-                                 src="/images/default-avatar.svg" 
-                                 class="rounded-circle border border-2 border-primary" 
-                                 style="width: 150px; height: 150px; object-fit: cover;"
-                                 alt="Avatar Preview">
+                                 th:src="@{/api/profile/avatar/me}" 
+                                 style="width: 100%; height: 100%; object-fit: cover; position: relative;"
+                                 alt="Avatar Preview"
+                                 onerror="this.src='/images/default-avatar.svg'">
+                        </div>
+                        <div class="crop-instructions d-none" id="cropHint">
+                            Kéo ảnh bên trong khung tròn để chọn vị trí bạn thích.
                         </div>
                     </div>
                     
@@ -431,8 +438,8 @@
                         <button type="button" class="btn btn-outline-danger flex-fill" onclick="deleteAvatar()">
                             <i class="fa-solid fa-trash me-1"></i>Xóa avatar
                         </button>
-                        <button type="button" class="btn btn-secondary flex-fill" data-bs-dismiss="modal">
-                            Hủy
+                        <button type="button" class="btn btn-warning flex-fill" onclick="toggleCropMode()" id="cropToggleBtn">
+                            <i class="fa-solid fa-crop me-1"></i>Cắt chỉnh
                         </button>
                         <button type="submit" class="btn btn-primary flex-fill">
                             <i class="fa-solid fa-upload me-1"></i>Upload
@@ -470,7 +477,7 @@
                         <div class="col-md-6">
                             <label for="editFullName" class="form-label">Họ và tên <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="editFullName" required th:value="${user?.fullName}"
-                                   pattern="^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂĐÊÔƠƯăâđêôơư\s]{2,50}$"
+                                   pattern="^[\p{L}\s]{2,50}$"
                                    title="Họ và tên phải có từ 2-50 ký tự, chỉ chứa chữ cái và khoảng trắng">
                             <div class="invalid-feedback" id="fullNameError"></div>
                         </div>
@@ -494,12 +501,7 @@
     </div>
 </div>
 
-<footer class="border-top py-3 mt-5">
-    <div class="container d-flex justify-content-between align-items-center small">
-        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
-        <div class="text-muted">Liên hệ: support@example.com</div>
-    </div>
-</footer>
+<div th:replace="fragments/layout :: site_footer"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/auth.js"></script>
@@ -520,10 +522,18 @@
         const fullNameElement = document.querySelector('[data-fullname]');
         const phoneElement = document.querySelector('[data-phone]');
         
-        const username = usernameElement?.dataset.username || usernameElement?.textContent?.trim() || '';
-        const email = emailElement?.dataset.email || emailElement?.textContent?.trim() || '';
-        const fullName = fullNameElement?.dataset.fullname || fullNameElement?.textContent?.trim() || '';
-        const phone = phoneElement?.dataset.phone || phoneElement?.textContent?.trim() || '';
+        const normalize = (val) => {
+            if (!val) return '';
+            const s = String(val).trim();
+            // If Thymeleaf didn't evaluate and left an expression like ${...}
+            if (s.startsWith('${') && s.endsWith('}')) return '';
+            return s;
+        };
+
+        const username = normalize(usernameElement?.dataset.username) || normalize(usernameElement?.textContent);
+        const email = normalize(emailElement?.dataset.email) || normalize(emailElement?.textContent);
+        const fullName = normalize(fullNameElement?.dataset.fullname) || normalize(fullNameElement?.textContent);
+        const phone = normalize(phoneElement?.dataset.phone) || normalize(phoneElement?.textContent);
         
         console.log('Data attributes:', {
             username: usernameElement?.dataset.username,
@@ -536,15 +546,17 @@
         if (!document.getElementById('editUsername').value) {
             document.getElementById('editUsername').value = username;
         }
-        if (!document.getElementById('editEmail').value) {
-            document.getElementById('editEmail').value = email || '';
-        }
-        if (!document.getElementById('editFullName').value) {
-            document.getElementById('editFullName').value = fullName || '';
-        }
-        if (!document.getElementById('editPhone').value) {
-            document.getElementById('editPhone').value = phone || '';
-        }
+        const editEmail = document.getElementById('editEmail');
+        const editFullName = document.getElementById('editFullName');
+        const editPhone = document.getElementById('editPhone');
+
+        if (!editEmail.value) editEmail.value = email || '';
+        if (!editFullName.value) editFullName.value = fullName || '';
+        if (!editPhone.value) editPhone.value = phone || '';
+
+        // Set helpful placeholders when empty
+        if (!editFullName.value) editFullName.placeholder = 'Chưa cập nhật';
+        if (!editPhone.value) editPhone.placeholder = 'Chưa cập nhật';
         
         console.log('Form populated:', { username, email, fullName, phone });
     }
@@ -587,7 +599,7 @@
             
             // Validate full name (only if provided)
             if (fullName) {
-                const fullNameRegex = /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂĐÊÔƠƯăâđêôơư\s]{2,50}$/;
+                const fullNameRegex = /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼẾỀỂỄỆỈĨỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴÝỶỸĐăạảấầẩẫậắằẳẵặẹẻẽếềểễệỉĩịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹđ\s]{2,50}$/;
                 if (!fullNameRegex.test(fullName)) {
                     showFieldError('editFullName', 'Họ và tên phải có từ 2-50 ký tự, chỉ chứa chữ cái và khoảng trắng');
                     return;
@@ -710,14 +722,108 @@
     }
     
     // Avatar management functions
+    let isCropMode = false;
+    let cropData = null;
+    
     function previewAvatar(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                document.getElementById('avatarPreview').src = e.target.result;
+                const previewImg = document.getElementById('avatarPreview');
+                previewImg.src = e.target.result;
+                
+                // Reset crop mode when new image is loaded
+                exitCropMode();
             };
             reader.readAsDataURL(input.files[0]);
         }
+    }
+    
+    function toggleCropMode() {
+        const previewImg = document.getElementById('avatarPreview');
+        const cropButton = document.querySelector('button[onclick="toggleCropMode()"]');
+        
+        if (!isCropMode) {
+            enterCropMode();
+        } else {
+            exitCropMode();
+        }
+    }
+    
+    function enterCropMode() {
+        const previewImg = document.getElementById('avatarPreview');
+        const cropButton = document.getElementById('cropToggleBtn');
+        const cropHint = document.getElementById('cropHint');
+        
+        isCropMode = true;
+        cropButton.innerHTML = '<i class="fa-solid fa-check me-1"></i>Xong';
+        cropButton.classList.remove('btn-warning');
+        cropButton.classList.add('btn-success');
+        
+        // Show hint
+        cropHint.classList.remove('d-none');
+        
+        // Only allow dragging the image inside fixed circle
+        initializeCropHandlers();
+    }
+    
+    function exitCropMode() {
+        const cropButton = document.getElementById('cropToggleBtn');
+        const cropHint = document.getElementById('cropHint');
+        
+        isCropMode = false;
+        cropButton.innerHTML = '<i class="fa-solid fa-crop me-1"></i>Cắt chỉnh';
+        cropButton.classList.remove('btn-success');
+        cropButton.classList.add('btn-warning');
+        
+        // Hide hint
+        cropHint.classList.add('d-none');
+    }
+    
+    function initializeCropHandlers() {
+        const previewImg = document.getElementById('avatarPreview');
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+        
+        // Make image draggable
+        previewImg.addEventListener('mousedown', function(e) {
+            if (!isCropMode) return;
+            
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            const rect = previewImg.getBoundingClientRect();
+            startLeft = previewImg.offsetLeft;
+            startTop = previewImg.offsetTop;
+            
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging || !isCropMode) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            let newLeft = startLeft + deltaX;
+            let newTop = startTop + deltaY;
+            
+            // Constrain movement within the circle frame area
+            const frame = document.getElementById('cropFrame');
+            const frameRect = frame.getBoundingClientRect();
+            const imgRect = previewImg.getBoundingClientRect();
+            
+            previewImg.style.left = newLeft + 'px';
+            previewImg.style.top = newTop + 'px';
+            previewImg.style.position = 'relative';
+        });
+        
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+        
+        // No resize handles – fixed circle frame
     }
     
     async function uploadAvatar() {
@@ -941,5 +1047,8 @@
         }
     });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
 </body>
 </html>

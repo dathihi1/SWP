@@ -11,7 +11,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ResetPasswordRequest {
     private String email;
-    private String otp;
+    private String otp;            // For verify-otp endpoint
+    private String resetToken;     // For reset-password endpoint
     private String newPassword;
     private String repassword;
 }
