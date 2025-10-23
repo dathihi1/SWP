@@ -482,24 +482,24 @@
                                 <div class="stat-number" th:text="${#lists.size(pendingStalls)}">0</div>
                                 <div class="stat-label">Gian hàng chờ duyệt</div>
                             </div>
-                        </div>
                     </div>
                 </div>
-                
+            </div>
+            
                 <div class="col-md-3">
                     <div class="stats-card clickable" onclick="showTopSellers()">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon me-3">
                                 <i class="fas fa-trophy fa-2x" style="color:#ffc107;"></i>
-                            </div>
+                        </div>
                             <div>
                                 <div class="stat-number" th:text="${#lists.size(topSellers)}">0</div>
                                 <div class="stat-label">Top 5 cửa hàng</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                    </div>
+                                    </div>
+                                    </div>
+                                    </div>
+                                    </div>
             
             <!-- Shop Search (outside table header/container) -->
             <div id="shopSearchBar" class="mb-3" style="display: none;">
@@ -511,10 +511,10 @@
                             </span>
                             <input type="text" class="form-control" id="shopSearchInput" 
                                    placeholder="Tìm kiếm theo tên shop hoặc người dùng...">
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
             
             <!-- Sellers List Section (Hidden by default) -->
             <div id="sellersListSection" class="table-container mb-4" style="display: none;">
@@ -623,8 +623,8 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
+                                    </div>
+                                    </div>
             
             <!-- History Section (Hidden by default) -->
             <div id="historySection" class="table-container mb-4" style="display: none;">
@@ -678,7 +678,7 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+                    </div>
             
             <!-- Revenue List Section (Hidden by default) -->
             <div id="revenueListSection" class="table-container mb-4" style="display: none;">
@@ -692,8 +692,8 @@
                         <button class="btn btn-sm btn-outline-danger" onclick="hideRevenueList()">
                             <i class="fas fa-times me-1"></i>Đóng
                                         </button>
-                    </div>
                 </div>
+            </div>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
@@ -719,9 +719,9 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
-            
+        </div>
+    </div>
+    
             <!-- Top 5 Sellers Section (Hidden by default) -->
             <div id="topSellersSection" class="table-container mb-4" style="display: none;">
                 <div class="table-header">
