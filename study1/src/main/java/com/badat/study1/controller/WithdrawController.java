@@ -9,6 +9,7 @@ import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.WithdrawRequestRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.service.WithdrawService;
+import com.badat.study1.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ import java.util.Map;
 public class WithdrawController {
     
     private final WithdrawService withdrawService;
+    private final OtpService otpService;
     private final WalletRepository walletRepository;
     private final WithdrawRequestRepository withdrawRequestRepository;
     private final ShopRepository shopRepository;
@@ -151,10 +153,65 @@ public class WithdrawController {
         return "withdraw";
     }
     
+    @PostMapping("/api/withdraw/send-otp")
+    @ResponseBody
+    public ResponseEntity<?> sendWithdrawOtp(@RequestBody Map<String, Object> request) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            User user = (User) auth.getPrincipal();
+            
+            String email = user.getEmail();
+            String purpose = "Yêu cầu rút tiền";
+            
+            otpService.sendOtp(email, purpose);
+            
+            // Assume OTP was sent successfully
+            boolean sent = true;
+            
+            if (sent) {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "Mã OTP đã được gửi đến email của bạn");
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Không thể gửi OTP. Vui lòng thử lại sau");
+                return ResponseEntity.badRequest().body(error);
+            }
+        } catch (Exception e) {
+            log.error("Error sending withdraw OTP: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+    
     @PostMapping("/api/withdraw/request")
     @ResponseBody
-    public ResponseEntity<?> createWithdrawRequest(@RequestBody WithdrawRequestDto requestDto) {
+    public ResponseEntity<?> createWithdrawRequest(@RequestBody Map<String, Object> request) {
         try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            User user = (User) auth.getPrincipal();
+            
+            // Verify OTP first
+            String otp = (String) request.get("otp");
+            String email = user.getEmail();
+            String purpose = "Yêu cầu rút tiền";
+            
+            if (!otpService.verifyOtp(email, purpose, otp)) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Mã OTP không hợp lệ hoặc đã hết hạn");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
+            // Create withdraw request DTO
+            WithdrawRequestDto requestDto = WithdrawRequestDto.builder()
+                    .amount(new BigDecimal(request.get("amount").toString()))
+                    .bankAccountNumber((String) request.get("bankAccountNumber"))
+                    .bankAccountName((String) request.get("bankAccountName"))
+                    .bankName((String) request.get("bankName"))
+                    .note((String) request.get("note"))
+                    .build();
+            
             WithdrawRequestResponse response = withdrawService.createWithdrawRequest(requestDto);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -165,11 +222,37 @@ public class WithdrawController {
         }
     }
     
+    @PostMapping("/api/withdraw/cancel/{requestId}")
+    @ResponseBody
+    public ResponseEntity<?> cancelWithdrawRequest(@PathVariable Long requestId) {
+        try {
+            withdrawService.cancelWithdrawRequest(requestId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Hủy yêu cầu rút tiền thành công. Số tiền đã được trả về ví");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error canceling withdraw request: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+    
     @GetMapping("/api/withdraw/requests")
     @ResponseBody
-    public ResponseEntity<?> getWithdrawRequests() {
+    public ResponseEntity<?> getWithdrawRequests(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String minAmount,
+            @RequestParam(required = false) String maxAmount,
+            @RequestParam(required = false) String bankAccountNumber,
+            @RequestParam(required = false) String bankName,
+            @RequestParam(required = false) String bankAccountName) {
         try {
-            List<WithdrawRequestResponse> requests = withdrawService.getWithdrawRequestsByUser();
+            List<WithdrawRequestResponse> requests = withdrawService.getWithdrawRequestsByUserWithFilters(
+                    startDate, endDate, status, minAmount, maxAmount, 
+                    bankAccountNumber, bankName, bankAccountName);
             return ResponseEntity.ok(requests);
         } catch (Exception e) {
             log.error("Error getting withdraw requests: {}", e.getMessage());
@@ -213,7 +296,13 @@ public class WithdrawController {
     
     @GetMapping("/api/admin/withdraw/requests")
     @ResponseBody
-    public ResponseEntity<?> getAllWithdrawRequests(@RequestParam(required = false) String status) {
+    public ResponseEntity<?> getAllWithdrawRequests(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo,
+            @RequestParam(required = false) String searchName,
+            @RequestParam(required = false) String searchAccount,
+            @RequestParam(required = false) String searchBank) {
         try {
             List<WithdrawRequestResponse> requests;
             if (status != null && !status.isEmpty()) {
@@ -223,6 +312,10 @@ public class WithdrawController {
             } else {
                 requests = withdrawService.getAllPendingWithdrawRequests();
             }
+            
+            // Apply additional filters
+            requests = withdrawService.filterWithdrawRequests(requests, dateFrom, dateTo, searchName, searchAccount, searchBank);
+            
             return ResponseEntity.ok(requests);
         } catch (Exception e) {
             log.error("Error getting withdraw requests: {}", e.getMessage());
