@@ -21,9 +21,9 @@ spring:
     multipart:
       max-file-size: 2MB
       max-request-size: 2MB
-  mvc:
-    async:
-      request-timeout: 5000ms
+  # mvc:
+  #   async:
+  #     request-timeout: 5000ms
   task:
     scheduling:
       enabled: true
@@ -84,6 +84,8 @@ security:
   captcha:
     expire-minutes: 5
     length: 6
+    max-attempts-per-ip: 5      # NEW
+    lockout-minutes: 15          # NEW
   rate-limit:
     ip-max-attempts: 10
     ip-lockout-minutes: 30

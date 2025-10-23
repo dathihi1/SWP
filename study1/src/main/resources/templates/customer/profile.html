@@ -302,6 +302,7 @@
                                  class="rounded-circle border border-2 border-primary" 
                                  style="width: 100px; height: 100px; object-fit: cover;"
                                  alt="Avatar"
+                                 id="profileAvatar"
                                  onerror="this.src='/images/default-avatar.svg'">
                             <button class="btn btn-sm btn-primary position-absolute bottom-0 end-0 rounded-circle" 
                                     style="width: 30px; height: 30px; padding: 0;"
@@ -900,7 +901,7 @@
                 
                 // Update avatar display immediately
                 const timestamp = Date.now();
-                const avatarImg = document.querySelector('img[alt="Avatar"]');
+                const avatarImg = document.getElementById('profileAvatar');
                 if (avatarImg) {
                     avatarImg.src = `/api/profile/avatar/me?t=${timestamp}`;
                 }
@@ -984,7 +985,7 @@
                 showSuccess('Avatar đã được xóa thành công!');
                 
                 // Update avatar display to default
-                const avatarImg = document.querySelector('img[alt="Avatar"]');
+                const avatarImg = document.getElementById('profileAvatar');
                 if (avatarImg) {
                     const timestamp = Date.now();
                     avatarImg.src = `/api/profile/avatar/me?t=${timestamp}`;

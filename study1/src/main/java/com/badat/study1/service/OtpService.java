@@ -21,6 +21,7 @@ public class OtpService {
     
     private final RedisTemplate<String, Object> redisTemplate;
     private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
     
@@ -54,15 +55,45 @@ public class OtpService {
         
         redisTemplate.opsForValue().set(otpKey, otpData, otpExpireMinutes, TimeUnit.MINUTES);
         
-        // Send email
-        String subject = "Mã OTP xác thực";
-        String body = String.format("""
-            Mã OTP của bạn là: %s
-            Mã này có hiệu lực trong %d phút.
-            Không chia sẻ mã này với bất kỳ ai.
-            """, otp, otpExpireMinutes);
-        
-        emailService.sendEmail(email, subject, body);
+        // Send HTML email based on purpose
+        try {
+            String htmlContent;
+            String subject;
+            
+            if ("register".equals(purpose)) {
+                htmlContent = emailTemplateService.generateRegistrationOtpEmail(otp, otpExpireMinutes, email);
+                subject = "Mã OTP Đăng Ký - MMO Market";
+            } else if ("forgot_password".equals(purpose)) {
+                htmlContent = emailTemplateService.generateForgotPasswordOtpEmail(otp, otpExpireMinutes, email);
+                subject = "Mã OTP Khôi Phục Mật Khẩu - MMO Market";
+            } else {
+                // Fallback to plain text for other purposes
+                htmlContent = String.format("""
+                    <html><body>
+                    <h2>Mã OTP xác thực</h2>
+                    <p>Mã OTP của bạn là: <strong>%s</strong></p>
+                    <p>Mã này có hiệu lực trong %d phút.</p>
+                    <p>Không chia sẻ mã này với bất kỳ ai.</p>
+                    </body></html>
+                    """, otp, otpExpireMinutes);
+                subject = "Mã OTP xác thực - MMO Market";
+            }
+            
+            emailService.sendHtmlEmail(email, subject, htmlContent);
+            log.info("HTML OTP email sent successfully to: {} for purpose: {}", email, purpose);
+            
+        } catch (Exception e) {
+            log.error("Failed to send HTML OTP email, falling back to plain text: {}", e.getMessage());
+            // Fallback to plain text email
+            String subject = "Mã OTP xác thực";
+            String body = String.format("""
+                Mã OTP của bạn là: %s
+                Mã này có hiệu lực trong %d phút.
+                Không chia sẻ mã này với bất kỳ ai.
+                """, otp, otpExpireMinutes);
+            
+            emailService.sendEmail(email, subject, body);
+        }
         
         // Record request
         rateLimitService.recordEmailRequest(email);

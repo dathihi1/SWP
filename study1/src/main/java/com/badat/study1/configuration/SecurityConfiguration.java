@@ -20,6 +20,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 
 @Configuration
 @EnableWebSecurity
@@ -33,7 +36,7 @@ public class SecurityConfiguration {
             "/product/**", 
             "/cart", 
             "/auth/**", 
-            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/reset-password",
+            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/verify-register-otp", "/api/auth/reset-password", "/api/auth/captcha/**",
             "/api/cart/test", // Thêm test endpoint vào whitelist
             "/users/**", 
             "/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", 
@@ -52,6 +55,7 @@ public class SecurityConfiguration {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final JwtService jwtService;
     private final AdminAuthenticationSuccessHandler adminAuthenticationSuccessHandler;
+    private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -75,6 +79,9 @@ public class SecurityConfiguration {
                         .permitAll()
                 )
                 .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(authorization -> authorization
+                                .authorizationRequestResolver(customAuthorizationRequestResolver())
+                        )
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
@@ -175,11 +182,32 @@ public class SecurityConfiguration {
     }
 
     @Bean
+    public OAuth2AuthorizationRequestResolver customAuthorizationRequestResolver() {
+        DefaultOAuth2AuthorizationRequestResolver resolver = 
+            new DefaultOAuth2AuthorizationRequestResolver(
+                clientRegistrationRepository, "/oauth2/authorization");
+        resolver.setAuthorizationRequestCustomizer(
+            customizer -> customizer.additionalParameters(params -> 
+                params.put("prompt", "consent")
+            )
+        );
+        return resolver;
+    }
+
+    @Bean
     public AuthenticationFailureHandler oauth2FailureHandler() {
         return (request, response, exception) -> {
             log.warn("OAuth2 authentication failed: {}", exception.getMessage());
             try {
-                response.sendRedirect("/login?error=oauth2_failed");
+                String errorMessage = "oauth2_failed";
+                
+                // Check if it's an email duplication error
+                if (exception.getMessage() != null && 
+                    exception.getMessage().contains("đã được sử dụng cho tài khoản đăng ký thủ công")) {
+                    errorMessage = "email_already_used_local";
+                }
+                
+                response.sendRedirect("/login?error=" + errorMessage);
             } catch (Exception e) {
                 log.error("Error redirecting after OAuth2 failure: {}", e.getMessage());
             }
