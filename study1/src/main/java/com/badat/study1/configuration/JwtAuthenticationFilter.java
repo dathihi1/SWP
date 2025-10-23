@@ -112,24 +112,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Try Authorization header first
         String auth = request.getHeader("Authorization");
         if (auth != null && auth.startsWith("Bearer ")) {
-            log.debug("Token found in Authorization header");
             return auth.substring(7);
         }
         
         // Try cookie as fallback
         Cookie[] cookies = request.getCookies();
-        log.debug("Cookies: {}", cookies != null ? cookies.length : 0);
         if (cookies != null) {
             for (Cookie cookie : cookies) {
-                log.debug("Cookie: {} = {}", cookie.getName(), cookie.getValue() != null ? cookie.getValue().substring(0, Math.min(20, cookie.getValue().length())) + "..." : "null");
                 if ("accessToken".equals(cookie.getName())) {
-                    log.debug("Token found in cookie");
                     return cookie.getValue();
                 }
             }
         }
-        
-        log.debug("No token found");
         return null;
     }
 
