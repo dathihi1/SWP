@@ -2,10 +2,17 @@ spring:
   application:
     name: study1
   datasource:
-    url: jdbc:mysql://localhost:3306/mmo_market
+    url: jdbc:mysql://localhost:3306/mmo_market?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: 1234
+    hikari:
+      maximum-pool-size: 100
+      minimum-idle: 20
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
   data:
     redis:
       host: localhost
@@ -28,13 +35,13 @@ spring:
     scheduling:
       enabled: true
       pool:
-        size: 2
+        size: 20
       thread-name-prefix: "scheduler-"
     execution:
       pool:
-        core-size: 2
-        max-size: 10
-        queue-capacity: 100
+        core-size: 20
+        max-size: 100
+        queue-capacity: 1000
       thread-name-prefix: "payment-"
   jpa:
     hibernate:
@@ -100,8 +107,8 @@ server:
   port: 8080
   tomcat:
     connection-timeout: 30000
-    max-connections: 8192
-    accept-count: 100
+    max-connections: 10000
+    accept-count: 1000
     threads:
-      max: 200
-      min-spare: 10
+      max: 2000
+      min-spare: 100

@@ -93,4 +93,11 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      * Count available warehouse items for product (not locked, not deleted)
      */
     long countByProductIdAndLockedFalseAndIsDeleteFalse(Long productId);
+    
+    /**
+     * Find available items for reservation with database lock (SELECT FOR UPDATE)
+     * Sử dụng để chống race condition khi reserve inventory
+     */
+    @Query(value = "SELECT * FROM warehouse WHERE product_id = :productId AND locked = false AND is_delete = false ORDER BY created_at ASC LIMIT :quantity FOR UPDATE", nativeQuery = true)
+    List<Warehouse> findAvailableItemsForReservation(@Param("productId") Long productId, @Param("quantity") Integer quantity);
 }
