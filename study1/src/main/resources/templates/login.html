@@ -309,7 +309,13 @@
             if (error) {
                 const alertEl = document.getElementById('alert');
                 if (alertEl){
-                    alertEl.textContent = 'Tên đăng nhập hoặc mật khẩu không đúng';
+                    if (error === 'email_already_used_local') {
+                        alertEl.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Email này đã được sử dụng cho tài khoản đăng ký thủ công. Vui lòng sử dụng tên đăng nhập và mật khẩu để đăng nhập, hoặc sử dụng email khác để đăng nhập Google.';
+                    } else if (error === 'oauth2_failed') {
+                        alertEl.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Đăng nhập Google thất bại. Vui lòng thử lại.';
+                    } else {
+                        alertEl.textContent = 'Tên đăng nhập hoặc mật khẩu không đúng';
+                    }
                     alertEl.classList.remove('d-none');
                 }
             }
@@ -557,36 +563,11 @@
                     })
                     .catch(error => {
                         console.error('Error getting captcha from backend:', error);
-                        console.log('Falling back to frontend captcha generation...');
-                        // Fallback to frontend captcha generation
-                        generateFrontendCaptcha();
+                        alert('Không thể tải captcha. Vui lòng làm mới trang.');
+                        // Show error message but don't allow fallback
                     });
             }
             
-            function generateFrontendCaptcha() {
-                console.log('Generating frontend captcha...');
-                const canvas = document.getElementById('captchaCanvas');
-                const ctx = canvas.getContext('2d');
-                
-                // Clear canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Generate random captcha text
-                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                let captchaText = '';
-                for (let i = 0; i < 5; i++) {
-                    captchaText += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-                
-                // Store captcha text globally
-                window.currentCaptcha = captchaText;
-                window.currentCaptchaAnswer = captchaText;
-                window.currentCaptchaId = 'frontend-' + Date.now(); // Generate a frontend ID
-                
-                // Draw captcha
-                drawCaptchaOnCanvas(captchaText);
-                console.log('Frontend captcha generated:', captchaText);
-            }
             
             function drawCaptchaOnCanvas(captchaText) {
                 const canvas = document.getElementById('captchaCanvas');
@@ -645,9 +626,15 @@
             
             function updateCaptchaFromBackend(captchaData) {
                 // Update captcha with data from backend
-                if (captchaData && captchaData.text) {
-                    // Store the correct answer
-                    window.currentCaptchaAnswer = captchaData.text;
+                if (captchaData && (captchaData.text || captchaData.captchaText)) {
+                    // Store the correct answer (support both formats)
+                    const captchaText = captchaData.text || captchaData.captchaText;
+                    window.currentCaptchaAnswer = captchaText;
+                    
+                    // Store captcha ID if available
+                    if (captchaData.captchaId) {
+                        window.currentCaptchaId = captchaData.captchaId;
+                    }
                     
                     // Update the canvas with new captcha
                     const canvas = document.getElementById('captchaCanvas');
@@ -670,11 +657,11 @@
                         ctx.textBaseline = 'middle';
                         
                         // Add some rotation and distortion
-                        for (let i = 0; i < captchaData.text.length; i++) {
+                        for (let i = 0; i < captchaText.length; i++) {
                             ctx.save();
                             ctx.translate(20 + i * 20, 20);
                             ctx.rotate((Math.random() - 0.5) * 0.4);
-                            ctx.fillText(captchaData.text[i], 0, 0);
+                            ctx.fillText(captchaText[i], 0, 0);
                             ctx.restore();
                         }
                         
@@ -694,42 +681,6 @@
     </script>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
-    <div class="container">
-        <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
-            <i class="fa-solid fa-cart-shopping me-2 text-primary" style="font-size: 1.5rem;"></i>
-            <span class="fw-bold">MMO Market</span>
-        </a>
-
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
-            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
-                <form role="search">
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
-                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
-                <div class="d-flex align-items-center gap-2">
-                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
-                        <i class="fa-regular fa-user"></i>
-                        <span>Đăng nhập</span>
-                    </a>
-                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
-                        <i class="fa-solid fa-cart-shopping"></i>
-                        <span>Giỏ hàng</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</nav>
-
 <main class="auth-page">
     <div class="auth-left">
         <div class="auth-logo">

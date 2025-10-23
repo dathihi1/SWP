@@ -1,289 +1,270 @@
 package com.badat.study1.service;
 
+import com.badat.study1.dto.OtpData;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class OtpService {
-
-    private final JavaMailSender mailSender;
     
-    @Value("${app.mail.from:noreply@mmomarket.com}")
-    private String fromEmail;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
+    private final RateLimitService rateLimitService;
+    private final ObjectMapper objectMapper;
     
-    // Store OTPs temporarily (in production, use Redis or database)
-    private final Map<String, OtpData> otpStorage = new ConcurrentHashMap<>();
+    @Value("${security.rate-limit.otp-expire-minutes:10}")
+    private int otpExpireMinutes;
     
-    private static final int OTP_LENGTH = 6;
-    private static final int OTP_EXPIRY_MINUTES = 5;
-    private static final int MAX_OTP_ATTEMPTS = 3;
-    private static final int OTP_COOLDOWN_MINUTES = 1; // Cooldown between OTP requests
+    @Value("${security.rate-limit.otp-max-attempts:5}")
+    private int maxOtpAttempts;
     
-    /**
-     * Generate and send OTP to email
-     */
-    public boolean sendOtp(String email, String purpose) {
-        try {
-            // Check cooldown period
-            String cooldownKey = email + "_" + purpose + "_cooldown";
-            if (otpStorage.containsKey(cooldownKey)) {
-                OtpData cooldownData = otpStorage.get(cooldownKey);
-                if (cooldownData.getExpiryTime().isAfter(LocalDateTime.now())) {
-                    log.warn("OTP request too frequent for email: {} purpose: {}", email, purpose);
-                    return false;
-                }
-            }
-            
-            // Check existing OTP attempts
-            String otpKey = email + "_" + purpose;
-            if (otpStorage.containsKey(otpKey)) {
-                OtpData existingOtp = otpStorage.get(otpKey);
-                if (existingOtp.getAttempts() >= MAX_OTP_ATTEMPTS) {
-                    log.warn("Too many OTP attempts for email: {} purpose: {}", email, purpose);
-                    return false;
-                }
-            }
-            
-            // Generate OTP
-            String otp = generateOtp();
-            LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES);
-            
-            // Store OTP
-            OtpData otpData = new OtpData(otp, expiryTime, 0);
-            otpStorage.put(otpKey, otpData);
-            
-            // Set cooldown
-            OtpData cooldownData = new OtpData("", LocalDateTime.now().plusMinutes(OTP_COOLDOWN_MINUTES), 0);
-            otpStorage.put(cooldownKey, cooldownData);
-            
-            // Send email
-            sendOtpEmail(email, otp, purpose);
-            
-            log.info("OTP sent successfully to email: {} for purpose: {}", email, purpose);
-            return true;
-            
-        } catch (Exception e) {
-            log.error("Error sending OTP to email: {} purpose: {}", email, purpose, e);
-            return false;
+    private static final String OTP_PREFIX = "otp:";
+    private static final String RESET_TOKEN_PREFIX = "reset_token:";
+    
+    public void sendOtp(String email, String purpose) {
+        // Check rate limiting
+        if (rateLimitService.isEmailRateLimited(email)) {
+            throw new RuntimeException("Quá nhiều yêu cầu. Vui lòng thử lại sau 1 giờ.");
         }
-    }
-    
-    /**
-     * Verify OTP
-     */
-    public boolean verifyOtp(String email, String purpose, String otp) {
+        
+        // Generate OTP
+        String otp = generateOtp();
+        String otpKey = OTP_PREFIX + purpose + ":" + email;
+        log.info("Generated OTP for {}: {}", email, otp);
+        
+        // Store OTP in Redis
+        OtpData otpData = OtpData.builder()
+                .otp(otp)
+                .email(email)
+                .purpose(purpose)
+                .createdAt(LocalDateTime.now())
+                .attempts(0)
+                .build();
+        
+        redisTemplate.opsForValue().set(otpKey, otpData, otpExpireMinutes, TimeUnit.MINUTES);
+        
+        // Send HTML email based on purpose
         try {
-            String otpKey = email + "_" + purpose;
-            OtpData otpData = otpStorage.get(otpKey);
+            String htmlContent;
+            String subject;
             
-            if (otpData == null) {
-                log.warn("No OTP found for email: {} purpose: {}", email, purpose);
-                return false;
-            }
-            
-            // Check expiry
-            if (otpData.getExpiryTime().isBefore(LocalDateTime.now())) {
-                log.warn("OTP expired for email: {} purpose: {}", email, purpose);
-                otpStorage.remove(otpKey);
-                return false;
-            }
-            
-            // Check attempts
-            if (otpData.getAttempts() >= MAX_OTP_ATTEMPTS) {
-                log.warn("Too many OTP attempts for email: {} purpose: {}", email, purpose);
-                otpStorage.remove(otpKey);
-                return false;
-            }
-            
-            // Increment attempts
-            otpData.incrementAttempts();
-            
-            // Verify OTP
-            if (otpData.getOtp().equals(otp)) {
-                // Remove OTP after successful verification
-                otpStorage.remove(otpKey);
-                log.info("OTP verified successfully for email: {} purpose: {}", email, purpose);
-                return true;
+            if ("register".equals(purpose)) {
+                htmlContent = emailTemplateService.generateRegistrationOtpEmail(otp, otpExpireMinutes, email);
+                subject = "Mã OTP Đăng Ký - MMO Market";
+            } else if ("forgot_password".equals(purpose)) {
+                htmlContent = emailTemplateService.generateForgotPasswordOtpEmail(otp, otpExpireMinutes, email);
+                subject = "Mã OTP Khôi Phục Mật Khẩu - MMO Market";
             } else {
-                log.warn("Invalid OTP for email: {} purpose: {}", email, purpose);
-                return false;
+                // Fallback to plain text for other purposes
+                htmlContent = String.format("""
+                    <html><body>
+                    <h2>Mã OTP xác thực</h2>
+                    <p>Mã OTP của bạn là: <strong>%s</strong></p>
+                    <p>Mã này có hiệu lực trong %d phút.</p>
+                    <p>Không chia sẻ mã này với bất kỳ ai.</p>
+                    </body></html>
+                    """, otp, otpExpireMinutes);
+                subject = "Mã OTP xác thực - MMO Market";
             }
             
+            emailService.sendHtmlEmail(email, subject, htmlContent);
+            log.info("HTML OTP email sent successfully to: {} for purpose: {}", email, purpose);
+            
         } catch (Exception e) {
-            log.error("Error verifying OTP for email: {} purpose: {}", email, purpose, e);
-            return false;
+            log.error("Failed to send HTML OTP email, falling back to plain text: {}", e.getMessage());
+            // Fallback to plain text email
+            String subject = "Mã OTP xác thực";
+            String body = String.format("""
+                Mã OTP của bạn là: %s
+                Mã này có hiệu lực trong %d phút.
+                Không chia sẻ mã này với bất kỳ ai.
+                """, otp, otpExpireMinutes);
+            
+            emailService.sendEmail(email, subject, body);
         }
+        
+        // Record request
+        rateLimitService.recordEmailRequest(email);
+        
+        log.info("OTP sent to email: {} for purpose: {}", email, purpose);
     }
     
-    /**
-     * Generate reset token for password reset
-     */
+    public boolean verifyOtp(String email, String otp, String purpose) {
+        String otpKey = OTP_PREFIX + purpose + ":" + email;
+        Object rawData = redisTemplate.opsForValue().get(otpKey);
+        
+        if (rawData == null) {
+            log.warn("OTP not found or expired for email: {}", email);
+            return false;
+        }
+        
+        OtpData otpData = convertToOtpData(rawData);
+        if (otpData == null) {
+            log.error("Failed to convert OTP data for email: {}", email);
+            return false;
+        }
+        
+        // Check attempts
+        if (otpData.getAttempts() >= maxOtpAttempts) {
+            log.warn("OTP max attempts exceeded for email: {}", email);
+            redisTemplate.delete(otpKey);
+            return false;
+        }
+        
+        // Increment attempts
+        otpData.setAttempts(otpData.getAttempts() + 1);
+        redisTemplate.opsForValue().set(otpKey, otpData, otpExpireMinutes, TimeUnit.MINUTES);
+        
+        // Verify OTP
+        boolean isValid = otp.equals(otpData.getOtp());
+        
+        if (isValid) {
+            // Clear OTP on successful verification
+            redisTemplate.delete(otpKey);
+            rateLimitService.recordOtpAttempt(email, true);
+            log.info("OTP verified successfully for email: {}", email);
+        } else {
+            rateLimitService.recordOtpAttempt(email, false);
+            log.warn("OTP verification failed for email: {}, attempt: {}", email, otpData.getAttempts());
+        }
+        
+        return isValid;
+    }
+    
     public String generateResetToken(String email) {
-        try {
-            String token = generateOtp();
-            String tokenKey = email + "_reset_token";
-            LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES);
-            
-            OtpData tokenData = new OtpData(token, expiryTime, 0);
-            otpStorage.put(tokenKey, tokenData);
-            
-            log.info("Reset token generated for email: {}", email);
-            return token;
-            
-        } catch (Exception e) {
-            log.error("Error generating reset token for email: {}", email, e);
-            throw new RuntimeException("Failed to generate reset token", e);
-        }
+        String resetToken = UUID.randomUUID().toString();
+        String tokenKey = RESET_TOKEN_PREFIX + email;
+        
+        // Store reset token in Redis with 30 minutes expiry
+        redisTemplate.opsForValue().set(tokenKey, resetToken, 30, TimeUnit.MINUTES);
+        
+        log.info("Reset token generated for email: {}", email);
+        return resetToken;
     }
     
-    /**
-     * Validate reset token
-     */
-    public boolean validateResetToken(String email, String token) {
-        try {
-            String tokenKey = email + "_reset_token";
-            OtpData tokenData = otpStorage.get(tokenKey);
-            
-            if (tokenData == null) {
-                log.warn("No reset token found for email: {}", email);
-                return false;
-            }
-            
-            // Check expiry
-            if (tokenData.getExpiryTime().isBefore(LocalDateTime.now())) {
-                log.warn("Reset token expired for email: {}", email);
-                otpStorage.remove(tokenKey);
-                return false;
-            }
-            
-            // Check attempts
-            if (tokenData.getAttempts() >= MAX_OTP_ATTEMPTS) {
-                log.warn("Too many reset token attempts for email: {}", email);
-                otpStorage.remove(tokenKey);
-                return false;
-            }
-            
-            // Increment attempts
-            tokenData.incrementAttempts();
-            
-            // Verify token
-            if (tokenData.getOtp().equals(token)) {
-                log.info("Reset token validated successfully for email: {}", email);
-                return true;
-            } else {
-                log.warn("Invalid reset token for email: {}", email);
-                return false;
-            }
-            
-        } catch (Exception e) {
-            log.error("Error validating reset token for email: {}", email, e);
+    public boolean validateResetToken(String resetToken, String email) {
+        String tokenKey = RESET_TOKEN_PREFIX + email;
+        String storedToken = (String) redisTemplate.opsForValue().get(tokenKey);
+        
+        if (storedToken == null) {
+            log.warn("Reset token not found or expired for email: {}", email);
             return false;
         }
-    }
-    
-    /**
-     * Invalidate reset token
-     */
-    public void invalidateResetToken(String email, String token) {
-        try {
-            String tokenKey = email + "_reset_token";
-            OtpData tokenData = otpStorage.get(tokenKey);
-            
-            if (tokenData != null && tokenData.getOtp().equals(token)) {
-                otpStorage.remove(tokenKey);
-                log.info("Reset token invalidated for email: {}", email);
-            }
-            
-        } catch (Exception e) {
-            log.error("Error invalidating reset token for email: {}", email, e);
+        
+        boolean isValid = resetToken.equals(storedToken);
+        
+        if (isValid) {
+            log.info("Reset token validated successfully for email: {}", email);
+        } else {
+            log.warn("Reset token validation failed for email: {}", email);
         }
+        
+        return isValid;
     }
     
-    /**
-     * Clean expired OTPs
-     */
-    public void cleanExpiredOtps() {
-        LocalDateTime now = LocalDateTime.now();
-        otpStorage.entrySet().removeIf(entry -> 
-            entry.getValue().getExpiryTime().isBefore(now));
+    public void invalidateResetToken(String resetToken, String email) {
+        String tokenKey = RESET_TOKEN_PREFIX + email;
+        String storedToken = (String) redisTemplate.opsForValue().get(tokenKey);
+        
+        if (resetToken.equals(storedToken)) {
+            redisTemplate.delete(tokenKey);
+            log.info("Reset token invalidated for email: {}", email);
+        }
     }
     
     private String generateOtp() {
-        SecureRandom random = new SecureRandom();
+        Random random = new Random();
         StringBuilder otp = new StringBuilder();
-        
-        for (int i = 0; i < OTP_LENGTH; i++) {
+        for (int i = 0; i < 6; i++) {
             otp.append(random.nextInt(10));
         }
-        
         return otp.toString();
     }
     
-    private void sendOtpEmail(String email, String otp, String purpose) {
+    public boolean isOtpValid(String email, String purpose) {
+        String otpKey = OTP_PREFIX + purpose + ":" + email;
+        return redisTemplate.hasKey(otpKey);
+    }
+    
+    public int getRemainingAttempts(String email, String purpose) {
+        String otpKey = OTP_PREFIX + purpose + ":" + email;
+        Object rawData = redisTemplate.opsForValue().get(otpKey);
+        
+        if (rawData == null) {
+            return 0;
+        }
+        
+        OtpData otpData = convertToOtpData(rawData);
+        if (otpData == null) {
+            return 0;
+        }
+        
+        return Math.max(0, maxOtpAttempts - otpData.getAttempts());
+    }
+    
+    private OtpData convertToOtpData(Object rawData) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(email);
-            message.setSubject("Mã OTP xác thực - MMO Market");
+            if (rawData instanceof OtpData) {
+                return (OtpData) rawData;
+            }
             
-            String emailBody = buildEmailBody(otp, purpose);
-            message.setText(emailBody);
+            if (rawData instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) rawData;
+                
+                // Handle type conversion issues manually
+                OtpData otpData = new OtpData();
+                otpData.setOtp((String) map.get("otp"));
+                otpData.setEmail((String) map.get("email"));
+                otpData.setPurpose((String) map.get("purpose"));
+                
+                // Handle attempts field - convert Integer/Long/BigInteger to int
+                Object attempts = map.get("attempts");
+                if (attempts instanceof Integer) {
+                    otpData.setAttempts((Integer) attempts);
+                } else if (attempts instanceof Long) {
+                    otpData.setAttempts(((Long) attempts).intValue());
+                } else if (attempts instanceof java.math.BigInteger) {
+                    otpData.setAttempts(((java.math.BigInteger) attempts).intValue());
+                } else if (attempts instanceof Number) {
+                    otpData.setAttempts(((Number) attempts).intValue());
+                } else {
+                    otpData.setAttempts(0);
+                }
+                
+                // Handle createdAt field
+                Object createdAt = map.get("createdAt");
+                if (createdAt instanceof String) {
+                    otpData.setCreatedAt(LocalDateTime.parse((String) createdAt));
+                } else if (createdAt instanceof LocalDateTime) {
+                    otpData.setCreatedAt((LocalDateTime) createdAt);
+                } else {
+                    otpData.setCreatedAt(LocalDateTime.now());
+                }
+                
+                return otpData;
+            }
             
-            mailSender.send(message);
-            log.info("OTP email sent to: {}", email);
-            
+            // Try direct conversion
+            return objectMapper.convertValue(rawData, OtpData.class);
         } catch (Exception e) {
-            log.error("Error sending OTP email to: {}", email, e);
-            throw new RuntimeException("Failed to send OTP email", e);
+            log.error("Failed to convert raw data to OtpData: {}", e.getMessage());
+            log.error("Raw data type: {}", rawData != null ? rawData.getClass().getName() : "null");
+            log.error("Raw data content: {}", rawData);
+            return null;
         }
-    }
-    
-    private String buildEmailBody(String otp, String purpose) {
-        return String.format("""
-            Chào bạn,
-            
-            Bạn đã yêu cầu xác thực cho: %s
-            
-            Mã OTP của bạn là: %s
-            
-            Mã OTP này có hiệu lực trong 5 phút.
-            Vui lòng không chia sẻ mã này với bất kỳ ai.
-            
-            Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.
-            
-            Trân trọng,
-            Đội ngũ MMO Market
-            """, purpose, otp);
-    }
-    
-    /**
-     * OTP Data class
-     */
-    private static class OtpData {
-        private final String otp;
-        private final LocalDateTime expiryTime;
-        private int attempts;
-        
-        public OtpData(String otp, LocalDateTime expiryTime, int attempts) {
-            this.otp = otp;
-            this.expiryTime = expiryTime;
-            this.attempts = attempts;
-        }
-        
-        public String getOtp() { return otp; }
-        public LocalDateTime getExpiryTime() { return expiryTime; }
-        public int getAttempts() { return attempts; }
-        public void incrementAttempts() { this.attempts++; }
     }
 }

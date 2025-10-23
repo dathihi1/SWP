@@ -83,14 +83,12 @@ public class JwtService {
         
         // Check if token is expired first (more efficient)
         if (expirationTime.before(new Date())) {
-            log.debug("Token has expired: {}", jwtId);
             return false; // Token has expired
         }
         
         // Check if token is blacklisted (logged out) - with fallback if Redis is unavailable
         try {
             if (redisTokenRepository.existsById(jwtId)) {
-                log.debug("Token is blacklisted: {}", jwtId);
                 return false; // Token has been blacklisted
             }
         } catch (Exception e) {
@@ -101,7 +99,7 @@ public class JwtService {
         // Verify token signature
         boolean signatureValid = signedJWT.verify(new MACVerifier(secret));
         if (!signatureValid) {
-            log.debug("Token signature invalid: {}", jwtId);
+            return false;
         }
         return signatureValid;
     }
@@ -122,9 +120,6 @@ public class JwtService {
             Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
             Date now = new Date();
             long timeUntilExpiry = expirationTime.getTime() - now.getTime();
-            
-            log.debug("Token validation for user {}: usernameMatch={}, tokenValid={}, expiresIn={}ms", 
-                     username, usernameMatches, tokenValid, timeUntilExpiry);
             
             if (!usernameMatches) {
                 log.warn("Token validation failed: username mismatch. Token username: {}, Expected: {}", username, userDetails.getUsername());

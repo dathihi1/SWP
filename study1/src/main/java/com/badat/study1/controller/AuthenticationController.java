@@ -13,6 +13,7 @@ import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.CaptchaService;
 import com.badat.study1.service.IpLockoutService;
 import com.badat.study1.service.SecurityEventService;
+import com.badat.study1.service.CaptchaRateLimitService;
 import com.badat.study1.model.SecurityEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class AuthenticationController {
     private final CaptchaService captchaService;
     private final IpLockoutService ipLockoutService;
     private final SecurityEventService securityEventService;
+    private final CaptchaRateLimitService captchaRateLimitService;
 
     @PostMapping("/login")
     @Auditable(action = "LOGIN")
@@ -60,6 +62,15 @@ public class AuthenticationController {
                 return ResponseEntity.status(429).body(Map.of(
                     "error", "IP đã bị khóa do quá nhiều lần đăng nhập sai",
                     "lockedUntil", "30 phút"
+                ));
+            }
+            
+            // 🔒 1.5. Check if IP is rate limited for captcha failures
+            if (captchaRateLimitService.isCaptchaRateLimited(ipAddress)) {
+                log.warn("Captcha rate limited - IP: {}", ipAddress);
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "Quá nhiều lần nhập sai captcha. Vui lòng thử lại sau 15 phút",
+                    "captchaRateLimited", true
                 ));
             }
             
@@ -86,9 +97,15 @@ public class AuthenticationController {
             boolean captchaValid = false;
             if (captchaId != null && !captchaId.trim().isEmpty()) {
                 if (captchaId.startsWith("frontend-")) {
-                    // Frontend captcha - just check if it's not empty and has reasonable length
-                    captchaValid = captchaCode != null && captchaCode.trim().length() >= 4;
-                    log.info("Frontend captcha validation: {}", captchaValid ? "valid" : "invalid");
+                    // Frontend captcha not allowed for security reasons
+                    log.warn("Frontend captcha not allowed from IP: {}", ipAddress);
+                    securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
+                            "Frontend captcha attempt blocked");
+                    return ResponseEntity.status(400).body(Map.of(
+                        "error", "Captcha không hợp lệ, vui lòng làm mới trang",
+                        "message", "frontend captcha not allowed",
+                        "captchaRequired", true
+                    ));
                 } else {
                     // Backend captcha with Redis validation
                     captchaValid = captchaService.validateSimpleCaptcha(captchaId, captchaCode);
@@ -108,12 +125,13 @@ public class AuthenticationController {
             
             // If captcha is invalid, return immediately without checking credentials
             if (!captchaValid) {
+                captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
                 securityEventService.logCaptchaRequired(ipAddress, username);
                 return ResponseEntity.status(400).body(Map.of(
                     "error", "Mã xác thực không đúng, vui lòng nhập lại",
                     "message", "captcha incorrect",
                     "captchaRequired", true,
-                    "captcha", captchaService.generateCaptcha()
+                    "captcha", captchaService.generateSimpleCaptcha()
                 ));
             }
             
@@ -123,6 +141,7 @@ public class AuthenticationController {
                 
                 // Clear IP attempts on successful login
                 ipLockoutService.recordSuccessfulAttempt(ipAddress);
+                captchaRateLimitService.clearCaptchaAttempts(ipAddress);
                 securityEventService.logLoginAttempt(ipAddress, username, true, "Login successful", userAgent);
                 
                 // Set HttpOnly access token cookie for browser navigation
@@ -159,7 +178,7 @@ public class AuthenticationController {
                 // Always generate new captcha after failed attempt
                 response.put("captchaRequired", true);
                 response.put("message", "captcha required");
-                response.put("captcha", captchaService.generateCaptcha());
+                response.put("captcha", captchaService.generateSimpleCaptcha());
                 
                 log.info("Generated new captcha after failed login attempt for user: {} from IP: {}", username, ipAddress);
                 

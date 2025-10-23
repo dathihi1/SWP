@@ -9,7 +9,7 @@ import java.util.concurrent.Executor;
 
 @EnableAsync
 @Configuration
-public class AsyncConfig {
+public class AuditAsyncConfig {
 
     @Bean(name = "auditExecutor")
     public Executor auditExecutor() {

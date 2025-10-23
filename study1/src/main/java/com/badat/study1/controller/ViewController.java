@@ -19,6 +19,8 @@ import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
+import com.badat.study1.service.UserService;
+import java.time.LocalDateTime;
 import com.badat.study1.dto.response.AuditLogResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -67,8 +69,10 @@ public class ViewController {
 
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
+    private final UserService userService;
 
-    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, ReviewRepository reviewRepository, OrderItemRepository orderItemRepository, OrderRepository orderRepository, AuditLogRepository auditLogRepository) {
+    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, ReviewRepository reviewRepository, OrderItemRepository orderItemRepository, OrderRepository orderRepository, AuditLogRepository auditLogRepository, UserService userService) {
+
         this.walletRepository = walletRepository;
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
@@ -81,6 +85,7 @@ public class ViewController {
         this.orderItemRepository = orderItemRepository;
         this.orderRepository = orderRepository;
         this.auditLogRepository = auditLogRepository;
+        this.userService = userService;
     }
 
     // Inject common attributes (auth info and wallet balance) for all views
@@ -262,7 +267,11 @@ public class ViewController {
                     .collect(Collectors.toList());
                     
             model.addAttribute("stalls", stallCards);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.error("Error loading stalls for homepage: {}", e.getMessage(), e);
+            // Add empty stalls list to prevent template errors
+            model.addAttribute("stalls", new ArrayList<>());
+        }
 
         log.info("Returning home template");
         return "home";
@@ -620,7 +629,6 @@ public class ViewController {
                         .map(Wallet::getBalance)
                         .orElse(BigDecimal.ZERO);
                 model.addAttribute("walletBalance", walletBalance);
-                log.debug("Wallet balance for user {}: {}", user.getId(), walletBalance);
             } catch (Exception e) {
                 log.error("Error getting wallet balance for user {}: {}", user.getId(), e.getMessage());
                 model.addAttribute("walletBalance", BigDecimal.ZERO);
@@ -1414,6 +1422,55 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         return "redirect:/seller/reviews";
     }
 
+    @GetMapping("/admin/users")
+    public String adminUsers(Model model,
+                           @RequestParam(defaultValue = "0") int page,
+                           @RequestParam(defaultValue = "25") int size,
+                           @RequestParam(required = false) String search,
+                           @RequestParam(required = false) String role,
+                           @RequestParam(required = false) String status,
+                           @RequestParam(defaultValue = "id") String sortBy,
+                           @RequestParam(defaultValue = "asc") String sortDir) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() || 
+                "anonymousUser".equals(authentication.getName())) {
+                return "redirect:/login";
+            }
+
+            User currentUser = (User) authentication.getPrincipal();
+            if (!currentUser.getRole().name().equals("ADMIN")) {
+                return "redirect:/";
+            }
+
+            // Create sort object
+            Sort sort = Sort.by(sortDir.equals("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
+            Pageable pageable = PageRequest.of(page, size, sort);
+
+            // Get users with filters
+            Page<User> usersPage = userService.getUsersWithFilters(search, role, status, pageable);
+
+            model.addAttribute("users", usersPage.getContent());
+            model.addAttribute("currentPage", page);
+            model.addAttribute("totalPages", usersPage.getTotalPages());
+            model.addAttribute("totalElements", usersPage.getTotalElements());
+            model.addAttribute("pageSize", size);
+            model.addAttribute("search", search);
+            model.addAttribute("role", role);
+            model.addAttribute("status", status);
+            model.addAttribute("sortBy", sortBy);
+            model.addAttribute("sortDir", sortDir);
+            model.addAttribute("isAuthenticated", true);
+            model.addAttribute("username", currentUser.getUsername());
+            model.addAttribute("userRole", currentUser.getRole().name());
+
+            return "admin/users";
+
+        } catch (Exception e) {
+            log.error("Error in adminUsers: {}", e.getMessage(), e);
+            return "redirect:/";
+        }
+    }
 
     @GetMapping("/admin/users/{id}/detail")
     public String adminUserDetail(@PathVariable Long id, Model model,
@@ -1565,9 +1622,49 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         // Get audit logs with filters
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         
-        // Note: You'll need to implement filtering in your AuditLogRepository
-        // For now, we'll get all logs
-        Page<AuditLog> auditLogsPage = auditLogRepository.findAll(pageable);
+        // Parse date parameters
+        LocalDateTime startDateTime = null;
+        LocalDateTime endDateTime = null;
+        
+        if (startDate != null && !startDate.trim().isEmpty()) {
+            try {
+                startDateTime = LocalDateTime.parse(startDate);
+            } catch (Exception e) {
+                log.warn("Invalid startDate format: {}", startDate);
+            }
+        }
+        
+        if (endDate != null && !endDate.trim().isEmpty()) {
+            try {
+                endDateTime = LocalDateTime.parse(endDate);
+            } catch (Exception e) {
+                log.warn("Invalid endDate format: {}", endDate);
+            }
+        }
+        
+        // Parse success parameter to Boolean
+        Boolean successBoolean = null;
+        if (success != null && !success.trim().isEmpty()) {
+            try {
+                successBoolean = Boolean.valueOf(success);
+            } catch (Exception e) {
+                log.warn("Invalid success format: {}", success);
+            }
+        }
+        
+        // Parse category to enum if provided
+        AuditLog.Category categoryEnum = null;
+        if (category != null && !category.trim().isEmpty()) {
+            try {
+                categoryEnum = AuditLog.Category.valueOf(category.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid category format: {}", category);
+            }
+        }
+        
+        // Get audit logs with filters
+        Page<AuditLog> auditLogsPage = auditLogRepository.findAdminAuditLogsWithFilters(
+            action, category, categoryEnum, success, successBoolean, startDateTime, endDateTime, pageable);
         
         log.info("Audit logs query - Page: {}, Size: {}, Total elements: {}, Total pages: {}", 
                 page, size, auditLogsPage.getTotalElements(), auditLogsPage.getTotalPages());
@@ -1575,12 +1672,6 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         // Get unique actions and categories for filter dropdowns
         List<String> actions = auditLogRepository.findDistinctActions();
         List<String> categories = auditLogRepository.findDistinctCategories();
-        
-        // Convert success parameter to Boolean if needed
-        Boolean successBoolean = null;
-        if (success != null && !success.isEmpty()) {
-            successBoolean = Boolean.valueOf(success);
-        }
         
         model.addAttribute("auditLogs", auditLogsPage.getContent());
         model.addAttribute("currentPage", page);
