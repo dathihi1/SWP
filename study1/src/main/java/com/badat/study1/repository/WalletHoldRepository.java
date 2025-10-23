@@ -25,4 +25,10 @@ public interface WalletHoldRepository extends JpaRepository<WalletHold, Long> {
     List<WalletHold> findActiveHoldsByUser(@Param("userId") Long userId, 
                                           @Param("status") WalletHold.Status status, 
                                           @Param("now") Instant now);
+    
+    // Methods for counting by status
+    long countByStatus(WalletHold.Status status);
+    
+    // Method for counting expired holds
+    long countByStatusAndExpiresAtBefore(WalletHold.Status status, Instant expiresAt);
 }

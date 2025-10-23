@@ -19,4 +19,10 @@ public interface PaymentQueueRepository extends JpaRepository<PaymentQueue, Long
     @Query("SELECT pq FROM PaymentQueue pq WHERE pq.status = :status AND pq.createdAt <= :before ORDER BY pq.createdAt ASC")
     List<PaymentQueue> findPendingPaymentsBefore(@Param("status") PaymentQueue.Status status, 
                                                 @Param("before") Instant before);
+    
+    // Methods for counting by status
+    long countByStatus(PaymentQueue.Status status);
+    
+    // Methods for finding by status and processed time
+    List<PaymentQueue> findByStatusAndProcessedAtAfter(PaymentQueue.Status status, Instant processedAt);
 }

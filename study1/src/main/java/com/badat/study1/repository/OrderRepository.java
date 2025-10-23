@@ -37,6 +37,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     List<Order> findByOrderCodeContaining(String orderCode);
     
+    // Method để lấy orders theo danh sách IDs - sử dụng @Query
+    @Query("SELECT o FROM Order o WHERE o.id IN :orderIds")
+    List<Order> findAllById(@Param("orderIds") List<Long> orderIds);
+    
     // Method để lấy orders với OrderItem details
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems oi LEFT JOIN FETCH oi.product p LEFT JOIN FETCH oi.warehouse w WHERE o.id = :orderId")
     Optional<Order> findByIdWithOrderItems(@Param("orderId") Long orderId);
