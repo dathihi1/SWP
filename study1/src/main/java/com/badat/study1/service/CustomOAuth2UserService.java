@@ -1,7 +1,9 @@
 package com.badat.study1.service;
 
 import com.badat.study1.model.User;
+import com.badat.study1.model.Wallet;
 import com.badat.study1.repository.UserRepository;
+import com.badat.study1.repository.WalletRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -13,6 +15,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -23,11 +26,13 @@ import java.util.UUID;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
+    private final WalletRepository walletRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public CustomOAuth2UserService(UserRepository userRepository, @Lazy PasswordEncoder passwordEncoder) {
+    public CustomOAuth2UserService(UserRepository userRepository, WalletRepository walletRepository, @Lazy PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.walletRepository = walletRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -74,16 +79,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             
             // Kiểm tra nếu user đã đăng ký bằng cách thủ công (provider = LOCAL)
             if ("LOCAL".equals(user.getProvider())) {
-                // Cập nhật thông tin để hỗ trợ Google login
-                user.setProvider("GOOGLE");
-                user.setProviderId(googleId);
-                user.setFullName(name);
-                // Temporarily comment out to avoid database issues
-                // if (picture != null && !picture.isEmpty()) {
-                //     user.setAvatarUrl(picture);
-                // }
-                userRepository.save(user);
-                log.info("Updated existing LOCAL user {} to support Google login", email);
+                // THÔNG BÁO LỖI: Email đã được sử dụng cho tài khoản LOCAL
+                throw new OAuth2AuthenticationException(
+                    "Email " + email + " đã được sử dụng cho tài khoản đăng ký thủ công. " +
+                    "Vui lòng sử dụng tên đăng nhập và mật khẩu để đăng nhập, " +
+                    "hoặc sử dụng email khác để đăng nhập Google."
+                );
             } else if ("GOOGLE".equals(user.getProvider()) && googleId.equals(user.getProviderId())) {
                 // User đã đăng nhập bằng Google trước đó - cập nhật avatar nếu chưa có
                 // Temporarily comment out to avoid database issues
@@ -144,7 +145,17 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         //     newUser.setAvatarUrl(picture);
         // }
 
-        return userRepository.save(newUser);
+        User savedUser = userRepository.save(newUser);
+        
+        // Create wallet for new Google user
+        Wallet wallet = Wallet.builder()
+                .userId(savedUser.getId())
+                .balance(BigDecimal.ZERO)
+                .build();
+        walletRepository.save(wallet);
+        log.info("Created wallet for new Google user: {}", email);
+        
+        return savedUser;
     }
 
     public static class CustomOAuth2User implements OAuth2User {

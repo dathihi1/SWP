@@ -91,17 +91,6 @@ public class CaptchaService {
         }
     }
     
-    // Simple captcha validation for frontend-generated captcha
-    public boolean validateSimpleCaptcha(String userInput) {
-        if (userInput == null || userInput.trim().isEmpty()) {
-            return false;
-        }
-        
-        // For simple frontend captcha, we just check if it's not empty
-        // The frontend generates captcha and stores the answer in window.currentCaptchaAnswer
-        // This is a basic validation - in production, you might want more sophisticated validation
-        return userInput.trim().length() >= 4; // At least 4 characters
-    }
     
     // Generate simple captcha with answer stored in Redis
     public Map<String, String> generateSimpleCaptcha() {

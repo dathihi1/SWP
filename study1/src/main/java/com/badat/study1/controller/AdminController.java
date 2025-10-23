@@ -11,10 +11,6 @@ import com.badat.study1.repository.WithdrawRequestRepository;
 import com.badat.study1.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -89,43 +85,6 @@ public class AdminController {
         model.addAttribute("securityEvents", securityEvents);
         
         return "admin/dashboard";
-    }
-    
-    @GetMapping("/admin/users")
-    public String adminUsers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String role,
-            @RequestParam(required = false) String status,
-            Model model) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
-        if (!isAuthenticated) {
-            return "redirect:/login";
-        }
-        
-        User user = (User) authentication.getPrincipal();
-        
-        // Check if user is admin
-        if (!user.getRole().name().equals("ADMIN")) {
-            return "redirect:/";
-        }
-        
-        // Add common attributes
-        model.addAttribute("username", user.getUsername());
-        model.addAttribute("isAuthenticated", true);
-        model.addAttribute("userRole", user.getRole().name());
-        model.addAttribute("user", user);
-        
-        // Get all users
-        model.addAttribute("users", userRepository.findAll());
-        
-        return "admin/users";
     }
     
     @GetMapping("/admin/stalls")
