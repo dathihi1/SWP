@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -53,10 +52,10 @@ public class WithdrawService {
             throw new RuntimeException("Số tiền phải lớn hơn 0");
         }
         
-        // Minimum withdraw amount (50,000 VND)
-        BigDecimal minimumAmount = new BigDecimal("50000");
+        // Minimum withdraw amount (100,000 VND)
+        BigDecimal minimumAmount = new BigDecimal("100000");
         if (requestDto.getAmount().compareTo(minimumAmount) < 0) {
-            throw new RuntimeException("Số tiền rút tối thiểu là 50,000 VNĐ");
+            throw new RuntimeException("Số tiền rút tối thiểu là 100,000 VNĐ");
         }
         
         if (requestDto.getAmount().compareTo(wallet.getBalance()) > 0) {
@@ -128,6 +127,34 @@ public class WithdrawService {
                 .orElseThrow(() -> new RuntimeException("Bạn chưa có gian hàng"));
         
         List<WithdrawRequest> requests = withdrawRequestRepository.findByShopIdOrderByCreatedAtDesc(shop.getId());
+        
+        return requests.stream()
+                .map(WithdrawRequestResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    public List<WithdrawRequestResponse> getWithdrawRequestsByUserWithFilters(
+            String startDate, String endDate, String status, String minAmount, String maxAmount,
+            String bankAccountNumber, String bankName, String bankAccountName) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) auth.getPrincipal();
+        
+        Shop shop = shopRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Bạn chưa có gian hàng"));
+        
+        // Convert String status to enum
+        WithdrawRequest.Status statusEnum = null;
+        if (status != null && !status.isEmpty()) {
+            try {
+                statusEnum = WithdrawRequest.Status.valueOf(status);
+            } catch (IllegalArgumentException e) {
+                // Invalid status, ignore filter
+            }
+        }
+        
+        List<WithdrawRequest> requests = withdrawRequestRepository.findByShopIdWithFilters(
+                shop.getId(), startDate, endDate, statusEnum, minAmount, maxAmount,
+                bankAccountNumber, bankName, bankAccountName);
         
         return requests.stream()
                 .map(WithdrawRequestResponse::fromEntity)
@@ -436,5 +463,71 @@ public class WithdrawService {
                     return true;
                 })
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Cancel withdraw request and refund money to wallet
+     */
+    @Transactional
+    public void cancelWithdrawRequest(Long requestId) {
+        // Get current user
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) auth.getPrincipal();
+        
+        // Find withdraw request
+        WithdrawRequest request = withdrawRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu rút tiền"));
+        
+        // Check if user owns this request
+        Shop shop = shopRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Bạn chưa có gian hàng"));
+        
+        if (!request.getShopId().equals(shop.getId())) {
+            throw new RuntimeException("Bạn không có quyền hủy yêu cầu này");
+        }
+        
+        // Check if request can be cancelled (only PENDING status)
+        if (request.getStatus() != WithdrawRequest.Status.PENDING) {
+            throw new RuntimeException("Chỉ có thể hủy yêu cầu đang chờ duyệt");
+        }
+        
+        // Get user's wallet
+        Wallet wallet = walletRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví của bạn"));
+        
+        // Refund money to wallet
+        BigDecimal refundAmount = request.getAmount();
+        wallet.setBalance(wallet.getBalance().add(refundAmount));
+        walletRepository.save(wallet);
+        
+        // Update original wallet history from PENDING to CANCELED
+        walletHistoryRepository.findByWalletIdAndReferenceIdAndTypeAndStatus(
+                wallet.getId(), 
+                request.getId().toString(), 
+                WalletHistory.Type.WITHDRAW, 
+                WalletHistory.Status.PENDING
+        ).ifPresent(walletHistory -> {
+            walletHistory.setStatus(WalletHistory.Status.CANCELED);
+            walletHistory.setDescription("Yêu cầu rút tiền #" + request.getId() + " đã bị hủy - Tiền đã được hoàn trả");
+            walletHistory.setUpdatedAt(java.time.Instant.now());
+            walletHistoryRepository.save(walletHistory);
+        });
+        
+        // Create wallet history for refund
+        WalletHistory refundHistory = WalletHistory.builder()
+                .walletId(wallet.getId())
+                .amount(refundAmount)
+                .type(WalletHistory.Type.REFUND)
+                .status(WalletHistory.Status.SUCCESS)
+                .description("Hoàn tiền từ hủy yêu cầu rút tiền #" + request.getId())
+                .build();
+        walletHistoryRepository.save(refundHistory);
+        
+        // Update request status to CANCELLED
+        request.setStatus(WithdrawRequest.Status.CANCELLED);
+        withdrawRequestRepository.save(request);
+        
+        log.info("Withdraw request {} cancelled and {} VND refunded to user {}", 
+                requestId, refundAmount, user.getId());
     }
 }

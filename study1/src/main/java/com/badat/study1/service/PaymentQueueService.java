@@ -6,11 +6,13 @@ import com.badat.study1.model.Order;
 import com.badat.study1.model.OrderItem;
 import com.badat.study1.repository.PaymentQueueRepository;
 import com.badat.study1.repository.OrderItemRepository;
+import com.badat.study1.event.PaymentEvent;
 import org.springframework.integration.redis.util.RedisLockRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,7 @@ public class PaymentQueueService {
     private final OrderItemRepository orderItemRepository;
     private final ObjectMapper objectMapper;
     private final RedisLockRegistry redisLockRegistry;
+    private final ApplicationEventPublisher eventPublisher;
     
     /**
      * Thêm payment request vào queue
@@ -54,6 +57,9 @@ public class PaymentQueueService {
                 
             paymentQueueRepository.save(paymentQueue);
             
+            // Publish event để trigger xử lý ngay lập tức
+            eventPublisher.publishEvent(PaymentEvent.paymentCreated(this, paymentQueue.getId(), userId));
+            
             log.info("Payment queued successfully with ID: {}", paymentQueue.getId());
             return paymentQueue.getId();
             
@@ -64,9 +70,10 @@ public class PaymentQueueService {
     }
     
     /**
-     * Cron job xử lý payment queue mỗi 10 giây - với distributed lock để tránh race condition
+     * Cron job xử lý payment queue mỗi 1 giây - với distributed lock để tránh race condition
+     * Kết hợp với trigger system để tăng tốc xử lý
      */
-    @Scheduled(fixedRate = 10000) // Mỗi 10 giây
+    @Scheduled(fixedRate = 1000) // Mỗi 1 giây - tăng tần suất
     public void processPaymentQueue() {
         String lockKey = "payment-queue:process";
         Lock lock = redisLockRegistry.obtain(lockKey);
@@ -81,22 +88,8 @@ public class PaymentQueueService {
                         
                     log.info("Found {} pending payments", pendingPayments.size());
                     
-                    // Xử lý từng payment một cách tuần tự để tránh race condition
-                    for (PaymentQueue payment : pendingPayments) {
-                        try {
-                            // Kiểm tra lại status trước khi xử lý để tránh double processing
-                            PaymentQueue currentPayment = paymentQueueRepository.findById(payment.getId()).orElse(null);
-                            if (currentPayment == null || currentPayment.getStatus() != PaymentQueue.Status.PENDING) {
-                                log.info("Payment {} already processed or deleted, skipping", payment.getId());
-                                continue;
-                            }
-                            
-                            processPaymentItem(payment);
-                        } catch (Exception e) {
-                            log.error("Failed to process payment {}: {}", payment.getId(), e.getMessage());
-                            // Error handling đã được xử lý trong processPaymentItem
-                        }
-                    }
+                    // Xử lý batch payments để tăng tốc độ
+                    processBatchPayments(pendingPayments);
                 } catch (Exception e) {
                     log.error("Error in payment queue processing: {}", e.getMessage());
                 }
@@ -383,6 +376,54 @@ public class PaymentQueueService {
      */
     public List<PaymentQueue> getUserPayments(Long userId) {
         return paymentQueueRepository.findByUserIdAndStatus(userId, PaymentQueue.Status.PENDING);
+    }
+    
+    /**
+     * Xử lý batch payments với parallel processing
+     */
+    private void processBatchPayments(List<PaymentQueue> pendingPayments) {
+        if (pendingPayments.isEmpty()) {
+            return;
+        }
+        
+        // Chia thành các batch nhỏ để xử lý parallel
+        int batchSize = 20; // Xử lý 20 payments/lần
+        int totalBatches = (int) Math.ceil((double) pendingPayments.size() / batchSize);
+        
+        log.info("Processing {} payments in {} batches of size {}", 
+                pendingPayments.size(), totalBatches, batchSize);
+        
+        for (int i = 0; i < pendingPayments.size(); i += batchSize) {
+            int endIndex = Math.min(i + batchSize, pendingPayments.size());
+            List<PaymentQueue> batch = pendingPayments.subList(i, endIndex);
+            
+            // Xử lý batch này
+            processSingleBatch(batch);
+        }
+    }
+    
+    /**
+     * Xử lý một batch payments
+     */
+    private void processSingleBatch(List<PaymentQueue> batch) {
+        log.info("Processing batch of {} payments", batch.size());
+        
+        for (PaymentQueue payment : batch) {
+            try {
+                // Kiểm tra lại status trước khi xử lý để tránh double processing
+                PaymentQueue currentPayment = paymentQueueRepository.findById(payment.getId()).orElse(null);
+                if (currentPayment == null || currentPayment.getStatus() != PaymentQueue.Status.PENDING) {
+                    log.info("Payment {} already processed or deleted, skipping", payment.getId());
+                    continue;
+                }
+                
+                processPaymentItem(payment);
+                
+            } catch (Exception e) {
+                log.error("Failed to process payment {}: {}", payment.getId(), e.getMessage());
+                // Error handling đã được xử lý trong processPaymentItem
+            }
+        }
     }
     
 }

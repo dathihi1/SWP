@@ -11,6 +11,8 @@ import com.badat.study1.repository.WalletRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -365,6 +367,84 @@ public class UserService {
             log.error("Failed to send OTP email to {}: {}", email, e.getMessage());
         }
     }
+
+    /**
+     * Gửi OTP email với file HTML đính kèm (async)
+     */
+    @Async
+    public void sendOTPWithHtmlAsync(String email, String otp, String purpose) {
+        try {
+            String subject = "Mã OTP " + purpose + " - MMO Market";
+            String htmlBody = String.format("""
+                <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #0d6efd;">Xác thực OTP - %s</h2>
+                    <p>Xin chào,</p>
+                    <p>Mã OTP của bạn là: <strong style="color: #dc3545; font-size: 24px;">%s</strong></p>
+                    <p>Mã này có hiệu lực trong 10 phút.</p>
+                    <p>Vui lòng không chia sẻ mã này với bất kỳ ai.</p>
+                    <hr>
+                    <p style="color: #6c757d; font-size: 12px;">Đây là email tự động, vui lòng không trả lời.</p>
+                </body>
+                </html>
+                """, purpose, otp);
+            
+            // Tạo nội dung HTML cho file đính kèm
+            String htmlAttachmentContent = String.format("""
+                <!DOCTYPE html>
+                <html lang="vi">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Mã OTP - MMO Market</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+                        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .header { text-align: center; color: #0d6efd; margin-bottom: 30px; }
+                        .otp-code { font-size: 48px; font-weight: bold; color: #dc3545; text-align: center; margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; letter-spacing: 5px; }
+                        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                        .footer { text-align: center; color: #6c757d; font-size: 12px; margin-top: 30px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🔐 Mã OTP Xác Thực</h1>
+                            <p>MMO Market - %s</p>
+                        </div>
+                        
+                        <p>Xin chào,</p>
+                        <p>Bạn đã yêu cầu mã OTP để %s. Mã OTP của bạn là:</p>
+                        
+                        <div class="otp-code">%s</div>
+                        
+                        <div class="warning">
+                            <strong>⚠️ Lưu ý quan trọng:</strong>
+                            <ul>
+                                <li>Mã OTP có hiệu lực trong <strong>10 phút</strong></li>
+                                <li>Không chia sẻ mã này với bất kỳ ai</li>
+                                <li>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email</li>
+                            </ul>
+                        </div>
+                        
+                        <p>Nếu bạn gặp vấn đề, vui lòng liên hệ hỗ trợ.</p>
+                        
+                        <div class="footer">
+                            <p>© 2025 MMO Market. Đây là email tự động, vui lòng không trả lời.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """, purpose, purpose, otp);
+            
+            emailService.sendEmailWithHtmlContent(email, subject, htmlBody, htmlAttachmentContent, "otp-" + purpose.toLowerCase().replace(" ", "-"));
+            log.info("OTP email with HTML attachment sent successfully to: {}", email);
+        } catch (Exception e) {
+            log.error("Failed to send OTP email with HTML to {}: {}", email, e.getMessage());
+            // Fallback to regular email
+            sendOTPAsync(email, otp, purpose);
+        }
+    }
     
 
     // Avatar management methods
@@ -389,18 +469,24 @@ public class UserService {
     
     public byte[] getAvatar(Long userId) {
         try {
+            log.info("Getting avatar for user ID: {}", userId);
             Optional<User> userOpt = userRepository.findById(userId);
             if (userOpt.isEmpty()) {
+                log.warn("User not found for ID: {}", userId);
                 return getDefaultAvatar();
             }
 
             User user = userOpt.get();
+            log.info("User found: {}, Avatar data length: {}", user.getUsername(), 
+                    user.getAvatarData() != null ? user.getAvatarData().length : 0);
 
             // Use avatarData (byte array) or default avatar
             if (user.getAvatarData() != null && user.getAvatarData().length > 0) {
+                log.info("Returning avatar data for user {}: {} bytes", user.getUsername(), user.getAvatarData().length);
                 return user.getAvatarData();
             }
 
+            log.info("No avatar data found for user {}, returning default", user.getUsername());
             return getDefaultAvatar();
         } catch (Exception e) {
             log.error("Error getting avatar for user {}: {}", userId, e.getMessage());
@@ -491,5 +577,38 @@ public class UserService {
             String svgContent = "<svg width=\"100\" height=\"100\" viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"50\" cy=\"50\" r=\"50\" fill=\"#e9ecef\"/><circle cx=\"50\" cy=\"35\" r=\"15\" fill=\"#6c757d\"/><path d=\"M20 80 Q20 65 35 65 L65 65 Q80 65 80 80 L80 85 L20 85 Z\" fill=\"#6c757d\"/></svg>";
             return svgContent.getBytes();
         }
+    }
+    
+    public Page<User> getUsersWithFilters(String search, String role, String status, Pageable pageable) {
+        try {
+            // Build dynamic query based on filters
+            if (search != null && !search.trim().isEmpty()) {
+                search = search.trim();
+            } else {
+                search = null;
+            }
+            
+            if (role != null && role.trim().isEmpty()) {
+                role = null;
+            }
+            
+            if (status != null && status.trim().isEmpty()) {
+                status = null;
+            }
+            
+            return userRepository.findUsersWithFilters(search, role, status, pageable);
+            
+        } catch (Exception e) {
+            log.error("Error getting users with filters: {}", e.getMessage(), e);
+            return Page.empty();
+        }
+    }
+    
+    public User findById(Long id) {
+        return userRepository.findById(id).orElse(null);
+    }
+    
+    public User save(User user) {
+        return userRepository.save(user);
     }
 }

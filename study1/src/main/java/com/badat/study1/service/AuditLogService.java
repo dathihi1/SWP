@@ -280,9 +280,16 @@ public class AuditLogService {
     public List<AuditLogResponse> getRecentUserAuditLogs(Long userId, int limit) {
         try {
             Pageable pageable = PageRequest.of(0, limit);
-            // Chỉ lấy USER_ACTION cho user thường
+            // Try to get USER_ACTION first, if no results, get all categories
             Page<AuditLog> auditLogs = auditLogRepository.findUserViewWithFilters(
                     userId, null, null, null, null, pageable);
+            
+            // If no USER_ACTION logs found, try all categories
+            if (auditLogs.getTotalElements() == 0) {
+                log.info("No USER_ACTION logs found, trying all categories for user {}", userId);
+                auditLogs = auditLogRepository.findAllUserAuditLogsWithFilters(
+                        userId, null, null, null, null, pageable);
+            }
             
             return auditLogs.getContent().stream()
                     .map(AuditLogResponse::fromAuditLog)
@@ -340,9 +347,16 @@ public class AuditLogService {
                         auditLogs = auditLogRepository.findByUserIdAndCategoryWithFilters(
                                 userId, categoryEnum, action, success, fromDate, toDate, pageable);
                     } else {
-                        // Default: show only USER_ACTION category for regular users
+                        // Try to get USER_ACTION category first, if no results, get all categories
                         auditLogs = auditLogRepository.findUserViewWithFilters(
                                 userId, action, success, fromDate, toDate, pageable);
+                        
+                        // If no results and no specific filters, try getting all categories
+                        if (auditLogs.getTotalElements() == 0 && action == null && success == null && fromDate == null && toDate == null) {
+                            log.info("No USER_ACTION logs found, trying all categories for user {}", userId);
+                            auditLogs = auditLogRepository.findAllUserAuditLogsWithFilters(
+                                    userId, action, success, fromDate, toDate, pageable);
+                        }
                     }
                     log.info("Successfully retrieved {} audit logs for user {}", auditLogs.getTotalElements(), userId);
                 } catch (Exception dbException) {

@@ -21,6 +21,7 @@ public class OtpService {
     
     private final RedisTemplate<String, Object> redisTemplate;
     private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
     
@@ -54,15 +55,45 @@ public class OtpService {
         
         redisTemplate.opsForValue().set(otpKey, otpData, otpExpireMinutes, TimeUnit.MINUTES);
         
-        // Send email
-        String subject = "Mã OTP xác thực";
-        String body = String.format("""
-            Mã OTP của bạn là: %s
-            Mã này có hiệu lực trong %d phút.
-            Không chia sẻ mã này với bất kỳ ai.
-            """, otp, otpExpireMinutes);
-        
-        emailService.sendEmail(email, subject, body);
+        // Send HTML email based on purpose
+        try {
+            String htmlContent;
+            String subject;
+            
+            if ("register".equals(purpose)) {
+                htmlContent = emailTemplateService.generateRegistrationOtpEmail(otp, otpExpireMinutes, email);
+                subject = "Mã OTP Đăng Ký - MMO Market";
+            } else if ("forgot_password".equals(purpose)) {
+                htmlContent = emailTemplateService.generateForgotPasswordOtpEmail(otp, otpExpireMinutes, email);
+                subject = "Mã OTP Khôi Phục Mật Khẩu - MMO Market";
+            } else {
+                // Fallback to plain text for other purposes
+                htmlContent = String.format("""
+                    <html><body>
+                    <h2>Mã OTP xác thực</h2>
+                    <p>Mã OTP của bạn là: <strong>%s</strong></p>
+                    <p>Mã này có hiệu lực trong %d phút.</p>
+                    <p>Không chia sẻ mã này với bất kỳ ai.</p>
+                    </body></html>
+                    """, otp, otpExpireMinutes);
+                subject = "Mã OTP xác thực - MMO Market";
+            }
+            
+            emailService.sendHtmlEmail(email, subject, htmlContent);
+            log.info("HTML OTP email sent successfully to: {} for purpose: {}", email, purpose);
+            
+        } catch (Exception e) {
+            log.error("Failed to send HTML OTP email, falling back to plain text: {}", e.getMessage());
+            // Fallback to plain text email
+            String subject = "Mã OTP xác thực";
+            String body = String.format("""
+                Mã OTP của bạn là: %s
+                Mã này có hiệu lực trong %d phút.
+                Không chia sẻ mã này với bất kỳ ai.
+                """, otp, otpExpireMinutes);
+            
+            emailService.sendEmail(email, subject, body);
+        }
         
         // Record request
         rateLimitService.recordEmailRequest(email);
@@ -151,6 +182,97 @@ public class OtpService {
             redisTemplate.delete(tokenKey);
             log.info("Reset token invalidated for email: {}", email);
         }
+    /**
+     * Generate reset token for password reset
+     */
+    public String generateResetToken(String email) {
+        try {
+            String token = generateOtp();
+            String tokenKey = email + "_reset_token";
+            LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES);
+            
+            OtpData tokenData = new OtpData(token, expiryTime, 0);
+            otpStorage.put(tokenKey, tokenData);
+            
+            log.info("Reset token generated for email: {}", email);
+            return token;
+            
+        } catch (Exception e) {
+            log.error("Error generating reset token for email: {}", email, e);
+            throw new RuntimeException("Failed to generate reset token", e);
+        }
+    }
+    
+    /**
+     * Validate reset token
+     */
+    public boolean validateResetToken(String email, String token) {
+        try {
+            String tokenKey = email + "_reset_token";
+            OtpData tokenData = otpStorage.get(tokenKey);
+            
+            if (tokenData == null) {
+                log.warn("No reset token found for email: {}", email);
+                return false;
+            }
+            
+            // Check expiry
+            if (tokenData.getExpiryTime().isBefore(LocalDateTime.now())) {
+                log.warn("Reset token expired for email: {}", email);
+                otpStorage.remove(tokenKey);
+                return false;
+            }
+            
+            // Check attempts
+            if (tokenData.getAttempts() >= MAX_OTP_ATTEMPTS) {
+                log.warn("Too many reset token attempts for email: {}", email);
+                otpStorage.remove(tokenKey);
+                return false;
+            }
+            
+            // Increment attempts
+            tokenData.incrementAttempts();
+            
+            // Verify token
+            if (tokenData.getOtp().equals(token)) {
+                log.info("Reset token validated successfully for email: {}", email);
+                return true;
+            } else {
+                log.warn("Invalid reset token for email: {}", email);
+                return false;
+            }
+            
+        } catch (Exception e) {
+            log.error("Error validating reset token for email: {}", email, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Invalidate reset token
+     */
+    public void invalidateResetToken(String email, String token) {
+        try {
+            String tokenKey = email + "_reset_token";
+            OtpData tokenData = otpStorage.get(tokenKey);
+            
+            if (tokenData != null && tokenData.getOtp().equals(token)) {
+                otpStorage.remove(tokenKey);
+                log.info("Reset token invalidated for email: {}", email);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error invalidating reset token for email: {}", email, e);
+        }
+    }
+    
+    /**
+     * Clean expired OTPs
+     */
+    public void cleanExpiredOtps() {
+        LocalDateTime now = LocalDateTime.now();
+        otpStorage.entrySet().removeIf(entry -> 
+            entry.getValue().getExpiryTime().isBefore(now));
     }
     
     private String generateOtp() {

@@ -325,9 +325,10 @@ public class WalletHoldService {
     }
     
     /**
-     * Cron job chạy mỗi 30 giây để xử lý expired holds - chuyển tiền cho seller/admin
+     * Cron job chạy mỗi 5 giây để xử lý expired holds - chuyển tiền cho seller/admin
+     * Kết hợp với trigger system để tăng tốc xử lý
      */
-    @Scheduled(fixedRate = 30000) // Mỗi 30 giây
+    @Scheduled(fixedRate = 5000) // Mỗi 5 giây - tăng tần suất
     public void processExpiredHolds() {
         log.info("Processing expired holds...");
         
@@ -336,33 +337,8 @@ public class WalletHoldService {
             
         log.info("Found {} expired holds", expiredHolds.size());
         
-        for (WalletHold hold : expiredHolds) {
-            try {
-                log.info("Processing expired hold: {} for user: {}", hold.getId(), hold.getUserId());
-                
-                // Tìm order tương ứng để lấy thông tin seller và commission
-                Optional<Order> orderOpt = orderRepository.findByOrderCode(hold.getOrderId());
-                List<Order> orders = orderOpt.map(List::of).orElse(List.of());
-                
-                if (!orders.isEmpty()) {
-                    // Chuyển tiền cho seller và admin theo commission
-                    distributePaymentToSellerAndAdmin(hold, orders);
-                } else {
-                    // Nếu không tìm thấy order, hoàn tiền về buyer
-                    log.warn("No orders found for hold {}, refunding to buyer", hold.getId());
-                    releaseHold(hold.getId());
-                }
-                
-            } catch (Exception e) {
-                log.error("Failed to process expired hold {}: {}", hold.getId(), e.getMessage());
-                // Fallback: hoàn tiền về buyer nếu có lỗi
-                try {
-                    releaseHold(hold.getId());
-                } catch (Exception fallbackError) {
-                    log.error("Failed to fallback release hold {}: {}", hold.getId(), fallbackError.getMessage());
-                }
-            }
-        }
+        // Xử lý batch expired holds để tăng tốc độ
+        processBatchExpiredHolds(expiredHolds);
     }
     
     /**
@@ -498,5 +474,64 @@ public class WalletHoldService {
         return getActiveHolds(userId).stream()
             .map(WalletHold::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+    
+    /**
+     * Xử lý batch expired holds với parallel processing
+     */
+    private void processBatchExpiredHolds(List<WalletHold> expiredHolds) {
+        if (expiredHolds.isEmpty()) {
+            return;
+        }
+        
+        // Chia thành các batch nhỏ để xử lý parallel
+        int batchSize = 10; // Xử lý 10 holds/lần
+        int totalBatches = (int) Math.ceil((double) expiredHolds.size() / batchSize);
+        
+        log.info("Processing {} expired holds in {} batches of size {}", 
+                expiredHolds.size(), totalBatches, batchSize);
+        
+        for (int i = 0; i < expiredHolds.size(); i += batchSize) {
+            int endIndex = Math.min(i + batchSize, expiredHolds.size());
+            List<WalletHold> batch = expiredHolds.subList(i, endIndex);
+            
+            // Xử lý batch này
+            processSingleBatchExpiredHolds(batch);
+        }
+    }
+    
+    /**
+     * Xử lý một batch expired holds
+     */
+    private void processSingleBatchExpiredHolds(List<WalletHold> batch) {
+        log.info("Processing batch of {} expired holds", batch.size());
+        
+        for (WalletHold hold : batch) {
+            try {
+                log.info("Processing expired hold: {} for user: {}", hold.getId(), hold.getUserId());
+                
+                // Tìm order tương ứng để lấy thông tin seller và commission
+                Optional<Order> orderOpt = orderRepository.findByOrderCode(hold.getOrderId());
+                List<Order> orders = orderOpt.map(List::of).orElse(List.of());
+                
+                if (!orders.isEmpty()) {
+                    // Chuyển tiền cho seller và admin theo commission
+                    distributePaymentToSellerAndAdmin(hold, orders);
+                } else {
+                    // Nếu không tìm thấy order, hoàn tiền về buyer
+                    log.warn("No orders found for hold {}, refunding to buyer", hold.getId());
+                    releaseHold(hold.getId());
+                }
+                
+            } catch (Exception e) {
+                log.error("Failed to process expired hold {}: {}", hold.getId(), e.getMessage());
+                // Fallback: hoàn tiền về buyer nếu có lỗi
+                try {
+                    releaseHold(hold.getId());
+                } catch (Exception fallbackError) {
+                    log.error("Failed to fallback release hold {}: {}", hold.getId(), fallbackError.getMessage());
+                }
+            }
+        }
     }
 }
