@@ -126,14 +126,23 @@
     <meta name="email" th:content="${email}">
     <script>
         document.addEventListener('DOMContentLoaded', function(){
+            // Get email from URL parameter first, then fallback to meta tag
+            const urlParams = new URLSearchParams(window.location.search);
+            const emailFromUrl = urlParams.get('email');
             const emailMeta = document.querySelector('meta[name="email"]');
             const emailText = document.getElementById('emailText');
             const emailHidden = document.getElementById('emailHidden');
             const emailVisible = document.getElementById('emailVisible');
-            const emailVal = emailMeta ? (emailMeta.content || '') : '';
+            
+            // Priority: URL parameter > meta tag > empty
+            const emailVal = emailFromUrl || (emailMeta ? (emailMeta.content || '') : '');
+            
             if (emailText) emailText.textContent = emailVal || '';
             if (emailHidden) emailHidden.value = emailVal || '';
             if (emailVisible) emailVisible.value = emailVal || '';
+            
+            console.log('Email loaded from URL parameter:', emailFromUrl);
+            console.log('Final email value:', emailVal);
             
             // Prevent auto-submit when OTP input reaches 6 digits
             const otpInput = document.getElementById('otp');

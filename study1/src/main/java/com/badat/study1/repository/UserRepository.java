@@ -4,6 +4,8 @@ import com.badat.study1.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -34,4 +36,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findByUsernameContainingIgnoreCaseAndRole(String username, User.Role role, Pageable pageable);
     Page<User> findByUsernameContainingIgnoreCaseAndStatus(String username, User.Status status, Pageable pageable);
     Page<User> findByUsernameContainingIgnoreCaseAndRoleAndStatus(String username, User.Role role, User.Status status, Pageable pageable);
+    
+    // Dynamic query method for admin filters
+    @Query("SELECT u FROM User u WHERE " +
+           "(:search IS NULL OR :search = '' OR " +
+           "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+           "(:role IS NULL OR :role = '' OR u.role = :role) AND " +
+           "(:status IS NULL OR :status = '' OR u.status = :status) AND " +
+           "u.isDelete = false")
+    Page<User> findUsersWithFilters(@Param("search") String search, 
+                                   @Param("role") String role, 
+                                   @Param("status") String status, 
+                                   Pageable pageable);
 }

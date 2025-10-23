@@ -99,7 +99,7 @@ public class AvatarController {
                 String contentType = detectContentType(avatarData);
                 headers.setContentType(MediaType.valueOf(contentType));
                 headers.setContentLength(avatarData.length);
-                headers.setCacheControl("public, max-age=3600"); // Cache for 1 hour
+                headers.setCacheControl("public, max-age=300"); // Cache for 5 minutes
                 
                 return ResponseEntity.ok()
                         .headers(headers)
@@ -122,19 +122,26 @@ public class AvatarController {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || !authentication.isAuthenticated() ||
                 authentication.getName().equals("anonymousUser")) {
+                log.warn("Unauthenticated request for avatar/me");
                 return getDefaultAvatarResponse();
             }
             User currentUser = (User) authentication.getPrincipal();
+            log.info("Getting avatar for current user: {} (ID: {})", currentUser.getUsername(), currentUser.getId());
+            
             byte[] avatarData = userService.getAvatar(currentUser.getId());
+            log.info("Avatar data received: {} bytes", avatarData != null ? avatarData.length : 0);
+            
             if (avatarData != null && avatarData.length > 0) {
                 HttpHeaders headers = new HttpHeaders();
                 // Detect content type from byte data
                 String contentType = detectContentType(avatarData);
                 headers.setContentType(MediaType.valueOf(contentType));
                 headers.setContentLength(avatarData.length);
-                headers.setCacheControl("public, max-age=3600");
+                headers.setCacheControl("public, max-age=300"); // Cache for 5 minutes
+                log.info("Returning avatar with content type: {}", contentType);
                 return ResponseEntity.ok().headers(headers).body(avatarData);
             }
+            log.info("No avatar data, returning default avatar");
             return getDefaultAvatarResponse();
         } catch (Exception e) {
             log.error("Error getting current user's avatar: {}", e.getMessage());
@@ -148,7 +155,7 @@ public class AvatarController {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.valueOf("image/svg+xml"));
             headers.setContentLength(defaultAvatar.length);
-            headers.setCacheControl("public, max-age=3600");
+            headers.setCacheControl("public, max-age=300"); // Cache for 5 minutes
             return ResponseEntity.ok().headers(headers).body(defaultAvatar);
         } catch (Exception e) {
             log.error("Error getting default avatar: {}", e.getMessage());

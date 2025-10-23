@@ -50,6 +50,20 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
                                          @Param("toDate") LocalDateTime toDate,
                                          Pageable pageable);
 
+    // New method to get all user audit logs without category restriction
+    @Query("SELECT a FROM AuditLog a WHERE a.userId = :userId " +
+           "AND (:action IS NULL OR a.action = :action) " +
+           "AND (:success IS NULL OR a.success = :success) " +
+           "AND (:fromDate IS NULL OR a.createdAt >= :fromDate) " +
+           "AND (:toDate IS NULL OR a.createdAt <= :toDate) " +
+           "ORDER BY a.createdAt DESC")
+    Page<AuditLog> findAllUserAuditLogsWithFilters(@Param("userId") Long userId,
+                                                  @Param("action") String action,
+                                                  @Param("success") Boolean success,
+                                                  @Param("fromDate") LocalDateTime fromDate,
+                                                  @Param("toDate") LocalDateTime toDate,
+                                                  Pageable pageable);
+
     @Query("SELECT a FROM AuditLog a WHERE a.userId = :userId " +
            "AND (:action IS NULL OR a.action = :action) " +
            "AND (:success IS NULL OR a.success = :success) " +
@@ -89,6 +103,23 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     
     @Query("SELECT DISTINCT a.category FROM AuditLog a ORDER BY a.category")
     List<String> findDistinctCategories();
+    
+    // Admin filter method for all audit logs
+    @Query("SELECT a FROM AuditLog a WHERE " +
+           "(:action IS NULL OR :action = '' OR a.action = :action) AND " +
+           "(:category IS NULL OR :category = '' OR a.category = :categoryEnum) AND " +
+           "(:success IS NULL OR :success = '' OR a.success = :successBoolean) AND " +
+           "(:startDate IS NULL OR a.createdAt >= :startDate) AND " +
+           "(:endDate IS NULL OR a.createdAt <= :endDate) " +
+           "ORDER BY a.createdAt DESC")
+    Page<AuditLog> findAdminAuditLogsWithFilters(@Param("action") String action,
+                                                @Param("category") String category,
+                                                @Param("categoryEnum") AuditLog.Category categoryEnum,
+                                                @Param("success") String success,
+                                                @Param("successBoolean") Boolean successBoolean,
+                                                @Param("startDate") LocalDateTime startDate,
+                                                @Param("endDate") LocalDateTime endDate,
+                                                Pageable pageable);
     
     // Dashboard statistics methods
     long countByCreatedAtAfter(LocalDateTime dateTime);

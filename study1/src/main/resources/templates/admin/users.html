@@ -233,14 +233,14 @@
             color: white;
         }
         
-        .btn-delete {
-            background-color: #dc3545;
-            color: white;
+        .btn-lock {
+            background-color: #ffc107;
+            color: #000;
         }
         
-        .btn-delete:hover {
-            background-color: #c82333;
-            color: white;
+        .btn-lock:hover {
+            background-color: #e0a800;
+            color: #000;
         }
         
         .btn-view {
@@ -327,7 +327,71 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h1 class="page-title">Quản lý người dùng</h1>
-                        <small class="text-muted" th:text="'Tổng cộng: ' + ${#lists.size(users)} + ' người dùng'">Tổng cộng: 0 người dùng</small>
+                        <small class="text-muted" th:text="'Tổng cộng: ' + ${totalElements} + ' người dùng'">Tổng cộng: 0 người dùng</small>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                            <i class="fas fa-plus me-2"></i>Thêm người dùng
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filter Section -->
+            <div class="filter-section mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-filter me-2"></i>Bộ lọc
+                            <button class="btn btn-sm btn-outline-secondary float-end" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </h6>
+                        </div>
+                    <div class="collapse" id="filterCollapse">
+                        <div class="card-body">
+                            <form method="get" action="/admin/users" class="row g-3">
+                                <div class="col-md-3">
+                                    <label for="search" class="form-label">Tìm kiếm</label>
+                                    <input type="text" class="form-control" id="search" name="search" 
+                                           th:value="${search}" placeholder="Username, email...">
+                                    </div>
+                                <div class="col-md-2">
+                                    <label for="filterRole" class="form-label">Vai trò</label>
+                                    <select class="form-select" id="filterRole" name="role">
+                                        <option value="">Tất cả</option>
+                                        <option value="ADMIN" th:selected="${role == 'ADMIN'}">Admin</option>
+                                        <option value="SELLER" th:selected="${role == 'SELLER'}">Seller</option>
+                                        <option value="USER" th:selected="${role == 'USER'}">User</option>
+                                        </select>
+                                    </div>
+                                <div class="col-md-2">
+                                    <label for="status" class="form-label">Trạng thái</label>
+                                    <select class="form-select" id="status" name="status">
+                                        <option value="">Tất cả</option>
+                                        <option value="ACTIVE" th:selected="${status == 'ACTIVE'}">Hoạt động</option>
+                                        <option value="LOCKED" th:selected="${status == 'LOCKED'}">Khóa</option>
+                                        </select>
+                                    </div>
+                                <div class="col-md-2">
+                                    <label for="size" class="form-label">Số lượng/trang</label>
+                                    <select class="form-select" id="size" name="size">
+                                            <option value="10" th:selected="${pageSize == 10}">10</option>
+                                            <option value="25" th:selected="${pageSize == 25}">25</option>
+                                            <option value="50" th:selected="${pageSize == 50}">50</option>
+                                            <option value="100" th:selected="${pageSize == 100}">100</option>
+                                        </select>
+                                    </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary me-2">
+                                        <i class="fas fa-search me-1"></i>Tìm kiếm
+                                    </button>
+                                    <a href="/admin/users" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-1"></i>Xóa bộ lọc
+                                    </a>
+                            </div>
+                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -353,7 +417,7 @@
                                 <th>
                                     <a th:href="@{/admin/users(sortBy='username', sortDir=${sortBy == 'username' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
-                                        Tên đăng nhập 
+                                        Tên đăng nhập
                                         <i class="fas fa-sort" th:if="${sortBy != 'username'}"></i>
                                         <i class="fas fa-sort-up" th:if="${sortBy == 'username' && sortDir == 'asc'}"></i>
                                         <i class="fas fa-sort-down" th:if="${sortBy == 'username' && sortDir == 'desc'}"></i>
@@ -362,7 +426,7 @@
                                 <th>
                                     <a th:href="@{/admin/users(sortBy='email', sortDir=${sortBy == 'email' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
-                                        Email 
+                                        Email
                                         <i class="fas fa-sort" th:if="${sortBy != 'email'}"></i>
                                         <i class="fas fa-sort-up" th:if="${sortBy == 'email' && sortDir == 'asc'}"></i>
                                         <i class="fas fa-sort-down" th:if="${sortBy == 'email' && sortDir == 'desc'}"></i>
@@ -389,7 +453,7 @@
                                 <th>
                                     <a th:href="@{/admin/users(sortBy='createdAt', sortDir=${sortBy == 'createdAt' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
-                                        Ngày tạo 
+                                        Ngày tạo
                                         <i class="fas fa-sort" th:if="${sortBy != 'createdAt'}"></i>
                                         <i class="fas fa-sort-up" th:if="${sortBy == 'createdAt' && sortDir == 'asc'}"></i>
                                         <i class="fas fa-sort-down" th:if="${sortBy == 'createdAt' && sortDir == 'desc'}"></i>
@@ -408,7 +472,7 @@
                                           th:classappend="${user.role.name() == 'ADMIN'} ? 'role-admin' : 
                                                          (${user.role.name() == 'SELLER'} ? 'role-seller' : 'role-customer')"
                                           th:text="${user.role.name() == 'ADMIN'} ? 'Admin' : 
-                                                  (${user.role.name() == 'SELLER'} ? 'Seller' : 'Customer')">
+                                                  (${user.role.name() == 'SELLER'} ? 'Seller' : 'User')">
                                         Role
                                     </span>
                                 </td>
@@ -428,8 +492,12 @@
                                         <button class="btn btn-action btn-edit" title="Chỉnh sửa">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-action btn-delete" title="Xóa" th:onclick="'deleteUser(' + ${user.id} + ')'">
-                                            <i class="fas fa-trash"></i>
+                                        <button class="btn btn-action btn-lock" title="Khóa/Mở khóa" 
+                                                th:data-user-id="${user.id}" 
+                                                th:data-user-status="${user.status.name()}"
+                                                onclick="toggleUserLock(this.dataset.userId, this.dataset.userStatus)">
+                                            <i class="fas fa-lock" th:if="${user.status.name() == 'ACTIVE'}"></i>
+                                            <i class="fas fa-unlock" th:if="${user.status.name() == 'LOCKED'}"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -442,6 +510,93 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="pagination-section" th:if="${totalPages > 1}">
+                    <div class="d-flex justify-content-between align-items-center p-3">
+                        <div class="pagination-info">
+                            <span th:text="'Hiển thị ' + ${(currentPage * pageSize) + 1} + ' - ' + ${(currentPage + 1) * pageSize > totalElements ? totalElements : (currentPage + 1) * pageSize} + ' của ' + ${totalElements} + ' kết quả'">
+                                Hiển thị 1 - 10 của 100 kết quả
+                            </span>
+                    </div>
+                        <nav aria-label="User pagination">
+                            <ul class="pagination mb-0">
+                                <!-- Previous Page -->
+                            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                <a class="page-link" 
+                                       th:href="@{/admin/users(page=${currentPage - 1}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                                   th:if="${currentPage > 0}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                                <span class="page-link" th:if="${currentPage == 0}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </span>
+                            </li>
+                            
+                                <!-- Page Numbers -->
+                                <li class="page-item" th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}" 
+                                th:classappend="${pageNum == currentPage} ? 'active'">
+                                <a class="page-link" 
+                                       th:href="@{/admin/users(page=${pageNum}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                                   th:text="${pageNum + 1}">1</a>
+                            </li>
+                            
+                                <!-- Next Page -->
+                            <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                                <a class="page-link" 
+                                       th:href="@{/admin/users(page=${currentPage + 1}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                                   th:if="${currentPage < totalPages - 1}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                                <span class="page-link" th:if="${currentPage == totalPages - 1}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </span>
+                            </li>
+                        </ul>
+                    </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addUserModalLabel">Thêm người dùng mới</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addUserForm">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Vai trò <span class="text-danger">*</span></label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Chọn vai trò</option>
+                                <option value="USER">User</option>
+                                <option value="SELLER">Seller</option>
+                                <option value="ADMIN">Admin</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmAddUser()">Thêm người dùng</button>
                 </div>
             </div>
         </div>
@@ -501,12 +656,14 @@
         
         // Add user function
         window.confirmAddUser = function() {
-            const username = document.getElementById('username').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value.trim();
-            const role = document.getElementById('role').value;
+            // Get elements from the modal
+            const modal = document.getElementById('addUserModal');
+            const username = modal.querySelector('#username').value.trim();
+            const email = modal.querySelector('#email').value.trim();
+            const password = modal.querySelector('#password').value.trim();
+            const role = modal.querySelector('#role').value;
             
-            if (!username || !email || !password || !role) {
+            if (!username || !email || !password || !role || role === '') {
                 alert('Vui lòng điền đầy đủ thông tin!');
                 return;
             }
@@ -546,7 +703,7 @@
                         } else if (data.error && data.error.includes('Email')) {
                             alert('Lỗi: Email đã tồn tại!');
                         } else {
-                            alert('Lỗi: ' + (data.error || 'Có lỗi xảy ra'));
+                        alert('Lỗi: ' + (data.error || 'Có lỗi xảy ra'));
                         }
                     });
                 }
@@ -558,10 +715,29 @@
         };
         
         // Action button functions
-        function deleteUser(userId) {
-            if (confirm('Bạn có chắc chắn muốn xóa người dùng này?')) {
-                // Implement delete functionality
-                console.log('Delete user:', userId);
+        function toggleUserLock(userId, currentStatus) {
+            const action = currentStatus === 'ACTIVE' ? 'khóa' : 'mở khóa';
+            if (confirm(`Bạn có chắc chắn muốn ${action} người dùng này?`)) {
+                fetch(`/api/admin/users/${userId}/toggle-lock`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert(`Đã ${action} người dùng thành công!`);
+                        location.reload();
+                    } else {
+                        return response.json().then(data => {
+                            alert('Lỗi: ' + (data.error || 'Có lỗi xảy ra'));
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi thực hiện thao tác');
+                });
             }
         }
     </script>

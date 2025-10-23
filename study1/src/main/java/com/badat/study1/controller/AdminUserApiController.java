@@ -3,11 +3,13 @@ package com.badat.study1.controller;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.service.AuditLogService;
+import com.badat.study1.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -20,6 +22,8 @@ public class AdminUserApiController {
     
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
     
     @PostMapping("/add")
     public ResponseEntity<?> addUser(@RequestBody Map<String, String> request) {
@@ -39,6 +43,7 @@ public class AdminUserApiController {
             String username = request.get("username");
             String email = request.get("email");
             String password = request.get("password");
+            String role = request.get("role");
 
             if (username == null || username.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Username is required"));
@@ -48,6 +53,9 @@ public class AdminUserApiController {
             }
             if (password == null || password.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Password is required"));
+            }
+            if (role == null || role.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Role is required"));
             }
 
             // Check if username already exists
@@ -64,10 +72,15 @@ public class AdminUserApiController {
             User newUser = new User();
             newUser.setUsername(username.trim());
             newUser.setEmail(email.trim());
-            newUser.setPassword(password); // You might want to encode this
+            newUser.setPassword(passwordEncoder.encode(password)); // BCrypt encode password
             newUser.setFullName(request.get("fullName") != null ? request.get("fullName").trim() : null);
             newUser.setPhone(request.get("phone") != null ? request.get("phone").trim() : null);
-            newUser.setRole(User.Role.USER);
+            // Set role from request
+            try {
+                newUser.setRole(User.Role.valueOf(role.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid role: " + role));
+            }
             newUser.setStatus(User.Status.ACTIVE);
             newUser.setCreatedAt(java.time.LocalDateTime.now());
 
@@ -87,6 +100,89 @@ public class AdminUserApiController {
 
         } catch (Exception e) {
             log.error("Error creating user: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+        }
+    }
+    
+
+    @GetMapping("/list")
+    public ResponseEntity<?> listUsers() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() || 
+                "anonymousUser".equals(authentication.getName())) {
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+            }
+
+            User currentUser = (User) authentication.getPrincipal();
+            if (!currentUser.getRole().name().equals("ADMIN")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+            }
+
+            // Get all users (including deleted ones for debugging)
+            var allUsers = userRepository.findAll();
+            var activeUsers = userRepository.findByIsDeleteFalse();
+            
+            return ResponseEntity.ok(Map.of(
+                "totalUsers", allUsers.size(),
+                "activeUsers", activeUsers.size(),
+                "users", allUsers.stream().map(user -> Map.of(
+                    "id", user.getId(),
+                    "username", user.getUsername(),
+                    "email", user.getEmail(),
+                    "role", user.getRole().name(),
+                    "status", user.getStatus().name(),
+                    "provider", user.getProvider(),
+                    "isDelete", user.getIsDelete(),
+                    "createdAt", user.getCreatedAt(),
+                    "createdBy", user.getCreatedBy()
+                )).toList()
+            ));
+
+        } catch (Exception e) {
+            log.error("Error listing users: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+        }
+    }
+
+    @PostMapping("/{userId}/toggle-lock")
+    public ResponseEntity<?> toggleUserLock(@PathVariable Long userId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() || 
+                "anonymousUser".equals(authentication.getName())) {
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+            }
+
+            User currentUser = (User) authentication.getPrincipal();
+            if (!currentUser.getRole().name().equals("ADMIN")) {
+                return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
+            }
+
+            // Get user to toggle
+            User userToToggle = userService.findById(userId);
+            if (userToToggle == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+            }
+
+            // Toggle status
+            if (userToToggle.getStatus() == User.Status.ACTIVE) {
+                userToToggle.setStatus(User.Status.LOCKED);
+                log.info("Admin {} locked user {}", currentUser.getUsername(), userToToggle.getUsername());
+            } else {
+                userToToggle.setStatus(User.Status.ACTIVE);
+                log.info("Admin {} unlocked user {}", currentUser.getUsername(), userToToggle.getUsername());
+            }
+
+            userService.save(userToToggle);
+
+            return ResponseEntity.ok(Map.of(
+                "message", "User status updated successfully",
+                "newStatus", userToToggle.getStatus().name()
+            ));
+
+        } catch (Exception e) {
+            log.error("Error toggling user lock: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
         }
     }
