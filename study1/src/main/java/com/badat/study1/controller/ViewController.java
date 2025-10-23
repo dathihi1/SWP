@@ -6,6 +6,7 @@ import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.model.Product;
+import com.badat.study1.model.Review;
 import com.badat.study1.repository.AuditLogRepository;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
@@ -69,6 +70,7 @@ public class ViewController {
     private final UserService userService;
 
     public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, ReviewRepository reviewRepository, OrderRepository orderRepository, AuditLogRepository auditLogRepository, UserService userService) {
+
         this.walletRepository = walletRepository;
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
@@ -224,6 +226,26 @@ public class ViewController {
                     vm.put("shopName", "Unknown Shop");
                 }
 
+                // Calculate average rating for the stall
+                try {
+                    var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stall.getId());
+                    if (!reviews.isEmpty()) {
+                        double avgRating = reviews.stream()
+                                .mapToInt(Review::getRating)
+                                .average()
+                                .orElse(0.0);
+                        vm.put("averageRating", Math.round(avgRating * 10.0) / 10.0); // Round to 1 decimal place
+                        vm.put("reviewCount", reviews.size());
+                    } else {
+                        vm.put("averageRating", 0.0);
+                        vm.put("reviewCount", 0);
+                    }
+                } catch (Exception e) {
+                    log.warn("Error calculating average rating for stall {}: {}", stall.getId(), e.getMessage());
+                    vm.put("averageRating", 0.0);
+                    vm.put("reviewCount", 0);
+                }
+
                 // Always set imageBase64 key, even if null
                 if (stall.getStallImageData() != null && stall.getStallImageData().length > 0) {
                     String base64 = Base64.getEncoder().encodeToString(stall.getStallImageData());
@@ -242,7 +264,11 @@ public class ViewController {
                     .collect(Collectors.toList());
                     
             model.addAttribute("stalls", stallCards);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.error("Error loading stalls for homepage: {}", e.getMessage(), e);
+            // Add empty stalls list to prevent template errors
+            model.addAttribute("stalls", new ArrayList<>());
+        }
 
         log.info("Returning home template");
         return "home";
@@ -1120,7 +1146,8 @@ public class ViewController {
             if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
                 com.badat.study1.model.OrderItem firstItem = order.getOrderItems().get(0);
                 order.setProduct(firstItem.getProduct());
-                order.setQuantity(firstItem.getQuantity());
+                // Đếm số lượng order_item thay vì lấy quantity của item đầu tiên
+                order.setQuantity(order.getOrderItems().size());
                 order.setUnitPrice(firstItem.getUnitPrice());
             }
         }
@@ -1666,7 +1693,6 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         // Get unique actions and categories for filter dropdowns
         List<String> actions = auditLogRepository.findDistinctActions();
         List<String> categories = auditLogRepository.findDistinctCategories();
-        
         
         model.addAttribute("auditLogs", auditLogsPage.getContent());
         model.addAttribute("currentPage", page);
