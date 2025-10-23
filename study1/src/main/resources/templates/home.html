@@ -22,6 +22,8 @@
         .preview-img-frame { background:#fff; padding:16px; border-top-left-radius:.75rem; border-top-right-radius:.75rem; }
         .preview-card img { width:100%; height:200px; object-fit:cover; border-radius:.5rem; }
         .preview-sep { height:2px; background: var(--bs-primary); margin: 0 16px; }
+        .rating-star { color: #ffc107; font-size: 0.9rem; }
+        .rating-text { font-size: 0.85rem; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -160,11 +162,22 @@
                                 <div class="text-muted">Giá</div>
                                 <div class="text-truncate fw-semibold text-success" th:text="${s.priceRange}">Giá</div>
                             </div>
-                            <div class="small mt-2">
+                            <div class="small mt-2 d-flex justify-content-between align-items-center">
                                 <span class="badge bg-primary-subtle text-primary">
                                     <i class="fa-solid fa-box-open me-1"></i>
                                     <span th:text="${s.productCount}">0</span> sản phẩm
                                 </span>
+                                <div th:if="${s.reviewCount > 0}" class="d-flex align-items-center">
+                                    <div class="rating-star me-1">
+                                        <i class="fa-solid fa-star"></i>
+                                        <span class="rating-text" th:text="${#numbers.formatDecimal(s.averageRating, 1, 1)}">0.0</span>
+                                    </div>
+                                    <small class="text-muted" th:text="'(' + ${s.reviewCount} + ')'">(0)</small>
+                                </div>
+                                <div th:if="${s.reviewCount == 0}" class="text-muted">
+                                    <i class="fa-regular fa-star rating-star"></i>
+                                    <small>Chưa có đánh giá</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -445,13 +458,6 @@
     });
 
 </script>
-
-<footer class="border-top py-3 mt-5">
-    <div class="container d-flex justify-content-between align-items-center small">
-        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
-        <div class="text-muted">Liên hệ: support@example.com</div>
-    </div>
-</footer>
 
 </body>
 </html>

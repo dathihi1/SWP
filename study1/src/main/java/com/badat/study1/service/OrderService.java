@@ -306,6 +306,15 @@ public class OrderService {
     }
 
     /**
+     * Lấy danh sách orders của buyer với filter
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getOrdersByBuyerWithFilters(Long buyerId, String startDate, String endDate, 
+                                                   String searchStall, String searchProduct, String sortBy) {
+        return orderRepository.findByBuyerIdWithFilters(buyerId, startDate, endDate, searchStall, searchProduct, sortBy);
+    }
+
+    /**
      * Lấy danh sách orders của seller (từ OrderItem)
      */
     @Transactional(readOnly = true)

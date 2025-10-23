@@ -35,10 +35,15 @@
             color: #155724;
         }
         
-        .status-rejected {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
+         .status-rejected {
+             background-color: #f8d7da;
+             color: #721c24;
+         }
+         
+         .status-cancelled {
+             background-color: #e2e3e5;
+             color: #6c757d;
+         }
         
         .modal-content {
             border-radius: 15px;
@@ -69,10 +74,28 @@
             transition: all 0.3s ease;
         }
         
-        .history-item:hover {
-            background-color: #f8f9fa;
-            transform: translateX(5px);
-        }
+         .history-item:hover {
+             background-color: #f8f9fa;
+             transform: translateX(5px);
+         }
+         
+         .form-control.is-invalid {
+             border-color: #dc3545;
+             box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+         }
+         
+         .invalid-feedback {
+             display: block;
+             width: 100%;
+             margin-top: 0.25rem;
+             font-size: 0.875em;
+             color: #dc3545;
+         }
+         
+         .btn:disabled {
+             opacity: 0.6;
+             cursor: not-allowed;
+         }
     </style>
 </head>
 <body>
@@ -167,6 +190,73 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Filter Form -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card card-shadow mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="fa-solid fa-filter me-2"></i>Bộ lọc
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="filterForm">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label for="startDate" class="form-label">Từ ngày</label>
+                                    <input type="date" class="form-control" id="startDate" name="startDate">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="endDate" class="form-label">Đến ngày</label>
+                                    <input type="date" class="form-control" id="endDate" name="endDate">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="status" class="form-label">Trạng thái</label>
+                                    <select class="form-select" id="status" name="status">
+                                        <option value="">Tất cả</option>
+                                        <option value="PENDING">Đang chờ duyệt</option>
+                                        <option value="APPROVED">Đã duyệt</option>
+                                        <option value="REJECTED">Đã từ chối</option>
+                                        <option value="CANCELLED">Đã hủy</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="minAmount" class="form-label">Số tiền từ (VNĐ)</label>
+                                    <input type="number" class="form-control" id="minAmount" name="minAmount" placeholder="0" min="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="maxAmount" class="form-label">Số tiền đến (VNĐ)</label>
+                                    <input type="number" class="form-control" id="maxAmount" name="maxAmount" placeholder="Không giới hạn" min="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="bankAccountNumber" class="form-label">Số tài khoản</label>
+                                    <input type="text" class="form-control" id="bankAccountNumber" name="bankAccountNumber" placeholder="Nhập số tài khoản">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="bankName" class="form-label">Tên ngân hàng</label>
+                                    <input type="text" class="form-control" id="bankName" name="bankName" placeholder="Nhập tên ngân hàng">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="bankAccountName" class="form-label">Tên người nhận</label>
+                                    <input type="text" class="form-control" id="bankAccountName" name="bankAccountName" placeholder="Nhập tên người nhận">
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-primary" onclick="applyFilters()">
+                                            <i class="fa-solid fa-search me-2"></i>Lọc
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                                            <i class="fa-solid fa-times me-2"></i>Xóa bộ lọc
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Wallet Balance Card -->
         <div class="row mb-4">
@@ -217,39 +307,67 @@
                 </div>
                 <form id="withdrawForm">
                     <div class="modal-body">
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label for="amount" class="form-label">Số tiền cần rút (VNĐ) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="amount" name="amount" 
-                                       placeholder="Nhập số tiền cần rút" min="1" required>
-                                <div class="form-text">Số dư hiện tại: <span id="currentBalance" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">0 VNĐ</span></div>
+                        <!-- Step 1: Withdraw Form -->
+                        <div id="withdrawFormStep" class="withdraw-step">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="amount" class="form-label">Số tiền cần rút (VNĐ) <span class="text-danger">*</span></label>
+                                     <input type="number" class="form-control" id="amount" name="amount" 
+                                            placeholder="Nhập số tiền cần rút (tối thiểu 100,000 VNĐ)" min="100000" required>
+                                    <div class="form-text">Số dư hiện tại: <span id="currentBalance" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">0 VNĐ</span></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="bankAccountNumber" class="form-label">Số tài khoản <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="bankAccountNumber" name="bankAccountNumber" 
+                                           placeholder="Nhập số tài khoản" maxlength="50" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="bankAccountName" class="form-label">Tên chủ tài khoản <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="bankAccountName" name="bankAccountName" 
+                                           placeholder="Nhập tên chủ tài khoản" maxlength="100" required>
+                                </div>
+                                <div class="col-12">
+                                    <label for="bankName" class="form-label">Tên ngân hàng <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="bankName" name="bankName" 
+                                           placeholder="Nhập tên ngân hàng" maxlength="100" required>
+                                </div>
+                                <div class="col-12">
+                                    <label for="note" class="form-label">Ghi chú (tùy chọn)</label>
+                                    <textarea class="form-control" id="note" name="note" rows="3" 
+                                              placeholder="Nhập ghi chú (nếu có)" maxlength="255"></textarea>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="bankAccountNumber" class="form-label">Số tài khoản <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="bankAccountNumber" name="bankAccountNumber" 
-                                       placeholder="Nhập số tài khoản" maxlength="50" required>
+                        </div>
+                        
+                        <!-- Step 2: OTP Verification -->
+                        <div id="otpVerificationStep" class="withdraw-step" style="display: none;">
+                            <div class="text-center mb-4">
+                                <i class="fa-solid fa-envelope fa-3x text-primary mb-3"></i>
+                                <h5>Xác thực OTP</h5>
+                                <p class="text-muted">Mã OTP đã được gửi đến email của bạn. Vui lòng nhập mã để xác thực.</p>
                             </div>
-                            <div class="col-md-6">
-                                <label for="bankAccountName" class="form-label">Tên chủ tài khoản <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="bankAccountName" name="bankAccountName" 
-                                       placeholder="Nhập tên chủ tài khoản" maxlength="100" required>
-                            </div>
-                            <div class="col-12">
-                                <label for="bankName" class="form-label">Tên ngân hàng <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="bankName" name="bankName" 
-                                       placeholder="Nhập tên ngân hàng" maxlength="100" required>
-                            </div>
-                            <div class="col-12">
-                                <label for="note" class="form-label">Ghi chú (tùy chọn)</label>
-                                <textarea class="form-control" id="note" name="note" rows="3" 
-                                          placeholder="Nhập ghi chú (nếu có)" maxlength="255"></textarea>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="otp" class="form-label">Mã OTP <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control text-center" id="otp" name="otp" 
+                                           placeholder="Nhập mã OTP 6 số" maxlength="6" required>
+                                    <div class="form-text">
+                                        <span id="otpTimer" class="text-warning"></span>
+                                        <button type="button" id="resendOtpBtn" class="btn btn-link btn-sm" style="display: none;">
+                                            Gửi lại OTP
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa-solid fa-paper-plane me-2"></i>Gửi yêu cầu
+                        <button type="button" id="sendOtpBtn" class="btn btn-primary">
+                            <i class="fa-solid fa-paper-plane me-2"></i>Gửi OTP
+                        </button>
+                        <button type="submit" id="submitWithdrawBtn" class="btn btn-primary" style="display: none;">
+                            <i class="fa-solid fa-check me-2"></i>Xác thực và gửi yêu cầu
                         </button>
                     </div>
                 </form>
@@ -269,6 +387,9 @@
     <script>
         let currentBalance = parseFloat(document.getElementById('currentBalance').textContent.replace(/[^\d]/g, ''));
         
+        let otpTimer = null;
+        let otpCountdown = 0;
+        
         document.addEventListener('DOMContentLoaded', function() {
             loadWithdrawHistory();
             
@@ -278,22 +399,124 @@
                 submitWithdrawRequest();
             });
             
-            // Amount validation
-            document.getElementById('amount').addEventListener('input', function() {
-                const amount = parseFloat(this.value);
-                if (amount > currentBalance) {
-                    this.setCustomValidity('Số tiền không được vượt quá số dư hiện tại');
-                } else if (amount <= 0) {
-                    this.setCustomValidity('Số tiền phải lớn hơn 0');
-                } else {
-                    this.setCustomValidity('');
-                }
-            });
+             // Amount validation with real-time feedback
+             document.getElementById('amount').addEventListener('input', function() {
+                 const amount = parseFloat(this.value);
+                 const errorElement = this.parentElement.querySelector('.invalid-feedback');
+                 
+                 if (isNaN(amount) || amount <= 0) {
+                     this.setCustomValidity('Số tiền phải lớn hơn 0');
+                     showFieldError(this, 'Số tiền phải lớn hơn 0');
+                 } else if (amount < 100000) {
+                     this.setCustomValidity('Số tiền tối thiểu để rút là 100,000 VNĐ');
+                     showFieldError(this, 'Số tiền tối thiểu để rút là 100,000 VNĐ');
+                 } else if (amount > currentBalance) {
+                     this.setCustomValidity('Số tiền không được vượt quá số dư hiện tại');
+                     showFieldError(this, 'Số tiền không được vượt quá số dư hiện tại');
+                 } else {
+                     this.setCustomValidity('');
+                     clearFieldError(this);
+                 }
+                 
+                 // Update send OTP button state
+                 updateSendOtpButtonState();
+             });
+            
+             // Send OTP button
+             document.getElementById('sendOtpBtn').addEventListener('click', function() {
+                 // Validate form before sending OTP
+                 if (!validateWithdrawForm()) {
+                     return;
+                 }
+                 
+                 // Disable button immediately to prevent spam
+                 this.disabled = true;
+                 this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang gửi...';
+                 
+                 sendOtp();
+             });
+            
+             // Resend OTP button
+             document.getElementById('resendOtpBtn').addEventListener('click', function() {
+                 // Disable button immediately to prevent spam
+                 this.disabled = true;
+                 this.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang gửi...';
+                 
+                 sendOtp();
+             });
+            
+             // Bank account number validation
+             document.getElementById('bankAccountNumber').addEventListener('input', function() {
+                 this.value = this.value.replace(/[^0-9]/g, '');
+                 
+                 if (this.value.length > 0 && this.value.length < 8) {
+                     this.setCustomValidity('Số tài khoản phải có ít nhất 8 ký tự');
+                     showFieldError(this, 'Số tài khoản phải có ít nhất 8 ký tự');
+                 } else if (this.value.length >= 8) {
+                     this.setCustomValidity('');
+                     clearFieldError(this);
+                 } else {
+                     this.setCustomValidity('');
+                     clearFieldError(this);
+                 }
+                 
+                 updateSendOtpButtonState();
+             });
+             
+             // Bank account name validation
+             document.getElementById('bankAccountName').addEventListener('input', function() {
+                 if (this.value.length > 0 && this.value.length < 2) {
+                     this.setCustomValidity('Tên chủ tài khoản phải có ít nhất 2 ký tự');
+                     showFieldError(this, 'Tên chủ tài khoản phải có ít nhất 2 ký tự');
+                 } else if (this.value.length >= 2) {
+                     this.setCustomValidity('');
+                     clearFieldError(this);
+                 } else {
+                     this.setCustomValidity('');
+                     clearFieldError(this);
+                 }
+                 
+                 updateSendOtpButtonState();
+             });
+             
+             // Bank name validation
+             document.getElementById('bankName').addEventListener('input', function() {
+                 if (this.value.length > 0 && this.value.length < 2) {
+                     this.setCustomValidity('Tên ngân hàng phải có ít nhất 2 ký tự');
+                     showFieldError(this, 'Tên ngân hàng phải có ít nhất 2 ký tự');
+                 } else if (this.value.length >= 2) {
+                     this.setCustomValidity('');
+                     clearFieldError(this);
+                 } else {
+                     this.setCustomValidity('');
+                     clearFieldError(this);
+                 }
+                 
+                 updateSendOtpButtonState();
+             });
+             
+             // OTP input validation
+             document.getElementById('otp').addEventListener('input', function() {
+                 this.value = this.value.replace(/[^0-9]/g, '');
+             });
         });
         
-        async function loadWithdrawHistory() {
+        async function loadWithdrawHistory(filterParams = {}) {
             try {
-                const response = await fetch('/api/withdraw/requests');
+                // Build query string from filter parameters
+                const queryParams = new URLSearchParams();
+                
+                if (filterParams.startDate) queryParams.append('startDate', filterParams.startDate);
+                if (filterParams.endDate) queryParams.append('endDate', filterParams.endDate);
+                if (filterParams.status) queryParams.append('status', filterParams.status);
+                if (filterParams.minAmount) queryParams.append('minAmount', filterParams.minAmount);
+                if (filterParams.maxAmount) queryParams.append('maxAmount', filterParams.maxAmount);
+                if (filterParams.bankAccountNumber) queryParams.append('bankAccountNumber', filterParams.bankAccountNumber);
+                if (filterParams.bankName) queryParams.append('bankName', filterParams.bankName);
+                if (filterParams.bankAccountName) queryParams.append('bankAccountName', filterParams.bankAccountName);
+                
+                const url = `/api/withdraw/requests${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+                const response = await fetch(url);
                 const requests = await response.json();
                 
                 const historyContainer = document.getElementById('withdrawHistory');
@@ -332,6 +555,13 @@
                                 </div>
                                 <div class="col-md-3 text-end">
                                     <span class="status-badge ${statusClass}">${statusText}</span>
+                                    ${request.status === 'PENDING' ? `
+                                        <div class="mt-2">
+                                            <button class="btn btn-outline-danger btn-sm" onclick="cancelWithdrawRequest(${request.id})">
+                                                <i class="fa-solid fa-times me-1"></i>Hủy yêu cầu
+                                            </button>
+                                        </div>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
@@ -351,6 +581,67 @@
             }
         }
         
+         async function sendOtp() {
+             try {
+                 const response = await fetch('/api/withdraw/send-otp', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                     },
+                     body: JSON.stringify({})
+                 });
+                 
+                 const result = await response.json();
+                 
+                 if (response.ok) {
+                     // Show OTP step immediately
+                     showOtpStep();
+                     startOtpTimer();
+                     showAlert('success', result.message);
+                 } else {
+                     showAlert('danger', result.error || 'Không thể gửi OTP');
+                     // Re-enable buttons on error
+                     resetOtpButtons();
+                     updateSendOtpButtonState();
+                 }
+                 
+             } catch (error) {
+                 console.error('Error sending OTP:', error);
+                 showAlert('danger', 'Có lỗi xảy ra khi gửi OTP');
+                 // Re-enable buttons on error
+                 resetOtpButtons();
+                 updateSendOtpButtonState();
+             }
+         }
+        
+        function showOtpStep() {
+            document.getElementById('withdrawFormStep').style.display = 'none';
+            document.getElementById('otpVerificationStep').style.display = 'block';
+            document.getElementById('sendOtpBtn').style.display = 'none';
+            document.getElementById('submitWithdrawBtn').style.display = 'inline-block';
+        }
+        
+         function startOtpTimer() {
+             otpCountdown = 60; // 60 seconds
+             const timerElement = document.getElementById('otpTimer');
+             const resendBtn = document.getElementById('resendOtpBtn');
+             
+             // Reset resend button state
+             resendBtn.disabled = false;
+             resendBtn.innerHTML = 'Gửi lại OTP';
+             
+             otpTimer = setInterval(() => {
+                 otpCountdown--;
+                 timerElement.textContent = `Mã OTP hết hạn sau ${otpCountdown} giây`;
+                 
+                 if (otpCountdown <= 0) {
+                     clearInterval(otpTimer);
+                     timerElement.textContent = 'Mã OTP đã hết hạn';
+                     resendBtn.style.display = 'inline-block';
+                 }
+             }, 1000);
+         }
+        
         async function submitWithdrawRequest() {
             const form = document.getElementById('withdrawForm');
             const formData = new FormData(form);
@@ -360,7 +651,8 @@
                 bankAccountNumber: formData.get('bankAccountNumber'),
                 bankAccountName: formData.get('bankAccountName'),
                 bankName: formData.get('bankName'),
-                note: formData.get('note') || null
+                note: formData.get('note') || null,
+                otp: formData.get('otp')
             };
             
             try {
@@ -383,7 +675,7 @@
                     showAlert('success', 'Tạo yêu cầu rút tiền thành công! Yêu cầu của bạn đang được xem xét. Trang sẽ được tải lại để cập nhật số dư.');
                     
                     // Reset form
-                    form.reset();
+                    resetWithdrawForm();
                     
                     // Reload page after 2 seconds to show updated balance
                     setTimeout(() => {
@@ -401,26 +693,255 @@
             }
         }
         
-        function getStatusClass(status) {
-            switch (status) {
-                case 'PENDING': return 'status-pending';
-                case 'APPROVED': return 'status-approved';
-                case 'REJECTED': return 'status-rejected';
-                default: return 'status-pending';
+         function resetWithdrawForm() {
+             document.getElementById('withdrawForm').reset();
+             document.getElementById('withdrawFormStep').style.display = 'block';
+             document.getElementById('otpVerificationStep').style.display = 'none';
+             document.getElementById('sendOtpBtn').style.display = 'inline-block';
+             document.getElementById('submitWithdrawBtn').style.display = 'none';
+             
+             if (otpTimer) {
+                 clearInterval(otpTimer);
+             }
+             document.getElementById('otpTimer').textContent = '';
+             document.getElementById('resendOtpBtn').style.display = 'none';
+             
+             // Clear all validation errors
+             const fields = ['amount', 'bankAccountNumber', 'bankAccountName', 'bankName'];
+             fields.forEach(fieldId => {
+                 const field = document.getElementById(fieldId);
+                 clearFieldError(field);
+             });
+             
+             // Reset button states
+             resetOtpButtons();
+             
+             // Update button state
+             updateSendOtpButtonState();
+         }
+         
+         function resetOtpButtons() {
+             const sendOtpBtn = document.getElementById('sendOtpBtn');
+             const resendOtpBtn = document.getElementById('resendOtpBtn');
+             
+             // Reset send OTP button
+             sendOtpBtn.disabled = false;
+             sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Gửi OTP';
+             
+             // Reset resend OTP button
+             resendOtpBtn.disabled = false;
+             resendOtpBtn.innerHTML = 'Gửi lại OTP';
+         }
+         
+         function showFieldError(field, message) {
+             // Remove existing error feedback
+             const existingError = field.parentElement.querySelector('.invalid-feedback');
+             if (existingError) {
+                 existingError.remove();
+             }
+             
+             // Add error class
+             field.classList.add('is-invalid');
+             
+             // Add error message
+             const errorDiv = document.createElement('div');
+             errorDiv.className = 'invalid-feedback';
+             errorDiv.textContent = message;
+             field.parentElement.appendChild(errorDiv);
+         }
+         
+         function clearFieldError(field) {
+             field.classList.remove('is-invalid');
+             const errorDiv = field.parentElement.querySelector('.invalid-feedback');
+             if (errorDiv) {
+                 errorDiv.remove();
+             }
+         }
+         
+         function updateSendOtpButtonState() {
+             const sendOtpBtn = document.getElementById('sendOtpBtn');
+             const isFormValid = isWithdrawFormValid();
+             
+             sendOtpBtn.disabled = !isFormValid;
+             
+             if (isFormValid) {
+                 sendOtpBtn.classList.remove('btn-secondary');
+                 sendOtpBtn.classList.add('btn-primary');
+             } else {
+                 sendOtpBtn.classList.remove('btn-primary');
+                 sendOtpBtn.classList.add('btn-secondary');
+             }
+         }
+         
+         function isWithdrawFormValid() {
+             const amount = parseFloat(document.getElementById('amount').value);
+             const bankAccountNumber = document.getElementById('bankAccountNumber').value.trim();
+             const bankAccountName = document.getElementById('bankAccountName').value.trim();
+             const bankName = document.getElementById('bankName').value.trim();
+             
+             // Check amount
+             if (isNaN(amount) || amount <= 0 || amount < 100000 || amount > currentBalance) {
+                 return false;
+             }
+             
+             // Check bank account number
+             if (!bankAccountNumber || bankAccountNumber.length < 8) {
+                 return false;
+             }
+             
+             // Check bank account name
+             if (!bankAccountName || bankAccountName.length < 2) {
+                 return false;
+             }
+             
+             // Check bank name
+             if (!bankName || bankName.length < 2) {
+                 return false;
+             }
+             
+             return true;
+         }
+         
+         function validateWithdrawForm() {
+             const amount = parseFloat(document.getElementById('amount').value);
+             const bankAccountNumber = document.getElementById('bankAccountNumber').value.trim();
+             const bankAccountName = document.getElementById('bankAccountName').value.trim();
+             const bankName = document.getElementById('bankName').value.trim();
+             
+             let isValid = true;
+             
+             // Validate amount
+             if (isNaN(amount) || amount <= 0) {
+                 showAlert('danger', 'Số tiền phải lớn hơn 0');
+                 document.getElementById('amount').focus();
+                 isValid = false;
+             } else if (amount < 100000) {
+                 showAlert('danger', 'Số tiền tối thiểu để rút là 100,000 VNĐ');
+                 document.getElementById('amount').focus();
+                 isValid = false;
+             } else if (amount > currentBalance) {
+                 showAlert('danger', 'Số tiền không được vượt quá số dư hiện tại');
+                 document.getElementById('amount').focus();
+                 isValid = false;
+             }
+             
+             // Validate bank account number
+             if (!bankAccountNumber) {
+                 showAlert('danger', 'Vui lòng nhập số tài khoản');
+                 document.getElementById('bankAccountNumber').focus();
+                 isValid = false;
+             } else if (bankAccountNumber.length < 8) {
+                 showAlert('danger', 'Số tài khoản phải có ít nhất 8 ký tự');
+                 document.getElementById('bankAccountNumber').focus();
+                 isValid = false;
+             }
+             
+             // Validate bank account name
+             if (!bankAccountName) {
+                 showAlert('danger', 'Vui lòng nhập tên chủ tài khoản');
+                 document.getElementById('bankAccountName').focus();
+                 isValid = false;
+             } else if (bankAccountName.length < 2) {
+                 showAlert('danger', 'Tên chủ tài khoản phải có ít nhất 2 ký tự');
+                 document.getElementById('bankAccountName').focus();
+                 isValid = false;
+             }
+             
+             // Validate bank name
+             if (!bankName) {
+                 showAlert('danger', 'Vui lòng nhập tên ngân hàng');
+                 document.getElementById('bankName').focus();
+                 isValid = false;
+             } else if (bankName.length < 2) {
+                 showAlert('danger', 'Tên ngân hàng phải có ít nhất 2 ký tự');
+                 document.getElementById('bankName').focus();
+                 isValid = false;
+             }
+             
+             return isValid;
+         }
+        
+        async function cancelWithdrawRequest(requestId) {
+            if (!confirm('Bạn có chắc chắn muốn hủy yêu cầu rút tiền này? Số tiền sẽ được trả về ví của bạn.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/withdraw/cancel/${requestId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('success', result.message);
+                    loadWithdrawHistory(); // Reload history
+                    // Reload page to update balance
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showAlert('danger', result.error || 'Có lỗi xảy ra khi hủy yêu cầu');
+                }
+                
+            } catch (error) {
+                console.error('Error canceling withdraw request:', error);
+                showAlert('danger', 'Có lỗi xảy ra khi hủy yêu cầu');
             }
         }
         
-        function getStatusText(status) {
-            switch (status) {
-                case 'PENDING': return 'Đang chờ duyệt';
-                case 'APPROVED': return 'Đã duyệt';
-                case 'REJECTED': return 'Đã từ chối';
-                default: return 'Đang chờ duyệt';
-            }
-        }
+         function getStatusClass(status) {
+             switch (status) {
+                 case 'PENDING': return 'status-pending';
+                 case 'APPROVED': return 'status-approved';
+                 case 'REJECTED': return 'status-rejected';
+                 case 'CANCELLED': return 'status-cancelled';
+                 default: return 'status-pending';
+             }
+         }
+        
+         function getStatusText(status) {
+             switch (status) {
+                 case 'PENDING': return 'Đang chờ duyệt';
+                 case 'APPROVED': return 'Đã duyệt';
+                 case 'REJECTED': return 'Đã từ chối';
+                 case 'CANCELLED': return 'Đã hủy';
+                 default: return 'Đang chờ duyệt';
+             }
+         }
         
         function formatNumber(num) {
             return new Intl.NumberFormat('vi-VN').format(num);
+        }
+        
+        function applyFilters() {
+            const filterParams = {
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                status: document.getElementById('status').value,
+                minAmount: document.getElementById('minAmount').value,
+                maxAmount: document.getElementById('maxAmount').value,
+                bankAccountNumber: document.getElementById('bankAccountNumber').value,
+                bankName: document.getElementById('bankName').value,
+                bankAccountName: document.getElementById('bankAccountName').value
+            };
+            
+            // Remove empty values
+            Object.keys(filterParams).forEach(key => {
+                if (!filterParams[key]) {
+                    delete filterParams[key];
+                }
+            });
+            
+            loadWithdrawHistory(filterParams);
+        }
+        
+        function clearFilters() {
+            document.getElementById('filterForm').reset();
+            loadWithdrawHistory();
         }
         
         function showAlert(type, message) {

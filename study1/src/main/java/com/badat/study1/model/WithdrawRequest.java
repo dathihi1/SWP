@@ -48,6 +48,6 @@ public class WithdrawRequest extends BaseEntity {
     String note;
     
     public enum Status {
-        PENDING, APPROVED, REJECTED
+        PENDING, APPROVED, REJECTED, CANCELLED
     }
 }

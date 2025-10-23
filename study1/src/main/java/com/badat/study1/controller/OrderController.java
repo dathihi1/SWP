@@ -28,12 +28,18 @@ public class OrderController {
      * Lấy danh sách orders của user hiện tại với thông tin OrderItem
      */
     @GetMapping("/my-orders")
-    public ResponseEntity<List<Map<String, Object>>> getMyOrders() {
+    public ResponseEntity<List<Map<String, Object>>> getMyOrders(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String searchStall,
+            @RequestParam(required = false) String searchProduct,
+            @RequestParam(required = false) String sortBy) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             User user = (User) auth.getPrincipal();
             
-            List<Order> orders = orderService.getOrdersByBuyer(user.getId());
+            List<Order> orders = orderService.getOrdersByBuyerWithFilters(
+                user.getId(), startDate, endDate, searchStall, searchProduct, sortBy);
             
             // Chuyển đổi orders thành format mới với thông tin OrderItem
             List<Map<String, Object>> orderDetails = orders.stream().map(order -> {
