@@ -40,13 +40,13 @@
         }
         
         .sidebar-header .navbar-brand {
-            color: #0d6efd;
+            color: #ff7b00;
             font-weight: 600;
             text-decoration: none;
         }
         
         .sidebar-header .navbar-brand:hover {
-            color: #0b5ed7;
+            color: #e66a00;
         }
         
         .menu-section {
@@ -67,7 +67,7 @@
             display: flex;
             align-items: center;
             padding: 12px 20px;
-            color: #0d6efd;
+            color: #ff7b00;
             text-decoration: none;
             transition: all 0.3s ease;
             border-left: 3px solid transparent;
@@ -76,16 +76,16 @@
         }
         
         .menu-item:hover {
-            background-color: rgba(13, 110, 253, 0.1);
-            color: #0b5ed7;
-            border-left-color: #0d6efd;
+            background-color: rgba(255, 123, 0, 0.1);
+            color: #e66a00;
+            border-left-color: #ff7b00;
             transform: translateX(5px);
         }
         
         .menu-item.active {
-            background-color: rgba(13, 110, 253, 0.15);
-            color: #0b5ed7;
-            border-left-color: #0d6efd;
+            background-color: rgba(255, 123, 0, 0.15);
+            color: #e66a00;
+            border-left-color: #ff7b00;
             font-weight: 600;
         }
         
@@ -269,12 +269,12 @@
         }
         
         .btn-edit {
-            background-color: #0d6efd;
+            background-color: #ff7b00;
             color: white;
         }
         
         .btn-edit:hover {
-            background-color: #0b5ed7;
+            background-color: #e66a00;
             color: white;
         }
         
@@ -340,7 +340,44 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <div th:replace="~{fragments/admin-sidebar :: admin-sidebar}"></div>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <a class="navbar-brand d-flex align-items-center" th:href="@{/admin}" href="/admin">
+                    <i class="fa-solid fa-shield-halved me-2" style="color:#ff7b00;"></i>
+                    MMO Market Admin
+                </a>
+            </div>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">ADMIN</div>
+            <a href="/admin" class="menu-item active">
+                <i class="fas fa-tachometer-alt"></i>
+                Dashboard
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">QUẢN LÝ</div>
+            <a href="/admin/users" class="menu-item">
+                <i class="fas fa-users"></i>
+                Quản lý người dùng
+            </a>
+            <a href="/admin/stalls" class="menu-item">
+                <i class="fas fa-store"></i>
+                Quản lý cửa hàng
+            </a>
+            <a href="/admin/withdraw-requests" class="menu-item">
+                <i class="fas fa-money-bill-transfer"></i>
+                Yêu cầu rút tiền
+            </a>
+            <a href="/admin/audit-logs" class="menu-item">
+                <i class="fas fa-clipboard-list"></i>
+                Audit Logs
+            </a>
+        </div>
+    </div>
     
     <!-- Main Content -->
     <div class="main-content">
@@ -578,7 +615,7 @@
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <a href="/admin/stalls" class="btn btn-outline-success w-100">
-                                        <i class="fas fa-store me-2"></i>Quản lý gian hàng
+                                        <i class="fas fa-store me-2"></i>Quản lý cửa hàng
                                     </a>
                                 </div>
                                 <div class="col-md-3 mb-3">
@@ -599,6 +636,38 @@
         </div>
     </div>
     
-    <div th:replace="~{fragments/admin-scripts :: admin-scripts}"></div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            if (sidebarToggle && sidebar && mainContent) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('collapsed');
+                    
+                    // Update main content margin
+                    if (sidebar.classList.contains('collapsed')) {
+                        mainContent.style.marginLeft = '0';
+                    } else {
+                        mainContent.style.marginLeft = '280px';
+                    }
+                });
+            }
+            
+            // Set active menu item based on current path
+            const currentPath = window.location.pathname;
+            const menuItems = document.querySelectorAll('.menu-item[href]');
+            
+            menuItems.forEach(function(item) {
+                const itemPath = item.getAttribute('href');
+                if (currentPath === itemPath || (itemPath !== '/admin' && currentPath.startsWith(itemPath))) {
+                    item.classList.add('active');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

@@ -22,6 +22,7 @@ import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import java.time.LocalDateTime;
 import com.badat.study1.dto.response.AuditLogResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -55,6 +56,7 @@ import java.util.Locale;
 
 @Slf4j
 @Controller
+@RequiredArgsConstructor
 public class ViewController {
     private final WalletRepository walletRepository;
     private final ShopRepository shopRepository;
@@ -63,30 +65,12 @@ public class ViewController {
     private final UploadHistoryRepository uploadHistoryRepository;
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
-    private final OrderItemRepository orderItemRepository;
     private final OrderRepository orderRepository;
     private final AuditLogRepository auditLogRepository;
 
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
     private final UserService userService;
-
-    public ViewController(WalletRepository walletRepository, ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WalletHistoryService walletHistoryService, AuditLogService auditLogService, UserRepository userRepository, ReviewRepository reviewRepository, OrderItemRepository orderItemRepository, OrderRepository orderRepository, AuditLogRepository auditLogRepository, UserService userService) {
-
-        this.walletRepository = walletRepository;
-        this.shopRepository = shopRepository;
-        this.stallRepository = stallRepository;
-        this.productRepository = productRepository;
-        this.uploadHistoryRepository = uploadHistoryRepository;
-        this.walletHistoryService = walletHistoryService;
-        this.auditLogService = auditLogService;
-        this.userRepository = userRepository;
-        this.reviewRepository = reviewRepository;
-        this.orderItemRepository = orderItemRepository;
-        this.orderRepository = orderRepository;
-        this.auditLogRepository = auditLogRepository;
-        this.userService = userService;
-    }
 
     // Inject common attributes (auth info and wallet balance) for all views
     @ModelAttribute
@@ -629,7 +613,6 @@ public class ViewController {
                         .map(Wallet::getBalance)
                         .orElse(BigDecimal.ZERO);
                 model.addAttribute("walletBalance", walletBalance);
-                log.debug("Wallet balance for user {}: {}", user.getId(), walletBalance);
             } catch (Exception e) {
                 log.error("Error getting wallet balance for user {}: {}", user.getId(), e.getMessage());
                 model.addAttribute("walletBalance", BigDecimal.ZERO);

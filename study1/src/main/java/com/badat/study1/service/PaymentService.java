@@ -191,7 +191,6 @@ public class PaymentService {
             CartService.CartPaymentInfo cartInfo;
             if (request.getCartItems() != null && !request.getCartItems().isEmpty()) {
                 log.info("Processing {} selected cart items from request", request.getCartItems().size());
-                log.debug("Selected cart items: {}", request.getCartItems());
                 
                 // Sử dụng items được chọn từ request và tìm warehouseId thực tế
                 BigDecimal totalAmount = BigDecimal.ZERO;

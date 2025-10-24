@@ -224,7 +224,6 @@ public class CartService {
             cartItemData.put("shopId", item.getProduct().getShopId());
             cartItemData.put("sellerId", item.getProduct().getShop() != null ? item.getProduct().getShop().getUserId() : null);
             
-            log.debug("Created cart item data: {}", cartItemData);
             
             cartItems.add(cartItemData);
         }
