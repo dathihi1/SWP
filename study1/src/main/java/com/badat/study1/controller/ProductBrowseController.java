@@ -13,6 +13,8 @@ import com.badat.study1.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.Comparator;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +46,7 @@ public class ProductBrowseController {
             @RequestParam(value = "minPrice", required = false) BigDecimal minPrice,
             @RequestParam(value = "maxPrice", required = false) BigDecimal maxPrice,
             @RequestParam(value = "shop", required = false) String shopName,
+            @RequestParam(value = "sort", required = false) String sort,
             Model model) {
         // Get all shops
         List<Shop> shops = shopRepository.findAll();
@@ -57,9 +60,14 @@ public class ProductBrowseController {
         }
 
         if (type != null && !type.isBlank()) {
-            String filterType = type.trim();
+            String filterType = type.trim().toLowerCase();
             shops = shops.stream()
-                    .filter(s -> s.getDescription() != null && s.getDescription().toLowerCase().contains(filterType))
+                    .filter(s -> {
+                        // Filter based on shop name or description containing the type
+                        boolean nameMatch = s.getShopName() != null && s.getShopName().toLowerCase().contains(filterType);
+                        boolean descMatch = s.getDescription() != null && s.getDescription().toLowerCase().contains(filterType);
+                        return nameMatch || descMatch;
+                    })
                     .toList();
         }
 
@@ -95,6 +103,46 @@ public class ProductBrowseController {
                 }
         ));
 
+        // Apply sorting
+        if (sort != null && !sort.isBlank()) {
+            switch (sort.toLowerCase()) {
+                case "name":
+                    shops = shops.stream()
+                            .sorted(Comparator.comparing(Shop::getShopName, String.CASE_INSENSITIVE_ORDER))
+                            .toList();
+                    break;
+                case "products":
+                    shops = shops.stream()
+                            .sorted((s1, s2) -> {
+                                Integer count1 = productCounts.getOrDefault(s1.getId(), 0);
+                                Integer count2 = productCounts.getOrDefault(s2.getId(), 0);
+                                return count2.compareTo(count1); // Descending order
+                            })
+                            .toList();
+                    break;
+                case "rating":
+                    shops = shops.stream()
+                            .sorted((s1, s2) -> {
+                                Double rating1 = shopRatings.getOrDefault(s1.getId(), 0.0);
+                                Double rating2 = shopRatings.getOrDefault(s2.getId(), 0.0);
+                                return rating2.compareTo(rating1); // Descending order
+                            })
+                            .toList();
+                    break;
+                case "newest":
+                    shops = shops.stream()
+                            .sorted(Comparator.comparing(Shop::getCreatedAt).reversed())
+                            .toList();
+                    break;
+                default:
+                    // Default sorting by name
+                    shops = shops.stream()
+                            .sorted(Comparator.comparing(Shop::getShopName, String.CASE_INSENSITIVE_ORDER))
+                            .toList();
+                    break;
+            }
+        }
+
         // Add authentication attributes
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
@@ -127,6 +175,7 @@ public class ProductBrowseController {
         model.addAttribute("minPrice", minPrice);
         model.addAttribute("maxPrice", maxPrice);
         model.addAttribute("shop", shopName);
+        model.addAttribute("sort", sort);
         model.addAttribute("shopRatings", shopRatings);
         return "products/list";
     }

@@ -98,18 +98,6 @@
             line-height: 1.4;
         }
 
-        .product-stock {
-            font-size: 11px;
-            color: #666;
-            margin-bottom: 8px;
-        }
-
-        .product-price {
-            font-size: 14px;
-            font-weight: bold;
-            color: #28a745;
-            margin-bottom: 0;
-        }
 
         .stars {
             color: #ffc107;
@@ -339,19 +327,9 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label for="minPrice" class="form-label">Giá từ</label>
-                <input type="number" class="form-control" id="minPrice" name="minPrice" placeholder="0" min="0">
-            </div>
-            <div class="col-md-2">
-                <label for="maxPrice" class="form-label">Giá đến</label>
-                <input type="number" class="form-control" id="maxPrice" name="maxPrice" placeholder="1000000" min="0">
-            </div>
-            <div class="col-md-2">
                 <label for="sort" class="form-label">Sắp xếp</label>
                 <select class="form-select" id="sort" name="sort">
                     <option value="name">Tên A-Z</option>
-                    <option value="price_asc">Giá thấp đến cao</option>
-                    <option value="price_desc">Giá cao đến thấp</option>
                     <option value="rating">Đánh giá cao</option>
                     <option value="sales">Bán chạy</option>
                 </select>
@@ -423,15 +401,6 @@
                         Mô tả sản phẩm chi tiết với các tính năng nổi bật
                     </div>
                     
-                    <!-- Stock -->
-                    <div class="product-stock">
-                        Tồn kho: <span th:text="${product.quantity}">100</span>
-                    </div>
-                    
-                    <!-- Price -->
-                    <div class="product-price">
-                        <span th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')}">100000</span> ₫
-                    </div>
                 </div>
             </div>
         </div>

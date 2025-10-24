@@ -39,6 +39,21 @@
             font-size: 0.875rem;
             font-weight: 500;
         }
+        
+        /* Footer styling */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        main {
+            flex: 1;
+        }
+        
+        footer {
+            margin-top: auto;
+        }
     </style>
     <script src="/js/auth.js"></script>
     <script>
@@ -129,15 +144,6 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
-            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
-                <form role="search">
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
-                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
-                    </div>
-                </form>
-            </div>
-            
             <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
                 <!-- Guest user navigation -->
                 <div th:if="${!isAuthenticated}" class="d-flex align-items-center gap-2">
@@ -201,20 +207,47 @@
         </div>
     </div>
 
-<form class="row g-2 mb-3" method="get" action="/products">
-    <div class="col-auto">
-        <input name="q" th:value="${q}" class="form-control" placeholder="Tìm kiếm tên shop">
+<!-- Search and Filter Section -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title mb-3">
+            <i class="fa-solid fa-search me-2 text-primary"></i>
+            Tìm kiếm gian hàng
+        </h5>
+        <form class="row g-3" method="get" action="/products">
+            <div class="col-md-4">
+                <label for="shopName" class="form-label">Tên gian hàng</label>
+                <input type="text" id="shopName" name="q" th:value="${q}" class="form-control" placeholder="Nhập tên gian hàng...">
+            </div>
+            <div class="col-md-3">
+                <label for="shopType" class="form-label">Loại gian hàng</label>
+                <select id="shopType" name="type" class="form-select">
+                    <option value="">Tất cả loại</option>
+                    <option value="tech" th:selected="${type == 'tech'}">Công nghệ</option>
+                    <option value="email" th:selected="${type == 'email'}">Email & Social</option>
+                    <option value="software" th:selected="${type == 'software'}">Phần mềm</option>
+                    <option value="game" th:selected="${type == 'game'}">Game</option>
+                    <option value="other" th:selected="${type == 'other'}">Khác</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="sortBy" class="form-label">Sắp xếp theo</label>
+                <select id="sortBy" name="sort" class="form-select">
+                    <option value="name" th:selected="${sort == 'name'}">Tên A-Z</option>
+                    <option value="products" th:selected="${sort == 'products'}">Số sản phẩm</option>
+                    <option value="rating" th:selected="${sort == 'rating'}">Đánh giá</option>
+                    <option value="newest" th:selected="${sort == 'newest'}">Mới nhất</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i>
+                    Tìm kiếm
+                </button>
+            </div>
+        </form>
     </div>
-    <div class="col-auto">
-        <input name="type" th:value="${type}" class="form-control" placeholder="Loại shop">
-    </div>
-    <div class="col-auto">
-        <input name="shop" th:value="${shop}" class="form-control" placeholder="Tên shop">
-    </div>
-    <div class="col-auto">
-        <button class="btn btn-primary" type="submit">Tìm</button>
-    </div>
-</form>
+</div>
 
 <div class="row g-3">
     <div class="col-12 col-md-4" th:each="s: ${shops}">
@@ -267,10 +300,10 @@
     </div>
 </main>
 
-<footer class="border-top py-3 mt-5">
-    <div class="container d-flex justify-content-between align-items-center small">
+<footer class="border-top py-2 mt-auto">
+    <div class="container d-flex justify-content-between align-items-center small text-muted">
         <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
-        <div class="text-muted">Liên hệ: support@example.com</div>
+        <div>Liên hệ: support@example.com</div>
     </div>
 </footer>
 
