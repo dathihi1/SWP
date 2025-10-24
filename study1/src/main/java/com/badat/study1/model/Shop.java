@@ -33,15 +33,6 @@ public class Shop {
     @Column(name = "description", columnDefinition = "TEXT")
     String description;
 
-    @Column(name = "address", length = 255)
-    String address;
-
-    @Column(name = "phone", length = 20)
-    String phone;
-
-    @Column(name = "email", length = 100)
-    String email;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default
@@ -58,7 +49,7 @@ public class Shop {
     Boolean isDelete = false;
 
     public enum Status {
-        ACTIVE, INACTIVE, SUSPENDED, PENDING
+        ACTIVE, INACTIVE
     }
 
 }

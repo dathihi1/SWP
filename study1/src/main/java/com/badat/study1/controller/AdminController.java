@@ -234,6 +234,7 @@ public class AdminController {
     @PostMapping("/admin/stalls/approve")
     public String approveStall(@RequestParam Long stallId, 
                               @RequestParam(required = false) String reason,
+                              @RequestParam(required = false) String redirect,
                               RedirectAttributes redirectAttributes) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
@@ -271,12 +272,18 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi duyệt gian hàng!");
         }
         
+        if ("shops".equals(redirect)) {
+            return "redirect:/admin/stalls?redirect=shops";
+        } else if ("pending".equals(redirect)) {
+            return "redirect:/admin/stalls?redirect=pending";
+        }
         return "redirect:/admin/stalls";
     }
     
     @PostMapping("/admin/stalls/reject")
     public String rejectStall(@RequestParam Long stallId, 
                              @RequestParam String reason,
+                             @RequestParam(required = false) String redirect,
                              RedirectAttributes redirectAttributes) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
@@ -314,6 +321,11 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi từ chối gian hàng!");
         }
         
+        if ("shops".equals(redirect)) {
+            return "redirect:/admin/stalls?redirect=shops";
+        } else if ("pending".equals(redirect)) {
+            return "redirect:/admin/stalls?redirect=pending";
+        }
         return "redirect:/admin/stalls";
     }
     
@@ -334,6 +346,66 @@ public class AdminController {
             return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PostMapping("/api/admin/sellers/{sellerId}/toggle-lock")
+    public ResponseEntity<?> toggleSellerLock(@PathVariable Long sellerId) {
+        try {
+            // Find shop by sellerId (userId)
+            var shop = shopRepository.findByUserId(sellerId);
+            if (shop.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy cửa hàng"));
+            }
+            
+            var shopEntity = shop.get();
+            var currentStatus = shopEntity.getStatus();
+            var newStatus = currentStatus == com.badat.study1.model.Shop.Status.ACTIVE 
+                ? com.badat.study1.model.Shop.Status.INACTIVE 
+                : com.badat.study1.model.Shop.Status.ACTIVE;
+            
+            // Update shop status
+            shopEntity.setStatus(newStatus);
+            shopEntity.setUpdatedAt(Instant.now());
+            shopRepository.save(shopEntity);
+            
+            // Update all stalls of this shop
+            List<Stall> stalls = stallRepository.findByShopId(shopEntity.getId());
+            boolean newActiveStatus = newStatus == com.badat.study1.model.Shop.Status.ACTIVE;
+            
+            for (Stall stall : stalls) {
+                stall.setActive(newActiveStatus);
+                // If shop is being locked (inactive), close all stalls
+                if (newStatus == com.badat.study1.model.Shop.Status.INACTIVE) {
+                    stall.setStatus("CLOSED");
+                } else {
+                    // If shop is being unlocked (active), keep current status or set to OPEN
+                    if ("CLOSED".equals(stall.getStatus())) {
+                        stall.setStatus("OPEN");
+                    }
+                }
+                stallRepository.save(stall);
+            }
+            
+            String action = newStatus == com.badat.study1.model.Shop.Status.INACTIVE ? "khóa" : "mở khóa";
+            String stallAction = newStatus == com.badat.study1.model.Shop.Status.INACTIVE ? "đóng" : "mở";
+            String message = String.format("Đã %s cửa hàng và %s %d gian hàng thành công!", action, stallAction, stalls.size());
+            
+            log.info("Admin {} {} shop {} and {} stalls", 
+                SecurityContextHolder.getContext().getAuthentication().getName(),
+                action, shopEntity.getId(), stalls.size());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", message,
+                "shopStatus", newStatus.name(),
+                "stallsUpdated", stalls.size()
+            ));
+            
+        } catch (Exception e) {
+            log.error("Error toggling seller lock for sellerId {}: {}", sellerId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Có lỗi xảy ra khi thực hiện thao tác"));
         }
     }
     

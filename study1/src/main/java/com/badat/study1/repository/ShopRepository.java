@@ -16,10 +16,8 @@ public interface ShopRepository extends JpaRepository<Shop, Long> {
     Page<Shop> findByStatus(Shop.Status status, Pageable pageable);
     Page<Shop> findByIsDelete(Boolean isDelete, Pageable pageable);
     Page<Shop> findByStatusAndIsDelete(Shop.Status status, Boolean isDelete, Pageable pageable);
-    Page<Shop> findByShopNameContainingIgnoreCaseOrDescriptionContainingIgnoreCaseOrAddressContainingIgnoreCase(
-        String shopName, String description, String address, Pageable pageable);
-    Page<Shop> findByPhoneContainingIgnoreCaseOrEmailContainingIgnoreCase(
-        String phone, String email, Pageable pageable);
+    Page<Shop> findByShopNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+        String shopName, String description, Pageable pageable);
     
     // List methods for dropdowns
     List<Shop> findByStatus(Shop.Status status);
