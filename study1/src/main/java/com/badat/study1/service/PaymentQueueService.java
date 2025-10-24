@@ -129,7 +129,6 @@ public class PaymentQueueService {
                     // 2. Parse cart data
                     List<Map<String, Object>> cartItems = parseCartData(payment.getCartData());
                     log.info("Parsed {} cart items for payment {}", cartItems.size(), payment.getId());
-                    log.debug("Cart items details: {}", cartItems);
 
                     // 3. Generate order id and HOLD MONEY (stock already validated before enqueueing)
                     orderId = "ORDER_" + payment.getUserId() + "_" + System.currentTimeMillis();

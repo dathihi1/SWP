@@ -73,7 +73,7 @@ public class CaptchaService {
                 return false;
             }
             
-            boolean isValid = storedCaptcha.equalsIgnoreCase(userInput.trim());
+            boolean isValid = storedCaptcha.equals(userInput.trim());
             
             if (isValid) {
                 // Remove captcha after successful validation
@@ -141,7 +141,7 @@ public class CaptchaService {
                 return false;
             }
             
-            boolean isValid = storedAnswer.equalsIgnoreCase(userInput.trim());
+            boolean isValid = storedAnswer.equals(userInput.trim());
             
             if (isValid) {
                 // Remove captcha after successful validation
