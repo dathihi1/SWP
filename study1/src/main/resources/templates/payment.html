@@ -68,16 +68,6 @@
                         </h4>
                     </div>
                     <div class="card-body p-4">
-                        <!-- Current Balance -->
-                        <div class="text-center mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="text-muted mb-0">Số dư hiện tại</h6>
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="refreshWalletBalance()" title="Làm mới số dư">
-                                    <i class="fa-solid fa-arrows-rotate"></i>
-                                </button>
-                            </div>
-                            <h3 class="text-success fw-bold" th:text="${walletBalance}">0</h3>
-                        </div>
 
                         <!-- Amount Selection -->
                         <div class="mb-4">
@@ -254,27 +244,6 @@
             }
         });
 
-        // Function to refresh wallet balance
-        function refreshWalletBalance() {
-            console.log('Refreshing wallet balance...');
-            
-            // Show loading indicator
-            const refreshBtn = document.querySelector('button[onclick="refreshWalletBalance()"]');
-            if (refreshBtn) {
-                const originalContent = refreshBtn.innerHTML;
-                refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-                refreshBtn.disabled = true;
-                
-                // Restore button after reload
-                setTimeout(() => {
-                    refreshBtn.innerHTML = originalContent;
-                    refreshBtn.disabled = false;
-                }, 2000);
-            }
-            
-            // Reload the page to get fresh data from server
-            window.location.reload();
-        }
 
         // Check URL parameters for payment success
         function checkPaymentSuccess() {
@@ -315,29 +284,8 @@
             
             // Check for payment success
             checkPaymentSuccess();
-            
-            // Load wallet balance
-            loadWalletBalance();
         });
 
-        // Function to load wallet balance
-        function loadWalletBalance() {
-            console.log('Loading wallet balance...');
-            
-            // Only update payment page balance since navbar is simplified
-            const paymentBalance = document.querySelector('.text-success.fw-bold');
-            
-            if (paymentBalance) {
-                const currentBalance = paymentBalance.textContent;
-                console.log('Current payment balance:', currentBalance);
-                
-                // If balance is 0 or empty, use fallback
-                if (currentBalance === '0' || currentBalance === '' || !currentBalance) {
-                    paymentBalance.textContent = '1,602,700'; // Fallback value
-                    console.log('Using fallback balance for payment: 1,602,700');
-                }
-            }
-        }
     </script>
 
 <footer class="border-top py-3 mt-5">
