@@ -18,32 +18,32 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 public class OtpService {
-    
+
     private final RedisTemplate<String, Object> redisTemplate;
     private final EmailService emailService;
     private final EmailTemplateService emailTemplateService;
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
-    
+
     @Value("${security.rate-limit.otp-expire-minutes:10}")
     private int otpExpireMinutes;
-    
+
     @Value("${security.rate-limit.otp-max-attempts:5}")
     private int maxOtpAttempts;
-    
+
     private static final String OTP_PREFIX = "otp:";
     private static final String RESET_TOKEN_PREFIX = "reset_token:";
-    
+
     public void sendOtp(String email, String purpose) {
         // Check rate limiting
         if (rateLimitService.isEmailRateLimited(email)) {
             throw new RuntimeException("Quá nhiều yêu cầu. Vui lòng thử lại sau 1 giờ.");
         }
-        
+
         // Generate OTP
         String otp = generateOtp();
         String otpKey = OTP_PREFIX + purpose + ":" + email;
-        
+
         // Store OTP in Redis
         OtpData otpData = OtpData.builder()
                 .otp(otp)
@@ -52,14 +52,14 @@ public class OtpService {
                 .createdAt(LocalDateTime.now())
                 .attempts(0)
                 .build();
-        
+
         redisTemplate.opsForValue().set(otpKey, otpData, otpExpireMinutes, TimeUnit.MINUTES);
-        
+
         // Send HTML email based on purpose
         try {
             String htmlContent;
             String subject;
-            
+
             if ("register".equals(purpose)) {
                 htmlContent = emailTemplateService.generateRegistrationOtpEmail(otp, otpExpireMinutes, email);
                 subject = "Mã OTP Đăng Ký - MMO Market";
@@ -78,10 +78,10 @@ public class OtpService {
                     """, otp, otpExpireMinutes);
                 subject = "Mã OTP xác thực - MMO Market";
             }
-            
+
             emailService.sendHtmlEmail(email, subject, htmlContent);
             log.info("HTML OTP email sent successfully to: {} for purpose: {}", email, purpose);
-            
+
         } catch (Exception e) {
             log.error("Failed to send HTML OTP email, falling back to plain text: {}", e.getMessage());
             // Fallback to plain text email
@@ -91,45 +91,45 @@ public class OtpService {
                 Mã này có hiệu lực trong %d phút.
                 Không chia sẻ mã này với bất kỳ ai.
                 """, otp, otpExpireMinutes);
-            
+
             emailService.sendEmail(email, subject, body);
         }
-        
+
         // Record request
         rateLimitService.recordEmailRequest(email);
-        
+
         log.info("OTP sent to email: {} for purpose: {}", email, purpose);
     }
-    
+
     public boolean verifyOtp(String email, String otp, String purpose) {
         String otpKey = OTP_PREFIX + purpose + ":" + email;
         Object rawData = redisTemplate.opsForValue().get(otpKey);
-        
+
         if (rawData == null) {
             log.warn("OTP not found or expired for email: {}", email);
             return false;
         }
-        
+
         OtpData otpData = convertToOtpData(rawData);
         if (otpData == null) {
             log.error("Failed to convert OTP data for email: {}", email);
             return false;
         }
-        
+
         // Check attempts
         if (otpData.getAttempts() >= maxOtpAttempts) {
             log.warn("OTP max attempts exceeded for email: {}", email);
             redisTemplate.delete(otpKey);
             return false;
         }
-        
+
         // Increment attempts
         otpData.setAttempts(otpData.getAttempts() + 1);
         redisTemplate.opsForValue().set(otpKey, otpData, otpExpireMinutes, TimeUnit.MINUTES);
-        
+
         // Verify OTP
         boolean isValid = otp.equals(otpData.getOtp());
-        
+
         if (isValid) {
             // Clear OTP on successful verification
             redisTemplate.delete(otpKey);
@@ -139,142 +139,51 @@ public class OtpService {
             rateLimitService.recordOtpAttempt(email, false);
             log.warn("OTP verification failed for email: {}, attempt: {}", email, otpData.getAttempts());
         }
-        
+
         return isValid;
     }
-    
+
     public String generateResetToken(String email) {
         String resetToken = UUID.randomUUID().toString();
         String tokenKey = RESET_TOKEN_PREFIX + email;
-        
+
         // Store reset token in Redis with 30 minutes expiry
         redisTemplate.opsForValue().set(tokenKey, resetToken, 30, TimeUnit.MINUTES);
-        
+
         log.info("Reset token generated for email: {}", email);
         return resetToken;
     }
-    
+
     public boolean validateResetToken(String resetToken, String email) {
         String tokenKey = RESET_TOKEN_PREFIX + email;
         String storedToken = (String) redisTemplate.opsForValue().get(tokenKey);
-        
+
         if (storedToken == null) {
             log.warn("Reset token not found or expired for email: {}", email);
             return false;
         }
-        
+
         boolean isValid = resetToken.equals(storedToken);
-        
+
         if (isValid) {
             log.info("Reset token validated successfully for email: {}", email);
         } else {
             log.warn("Reset token validation failed for email: {}", email);
         }
-        
+
         return isValid;
     }
-    
+
     public void invalidateResetToken(String resetToken, String email) {
         String tokenKey = RESET_TOKEN_PREFIX + email;
         String storedToken = (String) redisTemplate.opsForValue().get(tokenKey);
-        
+
         if (resetToken.equals(storedToken)) {
             redisTemplate.delete(tokenKey);
             log.info("Reset token invalidated for email: {}", email);
         }
-    /**
-     * Generate reset token for password reset
-     */
-    public String generateResetToken(String email) {
-        try {
-            String token = generateOtp();
-            String tokenKey = email + "_reset_token";
-            LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES);
-            
-            OtpData tokenData = new OtpData(token, expiryTime, 0);
-            otpStorage.put(tokenKey, tokenData);
-            
-            log.info("Reset token generated for email: {}", email);
-            return token;
-            
-        } catch (Exception e) {
-            log.error("Error generating reset token for email: {}", email, e);
-            throw new RuntimeException("Failed to generate reset token", e);
-        }
     }
-    
-    /**
-     * Validate reset token
-     */
-    public boolean validateResetToken(String email, String token) {
-        try {
-            String tokenKey = email + "_reset_token";
-            OtpData tokenData = otpStorage.get(tokenKey);
-            
-            if (tokenData == null) {
-                log.warn("No reset token found for email: {}", email);
-                return false;
-            }
-            
-            // Check expiry
-            if (tokenData.getExpiryTime().isBefore(LocalDateTime.now())) {
-                log.warn("Reset token expired for email: {}", email);
-                otpStorage.remove(tokenKey);
-                return false;
-            }
-            
-            // Check attempts
-            if (tokenData.getAttempts() >= MAX_OTP_ATTEMPTS) {
-                log.warn("Too many reset token attempts for email: {}", email);
-                otpStorage.remove(tokenKey);
-                return false;
-            }
-            
-            // Increment attempts
-            tokenData.incrementAttempts();
-            
-            // Verify token
-            if (tokenData.getOtp().equals(token)) {
-                log.info("Reset token validated successfully for email: {}", email);
-                return true;
-            } else {
-                log.warn("Invalid reset token for email: {}", email);
-                return false;
-            }
-            
-        } catch (Exception e) {
-            log.error("Error validating reset token for email: {}", email, e);
-            return false;
-        }
-    }
-    
-    /**
-     * Invalidate reset token
-     */
-    public void invalidateResetToken(String email, String token) {
-        try {
-            String tokenKey = email + "_reset_token";
-            OtpData tokenData = otpStorage.get(tokenKey);
-            
-            if (tokenData != null && tokenData.getOtp().equals(token)) {
-                otpStorage.remove(tokenKey);
-                log.info("Reset token invalidated for email: {}", email);
-            }
-            
-        } catch (Exception e) {
-            log.error("Error invalidating reset token for email: {}", email, e);
-        }
-    }
-    
-    /**
-     * Clean expired OTPs
-     */
-    public void cleanExpiredOtps() {
-        LocalDateTime now = LocalDateTime.now();
-        otpStorage.entrySet().removeIf(entry -> 
-            entry.getValue().getExpiryTime().isBefore(now));
-    }
-    
+
     private String generateOtp() {
         Random random = new Random();
         StringBuilder otp = new StringBuilder();
@@ -283,78 +192,78 @@ public class OtpService {
         }
         return otp.toString();
     }
-    
-    public boolean isOtpValid(String email, String purpose) {
-        String otpKey = OTP_PREFIX + purpose + ":" + email;
-        return redisTemplate.hasKey(otpKey);
-    }
-    
-    public int getRemainingAttempts(String email, String purpose) {
-        String otpKey = OTP_PREFIX + purpose + ":" + email;
-        Object rawData = redisTemplate.opsForValue().get(otpKey);
-        
-        if (rawData == null) {
-            return 0;
+
+        public boolean isOtpValid(String email, String purpose) {
+            String otpKey = OTP_PREFIX + purpose + ":" + email;
+            return redisTemplate.hasKey(otpKey);
         }
-        
-        OtpData otpData = convertToOtpData(rawData);
-        if (otpData == null) {
-            return 0;
-        }
-        
-        return Math.max(0, maxOtpAttempts - otpData.getAttempts());
-    }
-    
-    private OtpData convertToOtpData(Object rawData) {
-        try {
-            if (rawData instanceof OtpData) {
-                return (OtpData) rawData;
+
+        public int getRemainingAttempts(String email, String purpose) {
+            String otpKey = OTP_PREFIX + purpose + ":" + email;
+            Object rawData = redisTemplate.opsForValue().get(otpKey);
+
+            if (rawData == null) {
+                return 0;
             }
-            
-            if (rawData instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> map = (Map<String, Object>) rawData;
-                
-                // Handle type conversion issues manually
-                OtpData otpData = new OtpData();
-                otpData.setOtp((String) map.get("otp"));
-                otpData.setEmail((String) map.get("email"));
-                otpData.setPurpose((String) map.get("purpose"));
-                
-                // Handle attempts field - convert Integer/Long/BigInteger to int
-                Object attempts = map.get("attempts");
-                if (attempts instanceof Integer) {
-                    otpData.setAttempts((Integer) attempts);
-                } else if (attempts instanceof Long) {
-                    otpData.setAttempts(((Long) attempts).intValue());
-                } else if (attempts instanceof java.math.BigInteger) {
-                    otpData.setAttempts(((java.math.BigInteger) attempts).intValue());
-                } else if (attempts instanceof Number) {
-                    otpData.setAttempts(((Number) attempts).intValue());
-                } else {
-                    otpData.setAttempts(0);
-                }
-                
-                // Handle createdAt field
-                Object createdAt = map.get("createdAt");
-                if (createdAt instanceof String) {
-                    otpData.setCreatedAt(LocalDateTime.parse((String) createdAt));
-                } else if (createdAt instanceof LocalDateTime) {
-                    otpData.setCreatedAt((LocalDateTime) createdAt);
-                } else {
-                    otpData.setCreatedAt(LocalDateTime.now());
-                }
-                
-                return otpData;
+
+            OtpData otpData = convertToOtpData(rawData);
+            if (otpData == null) {
+                return 0;
             }
-            
-            // Try direct conversion
-            return objectMapper.convertValue(rawData, OtpData.class);
-        } catch (Exception e) {
-            log.error("Failed to convert raw data to OtpData: {}", e.getMessage());
-            log.error("Raw data type: {}", rawData != null ? rawData.getClass().getName() : "null");
-            log.error("Raw data content: {}", rawData);
-            return null;
+
+            return Math.max(0, maxOtpAttempts - otpData.getAttempts());
+        }
+
+        private OtpData convertToOtpData(Object rawData) {
+            try {
+                if (rawData instanceof OtpData) {
+                    return (OtpData) rawData;
+                }
+
+                if (rawData instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> map = (Map<String, Object>) rawData;
+
+                    // Handle type conversion issues manually
+                    OtpData otpData = new OtpData();
+                    otpData.setOtp((String) map.get("otp"));
+                    otpData.setEmail((String) map.get("email"));
+                    otpData.setPurpose((String) map.get("purpose"));
+
+                    // Handle attempts field - convert Integer/Long/BigInteger to int
+                    Object attempts = map.get("attempts");
+                    if (attempts instanceof Integer) {
+                        otpData.setAttempts((Integer) attempts);
+                    } else if (attempts instanceof Long) {
+                        otpData.setAttempts(((Long) attempts).intValue());
+                    } else if (attempts instanceof java.math.BigInteger) {
+                        otpData.setAttempts(((java.math.BigInteger) attempts).intValue());
+                    } else if (attempts instanceof Number) {
+                        otpData.setAttempts(((Number) attempts).intValue());
+                    } else {
+                        otpData.setAttempts(0);
+                    }
+
+                    // Handle createdAt field
+                    Object createdAt = map.get("createdAt");
+                    if (createdAt instanceof String) {
+                        otpData.setCreatedAt(LocalDateTime.parse((String) createdAt));
+                    } else if (createdAt instanceof LocalDateTime) {
+                        otpData.setCreatedAt((LocalDateTime) createdAt);
+                    } else {
+                        otpData.setCreatedAt(LocalDateTime.now());
+                    }
+
+                    return otpData;
+                }
+
+                // Try direct conversion
+                return objectMapper.convertValue(rawData, OtpData.class);
+            } catch (Exception e) {
+                log.error("Failed to convert raw data to OtpData: {}", e.getMessage());
+                log.error("Raw data type: {}", rawData != null ? rawData.getClass().getName() : "null");
+                log.error("Raw data content: {}", rawData);
+                return null;
+            }
         }
     }
-}

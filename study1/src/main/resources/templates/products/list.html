@@ -14,7 +14,7 @@
         .btn-primary:hover { filter: brightness(0.95); }
         .text-brand { color: var(--brand); }
         
-        /* Stall Cards Styling */
+        /* Shop Cards Styling */
         .hover-lift {
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
@@ -203,10 +203,10 @@
 
 <form class="row g-2 mb-3" method="get" action="/products">
     <div class="col-auto">
-        <input name="q" th:value="${q}" class="form-control" placeholder="Tìm kiếm tên gian hàng">
+        <input name="q" th:value="${q}" class="form-control" placeholder="Tìm kiếm tên shop">
     </div>
     <div class="col-auto">
-        <input name="type" th:value="${type}" class="form-control" placeholder="Loại gian hàng">
+        <input name="type" th:value="${type}" class="form-control" placeholder="Loại shop">
     </div>
     <div class="col-auto">
         <input name="shop" th:value="${shop}" class="form-control" placeholder="Tên shop">
@@ -217,12 +217,12 @@
 </form>
 
 <div class="row g-3">
-    <div class="col-12 col-md-4" th:each="s: ${stalls}">
-        <a th:href="@{'/stall/' + ${s.id}}" class="text-decoration-none text-dark">
+    <div class="col-12 col-md-4" th:each="s: ${shops}">
+        <a th:href="@{'/shop/' + ${s.id} + '/products'}" class="text-decoration-none text-dark">
             <div class="card h-100 border-0 shadow-sm hover-lift">
-                <!-- Stall Image -->
+                <!-- Shop Image -->
                 <div class="preview-img-frame" style="height:200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <img th:alt="${s.stallName}" th:src="@{'/stall-image/' + ${s.id}}" 
+                    <img th:alt="${s.shopName}" th:src="@{'/shop-image/' + ${s.id}}" 
                          style="object-fit:cover;height:200px; width: 100%; border-radius: 0.5rem 0.5rem 0 0;"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <!-- Fallback content if no image -->
@@ -230,28 +230,18 @@
                          style="display: none; border-radius: 0.5rem 0.5rem 0 0;">
                         <div class="text-center text-white">
                             <i class="fa-solid fa-store mb-2" style="font-size:48px; opacity: 0.8;"></i>
-                            <div class="fw-bold" th:text="${s.stallName}">Gian hàng</div>
+                            <div class="fw-bold" th:text="${s.shopName}">Shop</div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Stall Content -->
+                <!-- Shop Content -->
                 <div class="p-3" style="line-height:1.5;">
-                    <div class="fw-semibold text-truncate mb-2" th:text="${s.stallName}">Tên gian hàng</div>
+                    <div class="fw-semibold text-truncate mb-2" th:text="${s.shopName}">Tên shop</div>
                     
                     <div class="small mb-2">
-                        <div class="text-muted">Loại gian hàng</div>
-                        <div class="text-truncate" th:text="${s.stallCategory != null ? s.stallCategory : 'Khác'}">Danh mục</div>
-                    </div>
-                    
-                    <div class="small mb-2">
-                        <div class="text-muted">Tên shop</div>
-                        <div class="text-truncate" th:text="${shopMap[s.shopId] != null ? shopMap[s.shopId].shopName : 'N/A'}">Shop</div>
-                    </div>
-                    
-                    <div class="small mb-2">
-                        <div class="text-muted">Loại kinh doanh</div>
-                        <div class="text-truncate" th:text="${s.businessType}">Business Type</div>
+                        <div class="text-muted">Mô tả</div>
+                        <div class="text-truncate" th:text="${s.description != null ? s.description : 'Không có mô tả'}">Mô tả</div>
                     </div>
                     
                     <div class="small mt-2 d-flex justify-content-between align-items-center">
@@ -259,13 +249,13 @@
                             <i class="fa-solid fa-box-open me-1"></i>
                             <span th:text="${productCounts[s.id] != null ? productCounts[s.id] : 0}">0</span> sản phẩm
                         </span>
-                        <div th:if="${stallRatings[s.id] != null and stallRatings[s.id] > 0}" class="d-flex align-items-center">
+                        <div th:if="${shopRatings[s.id] != null and shopRatings[s.id] > 0}" class="d-flex align-items-center">
                             <div class="rating-star me-1">
                                 <i class="fa-solid fa-star"></i>
-                                <span class="rating-text" th:text="${#numbers.formatDecimal(stallRatings[s.id], 1, 1)}">0.0</span>
+                                <span class="rating-text" th:text="${#numbers.formatDecimal(shopRatings[s.id], 1, 1)}">0.0</span>
                             </div>
                         </div>
-                        <div th:if="${stallRatings[s.id] == null or stallRatings[s.id] == 0}" class="text-muted">
+                        <div th:if="${shopRatings[s.id] == null or shopRatings[s.id] == 0}" class="text-muted">
                             <i class="fa-regular fa-star rating-star"></i>
                             <small>Chưa có đánh giá</small>
                         </div>

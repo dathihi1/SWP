@@ -34,6 +34,7 @@ public class SecurityConfiguration {
     private static final String[] AUTH_WHITELIST = {"/", "/index", "/home", 
             "/products/**", 
             "/product/**", 
+            "/api/products/*/sub-products", 
             "/cart", 
             "/auth/**", 
             "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/verify-register-otp", "/api/auth/reset-password", "/api/auth/captcha/**",
