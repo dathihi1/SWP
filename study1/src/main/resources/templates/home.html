@@ -24,6 +24,35 @@
         .preview-sep { height:2px; background: var(--bs-primary); margin: 0 16px; }
         .rating-star { color: #ffc107; font-size: 0.9rem; }
         .rating-text { font-size: 0.85rem; font-weight: 600; }
+        
+        /* Marquee styles */
+        .marquee-container {
+            background: white;
+            color: #0d6efd;
+            padding: 8px 0;
+            overflow: hidden;
+            position: relative;
+            z-index: 1000;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .marquee {
+            display: inline-block;
+            white-space: nowrap;
+            animation: marquee 40s linear infinite;
+            font-size: 14px;
+            font-weight: 500;
+            color: #0d6efd;
+        }
+        
+        .marquee:hover {
+            animation-play-state: paused;
+        }
+        
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
     </style>
 </head>
 <body>
@@ -103,6 +132,14 @@
         </div>
     </div>
 </nav>
+
+<!-- Marquee Announcement -->
+<div class="marquee-container">
+    <div class="marquee">
+        <i class="fa-solid fa-bullhorn me-2"></i>
+        MMO Market - Mua bán sản phẩm số . Mọi giao dịch trên trang đều hoàn toàn tự động và được giữ tiền 3 ngày, thay thế cho hình thức trung gian, các bạn yên tâm giao dịch nhé.
+    </div>
+</div>
 
 <main class="container py-4 py-md-5">
 
@@ -201,16 +238,16 @@
             </div>
             <div class="col-12 col-md-6 col-lg-3">
                 <div class="card category-card p-3 text-center h-100" onclick="viewCategory('software')" style="cursor: pointer;">
-                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-compact-disc fa-lg"></i></div>
-                    <div class="category-title">Phần mềm</div>
-                    <div class="text-muted small">Các tool hỗ trợ MMO</div>
+                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-gamepad fa-lg"></i></div>
+                    <div class="category-title">Thẻ game</div>
+                    <div class="text-muted small">Thẻ nạp game, gift card...</div>
                 </div>
             </div>
             <div class="col-12 col-md-6 col-lg-3">
                 <div class="card category-card p-3 text-center h-100" onclick="viewCategory('account')" style="cursor: pointer;">
-                    <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-user fa-lg"></i></div>
-                    <div class="category-title">Tài khoản</div>
-                    <div class="text-muted small">FB, BM, key Windows...</div>
+                    <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-key fa-lg"></i></div>
+                    <div class="category-title">Key game</div>
+                    <div class="text-muted small">Key Steam, Origin, Epic...</div>
                 </div>
             </div>
             <div class="col-12 col-md-6 col-lg-3">
