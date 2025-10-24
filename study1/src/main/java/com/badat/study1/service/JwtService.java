@@ -119,7 +119,6 @@ public class JwtService {
             SignedJWT signedJWT = SignedJWT.parse(token);
             Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
             Date now = new Date();
-            long timeUntilExpiry = expirationTime.getTime() - now.getTime();
             
             if (!usernameMatches) {
                 log.warn("Token validation failed: username mismatch. Token username: {}, Expected: {}", username, userDetails.getUsername());

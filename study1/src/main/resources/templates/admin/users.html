@@ -526,7 +526,15 @@
                                         <button class="btn btn-action btn-view" title="Xem chi tiết">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button class="btn btn-action btn-edit" title="Chỉnh sửa">
+                                        <button class="btn btn-action btn-edit" title="Chỉnh sửa" 
+                                                th:data-user-id="${user.id}" 
+                                                th:data-user-username="${user.username}"
+                                                th:data-user-email="${user.email}"
+                                                th:data-user-fullname="${user.fullName}"
+                                                th:data-user-phone="${user.phone}"
+                                                th:data-user-role="${user.role.name()}"
+                                                th:data-user-status="${user.status.name()}"
+                                                onclick="openEditModal(this.dataset)">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <button class="btn btn-action btn-lock" title="Khóa/Mở khóa" 
@@ -634,6 +642,62 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                     <button type="button" class="btn btn-primary" onclick="confirmAddUser()">Thêm người dùng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editUserModalLabel">Chỉnh sửa người dùng</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editUserForm">
+                        <input type="hidden" id="editUserId" name="userId">
+                        <div class="mb-3">
+                            <label for="editUsername" class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editUsername" name="username" readonly style="background-color: #f8f9fa;">
+                            <small class="text-muted">Tên đăng nhập không thể thay đổi</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editEmail" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="editEmail" name="email" readonly style="background-color: #f8f9fa;">
+                            <small class="text-muted">Email không thể thay đổi</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editFullName" class="form-label">Họ và tên</label>
+                            <input type="text" class="form-control" id="editFullName" name="fullName">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editPhone" class="form-label">Số điện thoại</label>
+                            <input type="text" class="form-control" id="editPhone" name="phone">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editRole" class="form-label">Vai trò <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editRole" name="role" required>
+                                <option value="">Chọn vai trò</option>
+                                <option value="USER">User</option>
+                                <option value="SELLER">Seller</option>
+                                <option value="ADMIN">Admin</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editStatus" class="form-label">Trạng thái <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editStatus" name="status" required>
+                                <option value="">Chọn trạng thái</option>
+                                <option value="ACTIVE">Hoạt động</option>
+                                <option value="LOCKED">Khóa</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmEditUser()">Cập nhật</button>
                 </div>
             </div>
         </div>
@@ -748,6 +812,62 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Có lỗi xảy ra khi thêm người dùng');
+            });
+        };
+        
+        // Edit user functions
+        window.openEditModal = function(userData) {
+            document.getElementById('editUserId').value = userData.userId;
+            document.getElementById('editUsername').value = userData.userUsername || '';
+            document.getElementById('editEmail').value = userData.userEmail || '';
+            document.getElementById('editFullName').value = userData.userFullname || '';
+            document.getElementById('editPhone').value = userData.userPhone || '';
+            document.getElementById('editRole').value = userData.userRole || '';
+            document.getElementById('editStatus').value = userData.userStatus || '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
+        };
+        
+        window.confirmEditUser = function() {
+            const userId = document.getElementById('editUserId').value;
+            const fullName = document.getElementById('editFullName').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+            const role = document.getElementById('editRole').value;
+            const status = document.getElementById('editStatus').value;
+            
+            if (!role || !status) {
+                alert('Vui lòng điền đầy đủ thông tin bắt buộc!');
+                return;
+            }
+            
+            const formData = {
+                fullName: fullName,
+                phone: phone,
+                role: role,
+                status: status
+            };
+            
+            fetch(`/api/admin/users/${userId}/edit`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Cập nhật người dùng thành công!');
+                    location.reload();
+                } else {
+                    return response.json().then(data => {
+                        alert('Lỗi: ' + (data.error || 'Có lỗi xảy ra'));
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi cập nhật người dùng');
             });
         };
         
