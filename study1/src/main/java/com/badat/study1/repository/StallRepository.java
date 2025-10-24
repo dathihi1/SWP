@@ -37,4 +37,7 @@ public interface StallRepository extends JpaRepository<Stall, Long> {
     // Find stalls by name containing and status
     List<Stall> findByStallNameContainingIgnoreCaseAndIsDeleteFalseAndStatus(String stallName, String status);
     
+    // Find all stalls by shop ID (including deleted ones for admin operations)
+    List<Stall> findByShopId(Long shopId);
+    
 }
