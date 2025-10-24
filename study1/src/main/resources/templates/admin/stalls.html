@@ -583,7 +583,7 @@
                                 <td th:text="${sellerData.shopName}">Tên shop</td>
                                 <td th:text="${sellerData.seller.username}">Người dùng</td>
                                 <td th:text="${sellerData.stallsCount}">0</td>
-                                <td th:text="${#temporals.format(sellerData.seller.createdAt, 'dd/MM/yyyy')}">01/01/2024</td>
+                                <td th:text="${sellerData.shop != null ? #temporals.format(sellerData.shop.createdAt, 'dd/MM/yyyy') : 'Chưa có shop'}">01/01/2024</td>
                                 <td>
                                     <span class="badge bg-success" 
                                           th:if="${sellerData.seller.status != null and sellerData.seller.status.name() == 'ACTIVE'}">Đang hoạt động</span>

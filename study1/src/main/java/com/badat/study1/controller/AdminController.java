@@ -172,6 +172,7 @@ public class AdminController {
                 
                 Map<String, Object> sellerData = new java.util.HashMap<>();
                 sellerData.put("seller", seller);
+                sellerData.put("shop", shop); // Add shop object to access shop.createdAt
                 sellerData.put("shopName", shopName);
                 sellerData.put("totalRevenue", totalRevenue);
                 sellerData.put("totalOrders", totalOrders);
