@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -102,8 +103,10 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<Warehouse> findAvailableItemsForReservation(@Param("productId") Long productId, @Param("quantity") Integer quantity);
     
     /**
-     * Count available warehouse items for a product (not locked, not deleted)
+     * Find expired warehouse reservations
      */
+    List<Warehouse> findByLockedTrueAndReservedUntilBefore(LocalDateTime now);
+
     @Query(value = "SELECT COUNT(*) FROM warehouse WHERE product_id = :productId AND locked = false AND is_delete = false", nativeQuery = true)
     long countAvailableItemsByProductId(@Param("productId") Long productId);
     

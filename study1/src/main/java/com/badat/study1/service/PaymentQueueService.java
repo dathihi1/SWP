@@ -39,33 +39,142 @@ public class PaymentQueueService {
     private final ApplicationEventPublisher eventPublisher;
     
     /**
-     * Thêm payment request vào queue
+     * Thêm payment request vào queue với validation stock trước và user-level lock
      */
     @Transactional
     public Long enqueuePayment(Long userId, List<Map<String, Object>> cartItems, BigDecimal totalAmount) {
         log.info("Enqueuing payment for user {}: {} VND", userId, totalAmount);
         
+        // User-level lock để tránh multiple concurrent payments từ cùng 1 user
+        String userPaymentLockKey = "user:payment:lock:" + userId;
+        Lock userPaymentLock = redisLockRegistry.obtain(userPaymentLockKey);
+        
         try {
-            String cartData = objectMapper.writeValueAsString(cartItems);
-            
-            PaymentQueue paymentQueue = PaymentQueue.builder()
-                .userId(userId)
-                .cartData(cartData)
-                .totalAmount(totalAmount)
-                .status(PaymentQueue.Status.PENDING)
-                .build();
+            if (userPaymentLock.tryLock(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                log.info("Acquired user payment lock for user: {}", userId);
                 
-            paymentQueueRepository.save(paymentQueue);
+                try {
+                    // 1. Kiểm tra xem user có payment đang pending không
+                    List<PaymentQueue> pendingPayments = paymentQueueRepository
+                        .findByUserIdAndStatusOrderByCreatedAtDesc(userId, PaymentQueue.Status.PENDING);
+                    
+                    if (!pendingPayments.isEmpty()) {
+                        log.warn("User {} already has {} pending payments. Rejecting new payment request.", 
+                            userId, pendingPayments.size());
+                        throw new RuntimeException("Bạn đã có thanh toán đang chờ xử lý. Vui lòng đợi hoàn tất trước khi tạo thanh toán mới.");
+                    }
+                    
+                    // 2. VALIDATE STOCK TRƯỚC KHI ENQUEUE
+                    validateStockAvailability(cartItems);
+                    
+                    // 3. Kiểm tra số dư ví
+                    validateUserBalance(userId, totalAmount);
+                    
+                    String cartData = objectMapper.writeValueAsString(cartItems);
+                    
+                    PaymentQueue paymentQueue = PaymentQueue.builder()
+                        .userId(userId)
+                        .cartData(cartData)
+                        .totalAmount(totalAmount)
+                        .status(PaymentQueue.Status.PENDING)
+                        .build();
+                        
+                    paymentQueueRepository.save(paymentQueue);
+                    
+                    // Publish event để trigger xử lý ngay lập tức
+                    eventPublisher.publishEvent(PaymentEvent.paymentCreated(this, paymentQueue.getId(), userId));
+                    
+                    log.info("Payment queued successfully with ID: {} for user: {}", paymentQueue.getId(), userId);
+                    return paymentQueue.getId();
+                    
+                } catch (JsonProcessingException e) {
+                    log.error("Failed to serialize cart data", e);
+                    throw new RuntimeException("Failed to serialize cart data", e);
+                }
+            } else {
+                log.warn("Failed to acquire user payment lock for user: {} - another payment is in progress", userId);
+                throw new RuntimeException("Bạn đang có thanh toán đang được xử lý. Vui lòng đợi hoàn tất trước khi tạo thanh toán mới.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Bị gián đoạn khi tạo thanh toán", e);
+        } finally {
+            userPaymentLock.unlock();
+            log.info("Released user payment lock for user: {}", userId);
+        }
+    }
+    
+    /**
+     * Validate stock availability trước khi enqueue payment với Redis lock
+     */
+    private void validateStockAvailability(List<Map<String, Object>> cartItems) {
+        log.info("Validating stock availability for {} cart items", cartItems.size());
+        
+        // Tạo map để group theo productId và tính tổng quantity
+        Map<Long, Integer> productQuantities = new java.util.HashMap<>();
+        for (Map<String, Object> cartItem : cartItems) {
+            Long productId = Long.valueOf(cartItem.get("productId").toString());
+            Integer quantity = Integer.valueOf(cartItem.get("quantity").toString());
+            productQuantities.put(productId, productQuantities.getOrDefault(productId, 0) + quantity);
+        }
+        
+        // Validate từng product với Redis lock
+        for (Map.Entry<Long, Integer> entry : productQuantities.entrySet()) {
+            Long productId = entry.getKey();
+            Integer requiredQuantity = entry.getValue();
             
-            // Publish event để trigger xử lý ngay lập tức
-            eventPublisher.publishEvent(PaymentEvent.paymentCreated(this, paymentQueue.getId(), userId));
+            String lockKey = "stock:validate:" + productId;
+            Lock lock = redisLockRegistry.obtain(lockKey);
             
-            log.info("Payment queued successfully with ID: {}", paymentQueue.getId());
-            return paymentQueue.getId();
+            try {
+                if (lock.tryLock(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                    log.info("Acquired stock validation lock for product: {}", productId);
+                    
+                    // Kiểm tra số lượng có sẵn trong lock
+                    long availableCount = warehouseLockService.getAvailableStockCount(productId);
+                    
+                    if (availableCount < requiredQuantity) {
+                        log.warn("Insufficient stock for product {}. Required: {}, Available: {}", 
+                            productId, requiredQuantity, availableCount);
+                        throw new RuntimeException("Không đủ hàng cho sản phẩm ID: " + productId + 
+                            " (cần " + requiredQuantity + ", chỉ có " + availableCount + ")");
+                    }
+                    
+                    log.info("Stock validation passed for product {}: {} available", productId, availableCount);
+                } else {
+                    log.warn("Failed to acquire stock validation lock for product: {}", productId);
+                    throw new RuntimeException("Không thể kiểm tra hàng cho sản phẩm: " + productId);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Bị gián đoạn khi kiểm tra hàng cho sản phẩm: " + productId, e);
+            } finally {
+                lock.unlock();
+            }
+        }
+        
+        log.info("All stock validations passed");
+    }
+    
+    /**
+     * Validate user balance trước khi enqueue payment
+     */
+    private void validateUserBalance(Long userId, BigDecimal requiredAmount) {
+        log.info("Validating balance for user {}: {} VND", userId, requiredAmount);
+        
+        // Sử dụng WalletHoldService để check balance với user-level lock
+        try {
+            // Tạm thời hold 0 VND để check balance (sẽ được release ngay)
+            String tempOrderId = "TEMP_CHECK_" + userId + "_" + System.currentTimeMillis();
+            walletHoldService.holdMoney(userId, BigDecimal.ZERO, tempOrderId);
             
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize cart data", e);
-            throw new RuntimeException("Failed to serialize cart data", e);
+            // Release ngay lập tức
+            walletHoldService.releaseHold(userId, tempOrderId);
+            
+            log.info("Balance validation passed for user {}", userId);
+        } catch (Exception e) {
+            log.warn("Balance validation failed for user {}: {}", userId, e.getMessage());
+            throw new RuntimeException("Số dư không đủ để thực hiện thanh toán: " + e.getMessage());
         }
     }
     
@@ -130,11 +239,10 @@ public class PaymentQueueService {
                     List<Map<String, Object>> cartItems = parseCartData(payment.getCartData());
                     log.info("Parsed {} cart items for payment {}", cartItems.size(), payment.getId());
 
-                    // 3. Generate order id and HOLD MONEY (stock already validated before enqueueing)
+                    // 3. Generate order id
                     orderId = "ORDER_" + payment.getUserId() + "_" + System.currentTimeMillis();
-                    walletHoldService.holdMoney(payment.getUserId(), payment.getTotalAmount(), orderId);
-
-                    // 4. Lock warehouse items AFTER holding funds - tính theo số lượng
+                    
+                    // 4. LOCK WAREHOUSE ITEMS TRƯỚC (Reserve inventory trước khi hold money)
                     Map<Long, Integer> productQuantities = new java.util.HashMap<>();
                     for (Map<String, Object> cartItem : cartItems) {
                         Long productId = Long.valueOf(cartItem.get("productId").toString());
@@ -142,19 +250,24 @@ public class PaymentQueueService {
                         productQuantities.put(productId, productQuantities.getOrDefault(productId, 0) + quantity);
                     }
 
-                    List<Warehouse> lockedItems = warehouseLockService.lockWarehouseItemsWithQuantities(productQuantities);
+                    // Reserve warehouse items với timeout TRƯỚC khi hold money để tránh hold tiền mà không có hàng
+                    List<Warehouse> lockedItems = warehouseLockService.reserveWarehouseItemsWithTimeout(productQuantities, payment.getUserId(), 5); // 5 phút timeout
                     
-                    // 4.5. Kiểm tra lại sau khi lock - tính tổng số lượng cần thiết
+                    // 5. HOLD MONEY SAU KHI ĐÃ LOCK ĐƯỢC HÀNG
+                    walletHoldService.holdMoney(payment.getUserId(), payment.getTotalAmount(), orderId);
+                    
+                    // 6. Kiểm tra lại sau khi lock - tính tổng số lượng cần thiết
                     int totalRequiredQuantity = productQuantities.values().stream().mapToInt(Integer::intValue).sum();
                     if (lockedItems.isEmpty() || lockedItems.size() < totalRequiredQuantity) {
-                        log.warn("Failed to lock enough warehouse items for user: {} (required: {}, locked: {}), refunding money", 
+                        log.warn("Failed to lock enough warehouse items for user: {} (required: {}, locked: {}), unlocking warehouse items", 
                             payment.getUserId(), totalRequiredQuantity, lockedItems.size());
-                        // Release hold trước khi throw exception - tìm hold theo orderId
+                        // Unlock warehouse items vì chưa hold money
                         try {
-                            // Sử dụng method mới với user-level lock
-                            walletHoldService.releaseHold(payment.getUserId(), orderId);
-                        } catch (Exception releaseError) {
-                            log.error("Failed to release hold during warehouse lock failure: {}", releaseError.getMessage());
+                            for (Warehouse item : lockedItems) {
+                                warehouseLockService.unlockWarehouseItem(item.getId());
+                            }
+                        } catch (Exception unlockError) {
+                            log.error("Failed to unlock warehouse items during lock failure: {}", unlockError.getMessage());
                         }
                         throw new RuntimeException("Không thể khóa đủ số lượng hàng trong kho - có thể đã có người khác mua trước");
                     }
