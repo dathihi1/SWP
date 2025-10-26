@@ -1,7 +1,9 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
+import com.badat.study1.model.Shop;
 import com.badat.study1.repository.UserRepository;
+import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class AdminUserApiController {
     
     private final UserRepository userRepository;
+    private final ShopRepository shopRepository;
     private final AuditLogService auditLogService;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
@@ -242,13 +245,10 @@ public class AdminUserApiController {
                 return ResponseEntity.status(404).body(Map.of("error", "User not found"));
             }
 
-            // Update user fields
-            if (request.containsKey("username")) {
-                user.setUsername(request.get("username"));
-            }
-            if (request.containsKey("email")) {
-                user.setEmail(request.get("email"));
-            }
+            // Store old role for shop management
+            User.Role oldRole = user.getRole();
+            
+            // Update user fields (username and email cannot be changed)
             if (request.containsKey("fullName")) {
                 user.setFullName(request.get("fullName"));
             }
@@ -270,6 +270,15 @@ public class AdminUserApiController {
                 } catch (IllegalArgumentException e) {
                     return ResponseEntity.badRequest().body(Map.of("error", "Invalid status"));
                 }
+            }
+            
+            // Handle shop creation/deletion based on role change
+            if (user.getRole() == User.Role.SELLER && oldRole != User.Role.SELLER) {
+                // Create shop for new seller
+                createShopForSeller(user);
+            } else if (oldRole == User.Role.SELLER && user.getRole() != User.Role.SELLER) {
+                // Delete shop when removing seller role
+                deleteShopForUser(user.getId());
             }
 
             userRepository.save(user);
@@ -422,6 +431,15 @@ public class AdminUserApiController {
             // Store old role for audit
             User.Role oldRole = targetUser.getRole();
             
+            // Handle shop creation/deletion based on role change
+            if (newRole == User.Role.SELLER && oldRole != User.Role.SELLER) {
+                // Create shop for new seller
+                createShopForSeller(targetUser);
+            } else if (oldRole == User.Role.SELLER && newRole != User.Role.SELLER) {
+                // Delete shop when removing seller role
+                deleteShopForUser(targetUser.getId());
+            }
+            
             // Change role
             targetUser.setRole(newRole);
             userRepository.save(targetUser);
@@ -444,6 +462,46 @@ public class AdminUserApiController {
         } catch (Exception e) {
             log.error("Error changing user role: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+        }
+    }
+    
+    private void createShopForSeller(User user) {
+        try {
+            // Check if shop already exists
+            if (shopRepository.findByUserId(user.getId()).isPresent()) {
+                log.warn("Shop already exists for user {}", user.getId());
+                return;
+            }
+            
+            // Create new shop record in database
+            Shop shop = Shop.builder()
+                .userId(user.getId())
+                .shopName(user.getFullName() != null ? user.getFullName() + "'s Shop" : user.getUsername() + "'s Shop")
+                .cccd("") // Will be filled later by seller
+                .bankAccountId(1L) // Default bank account, seller can change later
+                .status(Shop.Status.ACTIVE)
+                .createdAt(java.time.Instant.now())
+                .isDelete(false)
+                .build();
+                
+            shopRepository.save(shop);
+            log.info("Created new shop record for user {} with shop ID {}", user.getId(), shop.getId());
+            
+        } catch (Exception e) {
+            log.error("Error creating shop for user {}: {}", user.getId(), e.getMessage(), e);
+        }
+    }
+    
+    private void deleteShopForUser(Long userId) {
+        try {
+            shopRepository.findByUserId(userId).ifPresent(shop -> {
+                shop.setIsDelete(true);
+                shop.setUpdatedAt(java.time.Instant.now());
+                shopRepository.save(shop);
+                log.info("Marked shop as deleted for user {}", userId);
+            });
+        } catch (Exception e) {
+            log.error("Error deleting shop for user {}: {}", userId, e.getMessage(), e);
         }
     }
     
