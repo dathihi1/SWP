@@ -422,7 +422,6 @@
                         <thead>
                             <tr>
                                 <th>Mã đơn hàng</th>
-                                <th>Người mua</th>
                                 <th>Sản phẩm</th>
                                 <th>Gian hàng</th>
                                 <th>Số lượng</th>
@@ -433,27 +432,26 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="order : ${orders}">
+                            <tr th:each="orderItem : ${orders}">
                                 <td>
-                                    <span class="order-code text-primary" th:text="${order.orderCode}">ORDER_CODE</span>
+                                    <span class="order-code text-primary" th:text="${orderItem.order.orderCode}">ORDER_CODE</span>
                                 </td>
-                                <td th:text="${order.buyer.username}">Người mua</td>
-                                <td th:text="${order.product.name}">Tên sản phẩm</td>
-                                <td th:text="${order.stall.stallName}">Tên gian hàng</td>
-                                <td th:text="${order.quantity}">1</td>
-                                <td class="amount" th:text="${#numbers.formatDecimal(order.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
-                                <td class="amount" th:text="${#numbers.formatDecimal(order.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
+                                <td th:text="${orderItem.product.name}">Tên sản phẩm</td>
+                                <td th:text="${orderItem.warehouse.stall.stallName}">Tên gian hàng</td>
+                                <td th:text="${orderItem.quantity}">1</td>
+                                <td class="amount" th:text="${#numbers.formatDecimal(orderItem.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
+                                <td class="amount" th:text="${#numbers.formatDecimal(orderItem.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
                                 <td>
                                     <span class="status-badge" 
-                                          th:classappend="'status-' + ${order.status.name().toLowerCase()}"
-                                          th:text="${T(com.badat.study1.util.StatusUtils).getStatusDisplayName(order.status)}">
+                                          th:classappend="'status-' + ${orderItem.status.name().toLowerCase()}"
+                                          th:text="${T(com.badat.study1.util.StatusUtils).getStatusDisplayName(orderItem.status)}">
                                         Trạng thái
                                     </span>
                                 </td>
-                                <td th:text="${#temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm')}">Ngày tạo</td>
+                                <td th:text="${#temporals.format(orderItem.createdAt, 'dd/MM/yyyy HH:mm')}">Ngày tạo</td>
                             </tr>
                             <tr th:if="${orders.isEmpty()}">
-                                <td colspan="9" class="text-center text-muted py-4">
+                                <td colspan="8" class="text-center text-muted py-4">
                                     <i class="fas fa-shopping-cart fa-2x mb-2"></i><br>
                                     Chưa có đơn hàng nào.
                                 </td>

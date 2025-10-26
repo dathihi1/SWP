@@ -128,6 +128,8 @@ public class OrderService {
                             .commissionAmount(itemCommissionAmount)
                             .sellerAmount(itemSellerAmount)
                             .sellerId(itemSellerId) // Sẽ được cập nhật trong PaymentQueueService
+                            .shopId(stall.getShopId()) // Thêm shop_id
+                            .stallId(stallId) // Thêm stall_id
                             .status(OrderItem.Status.PENDING)
                             .notes("Order item from cart - item " + (i + 1) + " of " + quantity)
                             .build();
@@ -228,6 +230,8 @@ public class OrderService {
                 .commissionAmount(commissionAmount)
                 .sellerAmount(sellerAmount)
                 .sellerId(sellerId) // Sử dụng sellerId được truyền vào
+                .shopId(shopId) // Thêm shop_id
+                .stallId(stallId) // Thêm stall_id
                 .status(OrderItem.Status.COMPLETED)
                 .notes("Simple order item")
                 .build();
