@@ -106,8 +106,7 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      * Find expired warehouse reservations
      */
     List<Warehouse> findByLockedTrueAndReservedUntilBefore(LocalDateTime now);
-     * Count available warehouse items for a product (not locked, not deleted)
-     */
+
     @Query(value = "SELECT COUNT(*) FROM warehouse WHERE product_id = :productId AND locked = false AND is_delete = false", nativeQuery = true)
     long countAvailableItemsByProductId(@Param("productId") Long productId);
     
