@@ -13,6 +13,7 @@ import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.WithdrawRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.integration.redis.util.RedisLockRegistry;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -32,6 +35,7 @@ public class WithdrawService {
     private final ShopRepository shopRepository;
     private final WalletRepository walletRepository;
     private final WalletHistoryRepository walletHistoryRepository;
+    private final RedisLockRegistry redisLockRegistry;
     
     @Transactional
     public WithdrawRequestResponse createWithdrawRequest(WithdrawRequestDto requestDto) {
@@ -43,80 +47,101 @@ public class WithdrawService {
         Shop shop = shopRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new RuntimeException("Bạn chưa có gian hàng"));
         
-        // Get user's wallet
-        Wallet wallet = walletRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví của bạn"));
+        // User-level lock để tránh race condition khi cùng 1 user tạo multiple withdraw requests
+        String userWithdrawLockKey = "user:withdraw:lock:" + user.getId();
+        Lock userWithdrawLock = redisLockRegistry.obtain(userWithdrawLockKey);
         
-        // Validate amount
-        if (requestDto.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Số tiền phải lớn hơn 0");
+        try {
+            if (userWithdrawLock.tryLock(10, TimeUnit.SECONDS)) {
+                log.info("Acquired user withdraw lock for user: {}", user.getId());
+                
+                // Get user's wallet trong lock để đảm bảo consistency
+                Wallet wallet = walletRepository.findByUserId(user.getId())
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy ví của bạn"));
+                
+                // Validate amount
+                if (requestDto.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new RuntimeException("Số tiền phải lớn hơn 0");
+                }
+                
+                // Minimum withdraw amount (100,000 VND)
+                BigDecimal minimumAmount = new BigDecimal("100000");
+                if (requestDto.getAmount().compareTo(minimumAmount) < 0) {
+                    throw new RuntimeException("Số tiền rút tối thiểu là 100,000 VNĐ");
+                }
+                
+                // Check balance trong lock để tránh race condition
+                if (requestDto.getAmount().compareTo(wallet.getBalance()) > 0) {
+                    throw new RuntimeException("Số tiền rút không được vượt quá số dư hiện có: " + wallet.getBalance() + " VNĐ");
+                }
+                
+                // Validate bank account information
+                if (requestDto.getBankAccountNumber() == null || requestDto.getBankAccountNumber().trim().isEmpty()) {
+                    throw new RuntimeException("Số tài khoản ngân hàng không được để trống");
+                }
+                
+                if (requestDto.getBankAccountName() == null || requestDto.getBankAccountName().trim().isEmpty()) {
+                    throw new RuntimeException("Tên chủ tài khoản không được để trống");
+                }
+                
+                if (requestDto.getBankName() == null || requestDto.getBankName().trim().isEmpty()) {
+                    throw new RuntimeException("Tên ngân hàng không được để trống");
+                }
+                
+                // Check for pending withdraw requests trong lock
+                List<WithdrawRequest> pendingRequests = withdrawRequestRepository.findByShopIdAndStatus(shop.getId(), WithdrawRequest.Status.PENDING);
+                if (!pendingRequests.isEmpty()) {
+                    throw new RuntimeException("Bạn đã có yêu cầu rút tiền đang chờ duyệt. Vui lòng chờ admin xử lý yêu cầu trước đó.");
+                }
+                
+                // Create withdraw request
+                WithdrawRequest withdrawRequest = WithdrawRequest.builder()
+                        .shopId(shop.getId())
+                        .amount(requestDto.getAmount())
+                        .bankAccountNumber(requestDto.getBankAccountNumber())
+                        .bankAccountName(requestDto.getBankAccountName())
+                        .bankName(requestDto.getBankName())
+                        .note(requestDto.getNote())
+                        .status(WithdrawRequest.Status.PENDING)
+                        .build();
+                
+                withdrawRequest = withdrawRequestRepository.save(withdrawRequest);
+                
+                // Hold the amount from wallet (subtract from available balance) trong lock
+                BigDecimal newBalance = wallet.getBalance().subtract(requestDto.getAmount());
+                wallet.setBalance(newBalance);
+                walletRepository.save(wallet);
+                
+                // Create wallet history record for the hold
+                WalletHistory walletHistory = WalletHistory.builder()
+                        .walletId(wallet.getId())
+                        .amount(requestDto.getAmount())
+                        .type(WalletHistory.Type.WITHDRAW)
+                        .status(WalletHistory.Status.PENDING)
+                        .description("Tạm giữ tiền cho yêu cầu rút tiền #" + withdrawRequest.getId())
+                        .referenceId(withdrawRequest.getId().toString())
+                        .isDelete(false)
+                        .createdBy(user.getId().toString())
+                        .createdAt(java.time.Instant.now())
+                        .build();
+                walletHistoryRepository.save(walletHistory);
+                
+                log.info("Created withdraw request: {} for user: {} with amount: {}. Amount held from wallet.", 
+                        withdrawRequest.getId(), user.getUsername(), requestDto.getAmount());
+                
+                return WithdrawRequestResponse.fromEntity(withdrawRequest);
+                
+            } else {
+                log.warn("Failed to acquire user withdraw lock for user: {} - another withdraw request is in progress", user.getId());
+                throw new RuntimeException("Bạn đang có yêu cầu rút tiền đang được xử lý. Vui lòng đợi hoàn tất trước khi tạo yêu cầu mới.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Bị gián đoạn khi tạo yêu cầu rút tiền", e);
+        } finally {
+            userWithdrawLock.unlock();
+            log.info("Released user withdraw lock for user: {}", user.getId());
         }
-        
-        // Minimum withdraw amount (100,000 VND)
-        BigDecimal minimumAmount = new BigDecimal("100000");
-        if (requestDto.getAmount().compareTo(minimumAmount) < 0) {
-            throw new RuntimeException("Số tiền rút tối thiểu là 100,000 VNĐ");
-        }
-        
-        if (requestDto.getAmount().compareTo(wallet.getBalance()) > 0) {
-            throw new RuntimeException("Số tiền rút không được vượt quá số dư hiện có: " + wallet.getBalance() + " VNĐ");
-        }
-        
-        // Validate bank account information
-        if (requestDto.getBankAccountNumber() == null || requestDto.getBankAccountNumber().trim().isEmpty()) {
-            throw new RuntimeException("Số tài khoản ngân hàng không được để trống");
-        }
-        
-        if (requestDto.getBankAccountName() == null || requestDto.getBankAccountName().trim().isEmpty()) {
-            throw new RuntimeException("Tên chủ tài khoản không được để trống");
-        }
-        
-        if (requestDto.getBankName() == null || requestDto.getBankName().trim().isEmpty()) {
-            throw new RuntimeException("Tên ngân hàng không được để trống");
-        }
-        
-        // Check for pending withdraw requests (prevent duplicate requests)
-        List<WithdrawRequest> pendingRequests = withdrawRequestRepository.findByShopIdAndStatus(shop.getId(), WithdrawRequest.Status.PENDING);
-        if (!pendingRequests.isEmpty()) {
-            throw new RuntimeException("Bạn đã có yêu cầu rút tiền đang chờ duyệt. Vui lòng chờ admin xử lý yêu cầu trước đó.");
-        }
-        
-        // Create withdraw request
-        WithdrawRequest withdrawRequest = WithdrawRequest.builder()
-                .shopId(shop.getId())
-                .amount(requestDto.getAmount())
-                .bankAccountNumber(requestDto.getBankAccountNumber())
-                .bankAccountName(requestDto.getBankAccountName())
-                .bankName(requestDto.getBankName())
-                .note(requestDto.getNote())
-                .status(WithdrawRequest.Status.PENDING)
-                .build();
-        
-        withdrawRequest = withdrawRequestRepository.save(withdrawRequest);
-        
-        // Hold the amount from wallet (subtract from available balance)
-        BigDecimal newBalance = wallet.getBalance().subtract(requestDto.getAmount());
-        wallet.setBalance(newBalance);
-        walletRepository.save(wallet);
-        
-        // Create wallet history record for the hold
-        WalletHistory walletHistory = WalletHistory.builder()
-                .walletId(wallet.getId())
-                .amount(requestDto.getAmount())
-                .type(WalletHistory.Type.WITHDRAW)
-                .status(WalletHistory.Status.PENDING)
-                .description("Tạm giữ tiền cho yêu cầu rút tiền #" + withdrawRequest.getId())
-                .referenceId(withdrawRequest.getId().toString())
-                .isDelete(false)
-                .createdBy(user.getId().toString())
-                .createdAt(java.time.Instant.now())
-                .build();
-        walletHistoryRepository.save(walletHistory);
-        
-        log.info("Created withdraw request: {} for user: {} with amount: {}. Amount held from wallet.", 
-                withdrawRequest.getId(), user.getUsername(), requestDto.getAmount());
-        
-        return WithdrawRequestResponse.fromEntity(withdrawRequest);
     }
     
     public List<WithdrawRequestResponse> getWithdrawRequestsByUser() {

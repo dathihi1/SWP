@@ -104,10 +104,13 @@ public class OtpService {
     
     public boolean verifyOtp(String email, String otp, String purpose) {
         String otpKey = OTP_PREFIX + purpose + ":" + email;
+        
+        log.info("Verifying OTP - email: {}, purpose: {}, otp: {}, key: {}", email, purpose, otp, otpKey);
+        
         Object rawData = redisTemplate.opsForValue().get(otpKey);
         
         if (rawData == null) {
-            log.warn("OTP not found or expired for email: {}", email);
+            log.warn("OTP not found or expired for email: {}, purpose: {}, key: {}", email, purpose, otpKey);
             return false;
         }
         
@@ -116,6 +119,9 @@ public class OtpService {
             log.error("Failed to convert OTP data for email: {}", email);
             return false;
         }
+        
+        log.info("OTP data found - email: {}, storedOtp: {}, inputOtp: {}, attempts: {}", 
+            email, otpData.getOtp(), otp, otpData.getAttempts());
         
         // Check attempts
         if (otpData.getAttempts() >= maxOtpAttempts) {
@@ -130,6 +136,8 @@ public class OtpService {
         
         // Verify OTP
         boolean isValid = otp.equals(otpData.getOtp());
+        
+        log.info("OTP comparison - input: '{}' vs stored: '{}' -> {}", otp, otpData.getOtp(), isValid);
         
         if (isValid) {
             // Clear OTP on successful verification
