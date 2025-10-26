@@ -3,11 +3,12 @@ package com.badat.study1.controller;
 import com.badat.study1.model.AuditLog;
 import com.badat.study1.model.Stall;
 import com.badat.study1.model.User;
-import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.model.Product;
 import com.badat.study1.model.Review;
+import com.badat.study1.model.ApiCallLog;
+import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.repository.AuditLogRepository;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
@@ -20,9 +21,10 @@ import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.ApiCallLogRepository;
 import com.badat.study1.repository.UserActivityLogRepository;
 import com.badat.study1.service.WalletHistoryService;
-import com.badat.study1.service.UserActivityLogService;
+import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import java.time.LocalDateTime;
+import com.badat.study1.dto.response.AuditLogResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -72,7 +74,7 @@ public class ViewController {
     private final UserActivityLogRepository userActivityLogRepository;
 
     private final WalletHistoryService walletHistoryService;
-    private final UserActivityLogService userActivityLogService;
+    private final AuditLogService auditLogService;
     private final UserService userService;
 
     // Inject common attributes (auth info and wallet balance) for all views
@@ -576,14 +578,10 @@ public class ViewController {
         model.addAttribute("totalOrders", 0);
 
         // Lấy lịch sử hoạt động gần đây (5 hoạt động mới nhất)
-        Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<UserActivityLog> recentActivitiesPage = userActivityLogService.getUserActivities(
-            freshUser.getId(), null, null, null, null, pageable);
-        model.addAttribute("recentActivities", recentActivitiesPage.getContent());
+        model.addAttribute("recentActivities", auditLogService.getRecentUserAuditLogs(freshUser.getId(), 5));
 
         return "customer/profile";
     }
-
 
     @GetMapping("/cart")
     public String cartPage(Model model) {
@@ -1622,14 +1620,6 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
     @GetMapping("/logout")
     public String logout(HttpServletRequest request, HttpServletResponse response) {
         try {
-            // Get user info before logout for logging
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            User currentUser = null;
-            if (authentication != null && authentication.isAuthenticated() && 
-                authentication.getPrincipal() instanceof User) {
-                currentUser = (User) authentication.getPrincipal();
-            }
-            
             // Clear the access token cookie
             boolean secure = request.isSecure();
             ResponseCookie clearCookie = ResponseCookie.from("accessToken", "")
@@ -1641,14 +1631,6 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
                     .build();
             
             response.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
-            
-            // Log logout activity before clearing context
-            if (currentUser != null) {
-                String ipAddress = getClientIpAddress(request);
-                String userAgent = request.getHeader("User-Agent");
-                userActivityLogService.logLogout(currentUser, ipAddress, userAgent,
-                    request.getRequestURI(), request.getMethod(), true, null);
-            }
             
             // Clear Spring Security context
             SecurityContextHolder.clearContext();
@@ -1662,7 +1644,7 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         }
     }
 
-    // ==================== ADMIN API LOGS MANAGEMENT ====================
+    // ==================== ADMIN API LOGS & USER ACTIVITY LOGS ====================
     
     @GetMapping("/admin/api-logs")
     public String adminApiLogs(Model model,
@@ -1789,41 +1771,35 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
                     java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             }
 
-            // Parse category enum
-            com.badat.study1.model.UserActivityLog.Category categoryEnum = null;
-            if (category != null && !category.trim().isEmpty()) {
-                try {
-                    categoryEnum = com.badat.study1.model.UserActivityLog.Category.valueOf(category.toUpperCase());
-                } catch (IllegalArgumentException e) {
-                    model.addAttribute("error", "Danh mục không hợp lệ: " + category);
-                    return "admin/user-activity-logs";
-                }
-            }
-
-            // Normalize action parameter (convert empty string to null)
-            String normalizedAction = (action != null && action.trim().isEmpty()) ? null : action;
-            
-            // Debug logging
-            log.debug("Admin user activity logs filter - userId: {}, action: '{}' -> '{}', category: '{}' -> {}, fromDate: '{}', toDate: '{}'", 
-                userId, action, normalizedAction, category, categoryEnum, fromDate, toDate);
-
             Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
             
-            // Get user activity logs with filters (always use admin view for admin page)
-            Page<com.badat.study1.model.UserActivityLog> activityLogs = 
-                userActivityLogRepository.findAdminViewWithFilters(
-                    userId, normalizedAction, categoryEnum, fromDateTime, toDateTime, pageable);
+            // Get user activity logs with filters
+            UserActivityLog.Category categoryEnum = null;
+            if (category != null && !category.isEmpty()) {
+                try {
+                    categoryEnum = UserActivityLog.Category.valueOf(category.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid category: {}", category);
+                }
+            }
+            
+            Page<UserActivityLog> userActivityLogs = userActivityLogRepository.findAdminViewWithFilters(
+                userId, action, categoryEnum, fromDateTime, toDateTime, pageable);
             
             // Get distinct values for filter dropdowns
             List<String> actions = userActivityLogRepository.findDistinctActions();
-            List<com.badat.study1.model.UserActivityLog.Category> categories = 
-                userActivityLogRepository.findDistinctCategories();
+            List<UserActivityLog.Category> categories = userActivityLogRepository.findDistinctCategories();
             
-            model.addAttribute("activityLogs", activityLogs);
+            // Convert categories to strings for template
+            List<String> categoryStrings = categories.stream()
+                .map(c -> c.name())
+                .toList();
+            
+            model.addAttribute("userActivityLogs", userActivityLogs);
             model.addAttribute("currentPage", page);
-            model.addAttribute("totalPages", activityLogs.getTotalPages());
-            model.addAttribute("totalElements", activityLogs.getTotalElements());
-            model.addAttribute("numberOfElements", activityLogs.getNumberOfElements());
+            model.addAttribute("totalPages", userActivityLogs.getTotalPages());
+            model.addAttribute("totalElements", userActivityLogs.getTotalElements());
+            model.addAttribute("numberOfElements", userActivityLogs.getNumberOfElements());
             model.addAttribute("pageSize", size);
             
             // Filter values
@@ -1835,7 +1811,13 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             
             // Filter options
             model.addAttribute("actions", actions);
-            model.addAttribute("categories", categories);
+            model.addAttribute("categories", categoryStrings);
+            
+            // Add user info
+            model.addAttribute("username", currentUser.getUsername());
+            model.addAttribute("isAuthenticated", true);
+            model.addAttribute("userRole", currentUser.getRole().name());
+            model.addAttribute("user", currentUser);
             
             return "admin/user-activity-logs";
             
@@ -1844,88 +1826,5 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             model.addAttribute("error", "Có lỗi xảy ra khi tải dữ liệu user activity logs");
             return "admin/user-activity-logs";
         }
-    }
-
-    @GetMapping("/admin/api-logs/export")
-    public ResponseEntity<?> exportApiLogs(@RequestParam(required = false) Long userId,
-                                          @RequestParam(required = false) String endpoint,
-                                          @RequestParam(required = false) String method,
-                                          @RequestParam(required = false) Integer statusCode,
-                                          @RequestParam(required = false) String fromDate,
-                                          @RequestParam(required = false) String toDate) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || 
-            "anonymousUser".equals(authentication.getName())) {
-            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
-        }
-
-        User currentUser = (User) authentication.getPrincipal();
-        if (!currentUser.getRole().equals(User.Role.ADMIN)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Forbidden"));
-        }
-
-        try {
-            // Parse dates
-            LocalDateTime fromDateTime = null;
-            LocalDateTime toDateTime = null;
-            
-            if (fromDate != null && !fromDate.trim().isEmpty()) {
-                fromDateTime = LocalDateTime.parse(fromDate + " 00:00:00", 
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            }
-            
-            if (toDate != null && !toDate.trim().isEmpty()) {
-                toDateTime = LocalDateTime.parse(toDate + " 23:59:59", 
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            }
-
-            // Get API logs with filters (no pagination for export)
-            Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by("createdAt").descending());
-            Page<com.badat.study1.model.ApiCallLog> apiLogs = apiCallLogRepository.findWithFilters(
-                userId, endpoint, method, statusCode, fromDateTime, toDateTime, pageable);
-            
-            // Create CSV content
-            StringBuilder csv = new StringBuilder();
-            csv.append("ID,Thời gian,User ID,Endpoint,Method,Status Code,Duration (ms),IP Address,User Agent,Error Message\n");
-            
-            for (com.badat.study1.model.ApiCallLog log : apiLogs.getContent()) {
-                csv.append(String.format("%d,%s,%s,%s,%s,%d,%d,%s,\"%s\",\"%s\"\n",
-                    log.getId(),
-                    log.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),
-                    log.getUserId() != null ? log.getUserId().toString() : "",
-                    log.getEndpoint(),
-                    log.getMethod(),
-                    log.getStatusCode(),
-                    log.getDurationMs() != null ? log.getDurationMs() : 0,
-                    log.getIpAddress(),
-                    log.getUserAgent() != null ? log.getUserAgent().replace("\"", "\"\"") : "",
-                    log.getErrorMessage() != null ? log.getErrorMessage().replace("\"", "\"\"") : ""
-                ));
-            }
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "api-logs-" + 
-                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")) + ".csv");
-            
-            return ResponseEntity.ok()
-                .headers(headers)
-                .body(csv.toString().getBytes("UTF-8"));
-                
-        } catch (Exception e) {
-            log.error("Error exporting API logs: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
-        }
-    }
-    
-    private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        if (request.getHeader("X-Real-IP") != null) {
-            return request.getHeader("X-Real-IP");
-        }
-        return request.getRemoteAddr();
     }
 }

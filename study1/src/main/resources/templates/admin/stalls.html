@@ -236,6 +236,40 @@
             color: white;
         }
         
+        .btn-lock {
+            background-color: #ffc107;
+            color: #000;
+        }
+        
+        .btn-lock:hover {
+            background-color: #e0a800;
+            color: #000;
+        }
+        
+        .btn-lock.active {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-lock.active:hover {
+            background-color: #218838;
+            color: white;
+        }
+        
+        .btn-lock.inactive {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .btn-lock.inactive:hover {
+            background-color: #c82333;
+            color: white;
+        }
+        
+        .btn-lock i {
+            font-size: 0.9rem;
+        }
+        
         .btn-approve {
             background-color: #28a745;
             color: white;
@@ -392,9 +426,9 @@
                 <i class="fas fa-users"></i>
                 Quản lý người dùng
             </a>
-            <a href="/admin/stalls" class="menu-item active">
+            <a href="/admin/stalls" class="menu-item active" onclick="showSellersList()">
                 <i class="fas fa-store"></i>
-                Quản lý gian hàng
+                Quản lý cửa hàng
             </a>
             <a href="/admin/withdraw-requests" class="menu-item">
                 <i class="fas fa-money-bill-transfer"></i>
@@ -548,6 +582,7 @@
                                 <th>Số gian hàng</th>
                                 <th>Ngày đăng ký</th>
                                 <th>Trạng thái</th>
+                                <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -556,12 +591,25 @@
                                 <td th:text="${sellerData.shopName}">Tên shop</td>
                                 <td th:text="${sellerData.seller.username}">Người dùng</td>
                                 <td th:text="${sellerData.stallsCount}">0</td>
-                                <td th:text="${#temporals.format(sellerData.seller.createdAt, 'dd/MM/yyyy')}">01/01/2024</td>
+                                <td th:text="${sellerData.shop != null ? #temporals.format(sellerData.shop.createdAt, 'dd/MM/yyyy') : 'Chưa có shop'}">01/01/2024</td>
                                 <td>
                                     <span class="badge bg-success" 
                                           th:if="${sellerData.seller.status != null and sellerData.seller.status.name() == 'ACTIVE'}">Đang hoạt động</span>
                                     <span class="badge bg-danger" 
-                                          th:if="${sellerData.seller.status != null and sellerData.seller.status.name() == 'LOCKED'}">Tạm khóa</span>
+                                          th:if="${sellerData.seller.status != null and sellerData.seller.status.name() == 'INACTIVE'}">Tạm khóa</span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-action btn-lock" 
+                                                th:classappend="${sellerData.seller.status.name() == 'ACTIVE'} ? 'active' : 'inactive'"
+                                                title="Khóa/Mở khóa cửa hàng"
+                                                th:data-seller-id="${sellerData.seller.id}" 
+                                                th:data-seller-status="${sellerData.seller.status.name()}"
+                                                onclick="toggleSellerLock(this.dataset.sellerId, this.dataset.sellerStatus)">
+                                            <i class="fas fa-unlock" th:if="${sellerData.seller.status.name() == 'ACTIVE'}"></i>
+                                            <i class="fas fa-lock" th:if="${sellerData.seller.status.name() == 'INACTIVE'}"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -790,6 +838,15 @@
     <script>
         // Sidebar toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
+            // Check URL parameter to determine which tab to show
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirect = urlParams.get('redirect');
+            
+            if (redirect === 'shops') {
+                showSellersList();
+            } else if (redirect === 'pending') {
+                showPendingStalls();
+            }
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.querySelector('.sidebar');
             const mainContent = document.querySelector('.main-content');
@@ -816,7 +873,7 @@
                 
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = currentAction === 'approve' ? '/admin/stalls/approve' : '/admin/stalls/reject';
+                form.action = currentAction === 'approve' ? '/admin/stalls/approve?redirect=pending' : '/admin/stalls/reject?redirect=pending';
                 
                 const stallIdInput = document.createElement('input');
                 stallIdInput.type = 'hidden';
@@ -1055,6 +1112,68 @@
             hideAllSections();
             showStallSections();
             document.getElementById('shopSearchBar').style.display = 'none';
+        }
+        
+        // Toggle seller lock function
+        function toggleSellerLock(sellerId, currentStatus) {
+            const action = currentStatus === 'ACTIVE' ? 'khóa' : 'mở khóa';
+            if (confirm(`Bạn có chắc chắn muốn ${action} cửa hàng này?`)) {
+                fetch(`/api/admin/sellers/${sellerId}/toggle-lock`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json().then(data => {
+                            alert(data.message || `Đã ${action} cửa hàng thành công!`);
+                            
+                            // Cập nhật giao diện ngay lập tức
+                            const button = document.querySelector(`button[data-seller-id="${sellerId}"]`);
+                            if (button) {
+                                const icon = button.querySelector('i');
+                                const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+                                
+                                // Cập nhật class
+                                button.classList.remove('active', 'inactive');
+                                button.classList.add(newStatus === 'ACTIVE' ? 'active' : 'inactive');
+                                
+                                // Cập nhật icon
+                                if (newStatus === 'ACTIVE') {
+                                    icon.className = 'fas fa-unlock';
+                                } else {
+                                    icon.className = 'fas fa-lock';
+                                }
+                                
+                                // Cập nhật data attribute
+                                button.setAttribute('data-seller-status', newStatus);
+                                
+                                // Cập nhật trạng thái trong bảng trực tiếp
+                                const row = button.closest('tr');
+                                if (row) {
+                                    const statusCell = row.querySelector('td:nth-child(6)'); // Cột trạng thái
+                                    if (statusCell) {
+                                        if (newStatus === 'ACTIVE') {
+                                            statusCell.innerHTML = '<span class="badge bg-success">Đang hoạt động</span>';
+                                        } else {
+                                            statusCell.innerHTML = '<span class="badge bg-danger">Tạm khóa</span>';
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        return response.json().then(data => {
+                            alert('Lỗi: ' + (data.error || 'Có lỗi xảy ra'));
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi thực hiện thao tác');
+                });
+            }
         }
         
     </script>

@@ -481,10 +481,6 @@ public class AdminUserApiController {
                 .shopName(user.getFullName() != null ? user.getFullName() + "'s Shop" : user.getUsername() + "'s Shop")
                 .cccd("") // Will be filled later by seller
                 .bankAccountId(1L) // Default bank account, seller can change later
-                .description("Shop được tạo tự động khi nâng cấp quyền bán hàng")
-                .address("")
-                .phone(user.getPhone())
-                .email(user.getEmail())
                 .status(Shop.Status.ACTIVE)
                 .createdAt(java.time.Instant.now())
                 .isDelete(false)

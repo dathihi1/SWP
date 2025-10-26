@@ -133,9 +133,9 @@
         </button>
         <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
             <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
-                <form role="search">
+                <form role="search" th:action="@{/products}" method="get">
                     <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
+                        <input type="text" class="form-control" name="q" placeholder="Tìm kiếm tên gian hàng...">
                         <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
                     </div>
                 </form>
@@ -166,7 +166,6 @@
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
-                            <li><a class="dropdown-item" th:href="@{/activity-history}" href="/activity-history"><i class="fa-solid fa-clock-rotate-left me-2"></i>Lịch sử hoạt động</a></li>
                             <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>

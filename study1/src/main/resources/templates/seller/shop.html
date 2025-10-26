@@ -508,6 +508,12 @@
                 title.textContent = '30 ngày gần nhất';
             }
             
+            // Update shop statistics cards
+            const ordersEl = document.querySelector('.stat-card .stat-number');
+            if (ordersEl) ordersEl.textContent = (json.ordersSum || 0).toLocaleString('en-US');
+            const revenueEl = document.querySelector('.stat-card.success .stat-number');
+            if (revenueEl) revenueEl.textContent = ((json.revenueSum || 0).toLocaleString('en-US')) + ' VND';
+            
             // Update chart
             const salesData = {
                 labels: labels,
