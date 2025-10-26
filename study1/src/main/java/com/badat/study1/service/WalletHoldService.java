@@ -21,6 +21,8 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.TimeUnit;
 
@@ -343,65 +345,71 @@ public class WalletHoldService {
     
     /**
      * Chuyển tiền cho seller và admin theo commission
+     * FIXED: Xử lý theo từng order_item riêng biệt thay vì theo order
      */
     @Transactional
     private void distributePaymentToSellerAndAdmin(WalletHold hold, List<Order> orders) {
-        log.info("Distributing payment for hold {} to seller and admin", hold.getId());
+        log.info("Distributing payment for hold {} to sellers and admin from {} orders", hold.getId(), orders.size());
         
         BigDecimal totalAmount = hold.getAmount();
         BigDecimal totalCommissionAmount = BigDecimal.ZERO;
-        BigDecimal totalSellerAmount = BigDecimal.ZERO;
-        
-        // Tính tổng commission và seller amount từ tất cả orders
-        for (Order order : orders) {
-            totalCommissionAmount = totalCommissionAmount.add(order.getTotalCommissionAmount());
-            totalSellerAmount = totalSellerAmount.add(order.getTotalSellerAmount());
-        }
         
         // 1. Cập nhật hold status
         hold.setStatus(WalletHold.Status.COMPLETED);
         walletHoldRepository.save(hold);
         
-        // 2. Chuyển tiền cho seller
-        if (totalSellerAmount.compareTo(BigDecimal.ZERO) > 0) {
-            try {
-                // Lấy seller từ OrderItem đầu tiên - load trực tiếp từ database
-                Long sellerId = null;
-                if (!orders.isEmpty()) {
-                    // Load OrderItems trực tiếp từ database thay vì từ Order object
-                    List<OrderItem> orderItems = orderItemRepository.findByOrderIdOrderByCreatedAtAsc(orders.get(0).getId());
-                    if (!orderItems.isEmpty()) {
-                        sellerId = orderItems.get(0).getSellerId();
-                        log.info("Found sellerId from OrderItem: {} (from {} orderItems)", sellerId, orderItems.size());
-                    }
-                }
+        // 2. Xử lý từng order_item riêng biệt
+        Map<Long, BigDecimal> sellerAmounts = new HashMap<>();
+        
+        for (Order order : orders) {
+            log.info("Processing order {} for payment distribution", order.getOrderCode());
+            
+            // Lấy tất cả order_items của order này
+            List<OrderItem> orderItems = orderItemRepository.findByOrderIdOrderByCreatedAtAsc(order.getId());
+            log.info("Found {} order items for order {}", orderItems.size(), order.getOrderCode());
+            
+            for (OrderItem orderItem : orderItems) {
+                Long sellerId = orderItem.getSellerId();
+                BigDecimal sellerAmount = orderItem.getSellerAmount();
+                BigDecimal commissionAmount = orderItem.getCommissionAmount();
                 
-                if (sellerId != null) {
-                    Wallet sellerWallet = walletRepository.findByUserId(sellerId)
-                        .orElseThrow(() -> new RuntimeException("Seller wallet not found"));
-                        
-                    BigDecimal newSellerBalance = sellerWallet.getBalance().add(totalSellerAmount);
-                    sellerWallet.setBalance(newSellerBalance);
-                    walletRepository.save(sellerWallet);
+                // Cộng dồn amount cho seller
+                sellerAmounts.merge(sellerId, sellerAmount, BigDecimal::add);
+                totalCommissionAmount = totalCommissionAmount.add(commissionAmount);
+                
+                log.info("OrderItem {} - Seller: {}, Amount: {} VND, Commission: {} VND", 
+                        orderItem.getId(), sellerId, sellerAmount, commissionAmount);
+            }
+        }
+        
+        // 3. Chuyển tiền cho từng seller riêng biệt
+        for (Map.Entry<Long, BigDecimal> entry : sellerAmounts.entrySet()) {
+            Long sellerId = entry.getKey();
+            BigDecimal sellerAmount = entry.getValue();
+            
+            try {
+                Wallet sellerWallet = walletRepository.findByUserId(sellerId)
+                    .orElseThrow(() -> new RuntimeException("Seller wallet not found for seller: " + sellerId));
                     
-                    // Tạo wallet history cho seller
-                    walletHistoryService.saveHistory(
-                        sellerWallet.getId(),
-                        totalSellerAmount,
-                        hold.getOrderId(),
-                        null,
-                        WalletHistory.Type.SALE_SUCCESS,
-                        WalletHistory.Status.SUCCESS,
-                        "Payment received from order: " + hold.getOrderId()
-                    );
-                    
-                    log.info("Transferred {} VND to seller {}", totalSellerAmount, sellerId);
-                } else {
-                    log.warn("No seller found for order {}", hold.getOrderId());
-                }
+                BigDecimal newSellerBalance = sellerWallet.getBalance().add(sellerAmount);
+                sellerWallet.setBalance(newSellerBalance);
+                walletRepository.save(sellerWallet);
+                
+                // Tạo wallet history cho seller
+                walletHistoryService.saveHistory(
+                    sellerWallet.getId(),
+                    sellerAmount,
+                    hold.getOrderId(),
+                    null,
+                    WalletHistory.Type.SALE_SUCCESS,
+                    WalletHistory.Status.SUCCESS,
+                    "Payment received from order: " + hold.getOrderId() + " (Seller: " + sellerId + ")"
+                );
+                
+                log.info("Transferred {} VND to seller {}", sellerAmount, sellerId);
                 
             } catch (Exception e) {
-                log.error("Failed to transfer money to seller: {}", e.getMessage());
+                log.error("Failed to transfer money to seller {}: {}", sellerId, e.getMessage());
             }
         }
         
