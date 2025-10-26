@@ -322,7 +322,7 @@
 
         <!-- Status Filter Buttons -->
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card admin-card status-filter-btn" data-status="PENDING" style="cursor: pointer;">
                     <div class="card-body text-center">
                         <i class="fa-solid fa-clock fa-2x text-warning mb-3"></i>
@@ -331,7 +331,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card admin-card status-filter-btn" data-status="APPROVED" style="cursor: pointer;">
                     <div class="card-body text-center">
                         <i class="fa-solid fa-check-circle fa-2x text-success mb-3"></i>
@@ -340,12 +340,21 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card admin-card status-filter-btn" data-status="REJECTED" style="cursor: pointer;">
                     <div class="card-body text-center">
                         <i class="fa-solid fa-times-circle fa-2x text-danger mb-3"></i>
                         <h4 class="text-danger" id="rejectedCount">0</h4>
                         <p class="mb-0">Đã từ chối</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card admin-card status-filter-btn" data-status="CANCELLED" style="cursor: pointer;">
+                    <div class="card-body text-center">
+                        <i class="fa-solid fa-ban fa-2x text-secondary mb-3"></i>
+                        <h4 class="text-secondary" id="cancelledCount">0</h4>
+                        <p class="mb-0">Đã hủy</p>
                     </div>
                 </div>
             </div>
@@ -511,7 +520,8 @@
             const titleMap = {
                 'PENDING': 'Yêu cầu đang chờ duyệt',
                 'APPROVED': 'Yêu cầu đã duyệt',
-                'REJECTED': 'Yêu cầu đã từ chối'
+                'REJECTED': 'Yêu cầu đã từ chối',
+                'CANCELLED': 'Yêu cầu đã hủy'
             };
             document.getElementById('requestsTitle').textContent = titleMap[status];
             
@@ -582,7 +592,7 @@
                                         </button>
                                     </div>
                                     ` : `
-                                    <span class="badge ${status === 'APPROVED' ? 'bg-success' : 'bg-danger'}">${status === 'APPROVED' ? 'Đã duyệt' : 'Đã từ chối'}</span>
+                                    <span class="badge ${status === 'APPROVED' ? 'bg-success' : status === 'REJECTED' ? 'bg-danger' : 'bg-secondary'}">${status === 'APPROVED' ? 'Đã duyệt' : status === 'REJECTED' ? 'Đã từ chối' : 'Đã hủy'}</span>
                                     `}
                                 </div>
                             </div>
@@ -664,19 +674,22 @@
         async function updateStatistics() {
             try {
                 // Get counts for each status
-                const [pendingResponse, approvedResponse, rejectedResponse] = await Promise.all([
+                const [pendingResponse, approvedResponse, rejectedResponse, cancelledResponse] = await Promise.all([
                     fetch('/api/admin/withdraw/requests?status=PENDING'),
                     fetch('/api/admin/withdraw/requests?status=APPROVED'),
-                    fetch('/api/admin/withdraw/requests?status=REJECTED')
+                    fetch('/api/admin/withdraw/requests?status=REJECTED'),
+                    fetch('/api/admin/withdraw/requests?status=CANCELLED')
                 ]);
                 
                 const pendingRequests = await pendingResponse.json();
                 const approvedRequests = await approvedResponse.json();
                 const rejectedRequests = await rejectedResponse.json();
+                const cancelledRequests = await cancelledResponse.json();
                 
                 document.getElementById('pendingCount').textContent = pendingRequests.length;
                 document.getElementById('approvedCount').textContent = approvedRequests.length;
                 document.getElementById('rejectedCount').textContent = rejectedRequests.length;
+                document.getElementById('cancelledCount').textContent = cancelledRequests.length;
             } catch (error) {
                 console.error('Error updating statistics:', error);
             }

@@ -67,6 +67,9 @@ public class Warehouse {
     @Column(name = "locked_at")
     private LocalDateTime lockedAt;
     
+    @Column(name = "reserved_until")
+    private LocalDateTime reservedUntil;
+    
     public enum ItemType {
         EMAIL, CARD, ACCOUNT, KEY
     }
