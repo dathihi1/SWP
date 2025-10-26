@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý User Activity Logs - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #333;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            border-right: 1px solid rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header .navbar-brand {
+            color: #ff7b00;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        
+        .sidebar-header .navbar-brand:hover {
+            color: #e66a00;
+        }
+        
+        .menu-section {
+            padding: 20px 0;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 20px 10px;
+            margin-bottom: 10px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #ff7b00;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            margin: 2px 0;
+            font-weight: 500;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 123, 0, 0.1);
+            color: #e66a00;
+            border-left-color: #ff7b00;
+            transform: translateX(5px);
+        }
+        
+        .menu-item.active {
+            background-color: rgba(255, 123, 0, 0.15);
+            color: #e66a00;
+            border-left-color: #ff7b00;
+            font-weight: 600;
+        }
+        
+        .menu-item i {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 0;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .activity-row {
+            transition: background-color 0.2s;
+        }
+        .activity-row:hover {
+            background-color: #f8f9fa;
+        }
+        .category-badge {
+            font-size: 0.8em;
+        }
+        .action-badge {
+            font-size: 0.8em;
+        }
+        .filter-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        .category-shopping { background-color: #28a745; }
+        .category-order { background-color: #007bff; }
+        .category-payment { background-color: #ffc107; }
+        .category-review { background-color: #17a2b8; }
+        .category-account { background-color: #6c757d; }
+        
+        /* Pagination styles */
+        .pagination-info {
+            font-size: 0.9rem;
+        }
+        .pagination-stats {
+            font-size: 0.9rem;
+        }
+        .pagination .page-link {
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            border-radius: 6px;
+            margin: 0 2px;
+            border: 1px solid #dee2e6;
+            color: #0d6efd;
+            transition: all 0.2s ease;
+        }
+        .pagination .page-link:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+            color: #0a58ca;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        
+        .field-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .field-value {
+            font-size: 0.9rem;
+            color: #333;
+            word-break: break-word;
+        }
+        
+        .field-value code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <a class="navbar-brand d-flex align-items-center" th:href="@{/admin}" href="/admin">
+                    <i class="fa-solid fa-shield-halved me-2" style="color:#ff7b00;"></i>
+                    MMO Market Admin
+                </a>
+            </div>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">ADMIN</div>
+            <a href="/admin" class="menu-item">
+                <i class="fas fa-tachometer-alt"></i>
+                Dashboard
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">QUẢN LÝ</div>
+            <a href="/admin/users" class="menu-item">
+                <i class="fas fa-users"></i>
+                Quản lý người dùng
+            </a>
+            <a href="/admin/stalls" class="menu-item">
+                <i class="fas fa-store"></i>
+                Quản lý gian hàng
+            </a>
+            <a href="/admin/withdraw-requests" class="menu-item">
+                <i class="fas fa-money-bill-transfer"></i>
+                Yêu cầu rút tiền
+            </a>
+            <a href="/admin/audit-logs" class="menu-item">
+                <i class="fas fa-shield-alt"></i>
+                Audit Logs
+            </a>
+            <a href="/admin/api-logs" class="menu-item">
+                <i class="fas fa-code"></i>
+                API Logs
+            </a>
+            <a href="/admin/user-activity-logs" class="menu-item active">
+                <i class="fas fa-user-clock"></i>
+                User Activity Logs
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-user-clock"></i> Quản lý User Activity Logs</h2>
+                    <div>
+                        <a href="/admin" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Quay lại
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Logs Navigation Tabs -->
+                <div class="mb-4">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" href="/admin/audit-logs">
+                                <i class="fas fa-clipboard-list me-2"></i>Audit Logs
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" href="/admin/api-logs">
+                                <i class="fas fa-code me-2"></i>API Logs
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" href="/admin/user-activity-logs">
+                                <i class="fas fa-user-clock me-2"></i>User Activity Logs
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-white-50">Tổng Activities</h6>
+                                    <h3 th:text="${totalElements}">0</h3>
+                                </div>
+                                <i class="fas fa-chart-line fa-2x text-white-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-white-50">Shopping</h6>
+                                    <h3 th:text="${#lists.size(activityLogs.content.?[category.name() == 'SHOPPING'])}">0</h3>
+                                </div>
+                                <i class="fas fa-shopping-cart fa-2x text-white-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-white-50">Orders</h6>
+                                    <h3 th:text="${#lists.size(activityLogs.content.?[category.name() == 'ORDER'])}">0</h3>
+                                </div>
+                                <i class="fas fa-box fa-2x text-white-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-white-50">Payments</h6>
+                                    <h3 th:text="${#lists.size(activityLogs.content.?[category.name() == 'PAYMENT'])}">0</h3>
+                                </div>
+                                <i class="fas fa-credit-card fa-2x text-white-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-section">
+                    <h5><i class="fas fa-filter"></i> Bộ lọc</h5>
+                    <form method="get" action="/admin/user-activity-logs">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label class="form-label">User ID</label>
+                                <input type="number" class="form-control" name="userId" th:value="${selectedUserId}" placeholder="User ID">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Action</label>
+                                <select class="form-select" name="action">
+                                    <option value="">Tất cả</option>
+                                    <option th:each="action : ${actions}" 
+                                            th:value="${action}" 
+                                            th:text="${action}"
+                                            th:selected="${action == selectedAction}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Category</label>
+                                <select class="form-select" name="category">
+                                    <option value="">Tất cả</option>
+                                    <option th:each="category : ${categories}" 
+                                            th:value="${category.name()}" 
+                                            th:text="${category.name()}"
+                                            th:selected="${category.name() == selectedCategory}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Từ ngày</label>
+                                <input type="date" class="form-control" name="fromDate" th:value="${fromDate}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Đến ngày</label>
+                                <input type="date" class="form-control" name="toDate" th:value="${toDate}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Số item/trang</label>
+                                <select class="form-select" name="size">
+                                    <option value="10" th:selected="${pageSize == 10}">10</option>
+                                    <option value="20" th:selected="${pageSize == 20}">20</option>
+                                    <option value="50" th:selected="${pageSize == 50}">50</option>
+                                    <option value="100" th:selected="${pageSize == 100}">100</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-search"></i> Lọc
+                                </button>
+                                <a href="/admin/user-activity-logs" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Xóa bộ lọc
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- User Activity Logs Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-list"></i> Danh sách User Activities</h5>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Thời gian</th>
+                                        <th>User ID</th>
+                                        <th>Action</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th>IP Address</th>
+                                        <th>Endpoint</th>
+                                        <th>Failure Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="log : ${activityLogs.getContent()}">
+                                        <td th:text="${#temporals.format(log.createdAt, 'dd/MM/yyyy HH:mm:ss')}"></td>
+                                        <td th:text="${log.userId}"></td>
+                                        <td>
+                                            <span class="badge bg-primary" th:text="${log.action}"></span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info" th:text="${log.category.name()}"></span>
+                                        </td>
+                                        <td>
+                                            <span th:if="${log.success}" class="badge bg-success">Thành công</span>
+                                            <span th:if="${!log.success}" class="badge bg-danger">Thất bại</span>
+                                        </td>
+                                        <td th:text="${log.ipAddress}"></td>
+                                        <td>
+                                            <code th:if="${log.endpoint != null}" th:text="${log.method + ' ' + log.endpoint}"></code>
+                                        </td>
+                                        <td>
+                                            <span th:if="${!log.success && log.failureReason != null}" 
+                                                  class="text-danger small" 
+                                                  th:text="${#strings.abbreviate(log.failureReason, 50)}"
+                                                  th:title="${log.failureReason}">
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div th:if="${activityLogs == null || activityLogs.empty}" class="text-center p-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Không có dữ liệu</h5>
+                            <p class="text-muted">Không tìm thấy user activity logs nào</p>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div th:if="${totalPages > 1}" class="pagination-nav">
+                            <!-- Pagination Info -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="pagination-info">
+                                    <span class="text-muted">
+                                        Hiển thị <strong th:text="${numberOfElements}">0</strong> trong tổng số 
+                                        <strong th:text="${totalElements}">0</strong> activities
+                                        <span class="ms-2">(<strong th:text="${pageSize}">20</strong> item/trang)</span>
+                                    </span>
+                                </div>
+                                <div class="pagination-stats">
+                                    <span class="text-muted">
+                                        Trang <strong th:text="${currentPage + 1}">1</strong> / 
+                                        <strong th:text="${totalPages}">1</strong>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Pagination Navigation -->
+                            <nav aria-label="User activity logs pagination">
+                                <ul class="pagination justify-content-center mb-0">
+                                    <!-- First Page -->
+                                    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/admin/user-activity-logs(page=0, userId=${selectedUserId}, action=${selectedAction}, category=${selectedCategory}, fromDate=${fromDate}, toDate=${toDate}, size=${pageSize})}" th:if="${currentPage > 0}">
+                                            <i class="fa-solid fa-angles-left"></i> Đầu
+                                        </a>
+                                        <span class="page-link" th:if="${currentPage == 0}">
+                                            <i class="fa-solid fa-angles-left"></i> Đầu
+                                        </span>
+                                    </li>
+                                    
+                                    <!-- Previous Page -->
+                                    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/admin/user-activity-logs(page=${currentPage - 1}, userId=${selectedUserId}, action=${selectedAction}, category=${selectedCategory}, fromDate=${fromDate}, toDate=${toDate}, size=${pageSize})}" th:if="${currentPage > 0}">
+                                            <i class="fa-solid fa-chevron-left"></i> Trước
+                                        </a>
+                                        <span class="page-link" th:if="${currentPage == 0}">
+                                            <i class="fa-solid fa-chevron-left"></i> Trước
+                                        </span>
+                                    </li>
+                                    
+                                    <!-- Page Numbers -->
+                                    <li class="page-item" th:each="pageNum : ${#numbers.sequence(T(java.lang.Math).max(0, currentPage - 2), T(java.lang.Math).min(totalPages - 1, currentPage + 2))}" 
+                                        th:classappend="${pageNum == currentPage} ? 'active'">
+                                        <a class="page-link" th:href="@{/admin/user-activity-logs(page=${pageNum}, userId=${selectedUserId}, action=${selectedAction}, category=${selectedCategory}, fromDate=${fromDate}, toDate=${toDate}, size=${pageSize})}" th:text="${pageNum + 1}">1</a>
+                                    </li>
+                                    
+                                    <!-- Next Page -->
+                                    <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/admin/user-activity-logs(page=${currentPage + 1}, userId=${selectedUserId}, action=${selectedAction}, category=${selectedCategory}, fromDate=${fromDate}, toDate=${toDate}, size=${pageSize})}" th:if="${currentPage < totalPages - 1}">
+                                            Sau <i class="fa-solid fa-chevron-right"></i>
+                                        </a>
+                                        <span class="page-link" th:if="${currentPage == totalPages - 1}">
+                                            Sau <i class="fa-solid fa-chevron-right"></i>
+                                        </span>
+                                    </li>
+                                    
+                                    <!-- Last Page -->
+                                    <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/admin/user-activity-logs(page=${totalPages - 1}, userId=${selectedUserId}, action=${selectedAction}, category=${selectedCategory}, fromDate=${fromDate}, toDate=${toDate}, size=${pageSize})}" th:if="${currentPage < totalPages - 1}">
+                                            Cuối <i class="fa-solid fa-angles-right"></i>
+                                        </a>
+                                        <span class="page-link" th:if="${currentPage == totalPages - 1}">
+                                            Cuối <i class="fa-solid fa-angles-right"></i>
+                                        </span>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+
+                        <div class="text-center mt-3">
+                            <p class="text-muted">
+                                Hiển thị <span th:text="${activityLogs.content.size()}"></span> trong tổng số 
+                                <span th:text="${totalElements}"></span> bản ghi
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
