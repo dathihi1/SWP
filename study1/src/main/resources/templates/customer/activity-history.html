@@ -285,13 +285,10 @@
                             <strong>Hoạt động</strong>
                         </div>
                         <div class="col-md-3">
-                            <strong>Chi tiết</strong>
+                            <strong>IP & Thiết bị</strong>
                         </div>
                         <div class="col-md-2">
                             <strong>Thời gian</strong>
-                        </div>
-                        <div class="col-md-2">
-                            <strong>Thông tin</strong>
                         </div>
                     </div>
                 </div>
@@ -313,14 +310,23 @@
                             <div class="col-md-3">
                                 <span class="fw-semibold" th:text="${actionMappings[activity.action] != null ? actionMappings[activity.action] : activity.action}">Hoạt động</span>
                                 <div class="small text-muted" th:if="${activity.category}" th:text="'Loại: ' + ${activity.category}"></div>
-                            </div>
-                            
-                            <!-- Chi tiết -->
-                            <div class="col-md-3">
-                                <span th:if="${activity.success}" class="badge bg-success">Thành công</span>
-                                <span th:if="${!activity.success}" class="badge bg-danger">Thất bại</span>
                                 <div th:if="${!activity.success && activity.failureReason}" class="mt-1">
                                     <small class="text-danger" th:text="${activity.failureReason}">Lý do lỗi</small>
+                                </div>
+                            </div>
+                            
+                            <!-- IP & User-Agent -->
+                            <div class="col-md-3">
+                                <div class="small" th:if="${activity.ipAddress}">
+                                    <i class="fa-solid fa-network-wired me-1"></i>
+                                    <span th:text="${activity.ipAddress}"></span>
+                                </div>
+                                <div class="small text-muted mt-1" th:if="${activity.userAgent}">
+                                    <i class="fa-solid fa-desktop me-1"></i>
+                                    <span th:text="${#strings.abbreviate(activity.userAgent, 60)}" title="${activity.userAgent}"></span>
+                                </div>
+                                <div th:if="${activity.ipAddress == null && activity.userAgent == null}" class="text-muted small">
+                                    Không có thông tin
                                 </div>
                             </div>
                             
@@ -328,13 +334,6 @@
                             <div class="col-md-2">
                                 <div class="small text-muted" th:text="${#temporals.format(activity.createdAt, 'dd/MM/yyyy')}">Ngày</div>
                                 <div class="small text-muted" th:text="${#temporals.format(activity.createdAt, 'HH:mm:ss')}">Giờ</div>
-                            </div>
-                            
-                            <!-- Thông tin -->
-                            <div class="col-md-2">
-                                <div class="small" th:if="${activity.ipAddress}" th:text="'IP: ' + ${activity.ipAddress}"></div>
-                                <div class="small" th:if="${activity.userAgent}" th:text="'Thiết bị: ' + ${activity.userAgent}"></div>
-                                <div class="small" th:if="${activity.endpoint}" th:text="'API: ' + ${activity.method} + ' ' + ${activity.endpoint}"></div>
                             </div>
                         </div>
                     </div>
