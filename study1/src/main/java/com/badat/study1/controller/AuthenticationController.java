@@ -1,6 +1,7 @@
 package com.badat.study1.controller;
 
-import com.badat.study1.annotation.Auditable;
+import com.badat.study1.annotation.UserActivity;
+import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.dto.request.LoginRequest;
 import com.badat.study1.dto.response.LoginResponse;
 import com.badat.study1.dto.response.CaptchaResponse;
@@ -9,7 +10,6 @@ import com.badat.study1.dto.request.VerifyRequest;
 import com.badat.study1.dto.response.ApiResponse;
 import com.badat.study1.service.UserService;
 import com.badat.study1.service.AuthenticationService;
-import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.CaptchaService;
 import com.badat.study1.service.IpLockoutService;
 import com.badat.study1.service.SecurityEventService;
@@ -38,14 +38,13 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
     private final UserService userService;
-    private final AuditLogService auditLogService;
     private final CaptchaService captchaService;
     private final IpLockoutService ipLockoutService;
     private final SecurityEventService securityEventService;
     private final CaptchaRateLimitService captchaRateLimitService;
 
     @PostMapping("/login")
-    @Auditable(action = "LOGIN")
+    @UserActivity(action = "LOGIN", category = UserActivityLog.Category.ACCOUNT)
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         try {
             String ipAddress = getClientIpAddress(request);
@@ -221,7 +220,7 @@ public class AuthenticationController {
 
     // Registration flow: FE validates, BE validates again, send OTP async, immediately respond with nextUrl
     @PostMapping("/register")
-    @Auditable(action = "REGISTER")
+    @UserActivity(action = "REGISTER", category = UserActivityLog.Category.ACCOUNT)
     public ResponseEntity<?> register(@RequestBody UserCreateRequest request, HttpServletRequest http) {
         try {
             userService.register(request);
@@ -234,7 +233,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/verify-register-otp")
-    @Auditable(action = "OTP_VERIFY")
+    @UserActivity(action = "OTP_VERIFY", category = UserActivityLog.Category.ACCOUNT)
     public ResponseEntity<?> verifyRegisterOtp(@RequestBody VerifyRequest request) {
         try {
             userService.verify(request.getEmail(), request.getOtp());
@@ -247,7 +246,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/logout")
-    @Auditable(action = "LOGOUT")
+    @UserActivity(action = "LOGOUT", category = UserActivityLog.Category.ACCOUNT)
     public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader, HttpServletRequest request) {
         try {
             // Prefer header; if missing, try cookie via JwtAuthenticationFilter, but here we only need header token to blacklist
@@ -271,12 +270,7 @@ public class AuthenticationController {
             // Get user info before logout for audit logging
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
-                Object principal = auth.getPrincipal();
-                if (principal instanceof com.badat.study1.model.User) {
-                    com.badat.study1.model.User user = (com.badat.study1.model.User) principal;
-                    String ipAddress = getClientIpAddress(request);
-                    auditLogService.logLogout(user, ipAddress);
-                }
+                // Logout will be handled by UserActivityAspect
             }
             
             authenticationService.logout(token);

@@ -275,10 +275,17 @@ public class UserService {
             throw new RuntimeException("Email không tồn tại trong hệ thống");
         }
         
+        User user = userOpt.get();
+        
+        // Check if user is registered via Google OAuth2
+        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+            throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
+        }
+        
         // Use OtpService to send OTP with rate limiting
         otpService.sendOtp(email, "forgot_password");
         
-        log.info("Forgot password OTP queued for email: {}", email);
+        log.info("Forgot password OTP queued for email: {} (provider: {})", email, user.getProvider());
     }
     
     public void verifyForgotPasswordOtp(String email, String otp) {
@@ -294,7 +301,14 @@ public class UserService {
             throw new RuntimeException("Email không tồn tại trong hệ thống");
         }
         
-        log.info("Forgot password OTP verified for email: {}", email);
+        User user = userOpt.get();
+        
+        // Double-check if user is registered via Google OAuth2
+        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+            throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
+        }
+        
+        log.info("Forgot password OTP verified for email: {} (provider: {})", email, user.getProvider());
     }
     
     public void resetPassword(String email, String resetToken, String newPassword) {
@@ -315,8 +329,14 @@ public class UserService {
             throw new RuntimeException("Email không tồn tại trong hệ thống");
         }
         
-        // Update password
         User user = userOpt.get();
+        
+        // Final check if user is registered via Google OAuth2
+        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+            throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
+        }
+        
+        // Update password
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         
@@ -368,9 +388,6 @@ public class UserService {
         }
     }
 
-    /**
-     * Gửi OTP email với file HTML đính kèm (async)
-     */
     @Async
     public void sendOTPWithHtmlAsync(String email, String otp, String purpose) {
         try {
@@ -445,6 +462,7 @@ public class UserService {
             sendOTPAsync(email, otp, purpose);
         }
     }
+
     
 
     // Avatar management methods

@@ -246,6 +246,16 @@
                                 <label for="toDate" class="form-label">Đến ngày</label>
                                 <input type="date" class="form-control" id="toDate" name="toDate" th:value="${selectedToDate}">
                             </div>
+                            <div class="col-md-3">
+                                <label for="size" class="form-label">Số item/trang</label>
+                                <select class="form-select" id="size" name="size">
+                                    <option value="5" th:selected="${selectedSize == 5}">5</option>
+                                    <option value="10" th:selected="${selectedSize == 10}">10</option>
+                                    <option value="20" th:selected="${selectedSize == 20}">20</option>
+                                    <option value="50" th:selected="${selectedSize == 50}">50</option>
+                                    <option value="100" th:selected="${selectedSize == 100}">100</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="row mt-3">
                             <div class="col-12">
@@ -293,7 +303,7 @@
                             <div class="col-md-2">
                                 <div class="d-flex align-items-center">
                                     <div th:class="'activity-icon ' + (${activity.success} ? 'success' : 'failure')" class="me-2">
-                                        <i th:class="${activity.successIcon}" class="fa-sm"></i>
+                                        <i th:class="${activity.success} ? 'fa-solid fa-check' : 'fa-solid fa-times'" class="fa-sm"></i>
                                     </div>
                                     <span th:class="${activity.success} ? 'text-success' : 'text-danger'" 
                                           th:text="${activity.success} ? 'Thành công' : 'Thất bại'">Trạng thái</span>
@@ -302,14 +312,16 @@
                             
                             <!-- Hoạt động -->
                             <div class="col-md-3">
-                                <span class="fw-semibold" th:text="${activity.actionDisplayName != null and !#strings.isEmpty(activity.actionDisplayName) ? activity.actionDisplayName : activity.action}">Hoạt động</span>
+                                <span class="fw-semibold" th:text="${actionMappings[activity.action] != null ? actionMappings[activity.action] : activity.action}">Hoạt động</span>
+                                <div class="small text-muted" th:if="${activity.category}" th:text="'Loại: ' + ${activity.category}"></div>
                             </div>
                             
                             <!-- Chi tiết -->
                             <div class="col-md-3">
-                                <span class="text-muted" th:text="${activity.details}">Chi tiết</span>
-                                <div th:if="${!activity.success}" class="mt-1">
-                                    <span class="badge bg-danger small" th:text="${activity.failureReason}">Lỗi</span>
+                                <span th:if="${activity.success}" class="badge bg-success">Thành công</span>
+                                <span th:if="${!activity.success}" class="badge bg-danger">Thất bại</span>
+                                <div th:if="${!activity.success && activity.failureReason}" class="mt-1">
+                                    <small class="text-danger" th:text="${activity.failureReason}">Lý do lỗi</small>
                                 </div>
                             </div>
                             
@@ -322,7 +334,8 @@
                             <!-- Thông tin -->
                             <div class="col-md-2">
                                 <div class="small" th:if="${activity.ipAddress}" th:text="'IP: ' + ${activity.ipAddress}"></div>
-                                <div class="small" th:if="${activity.deviceInfo}" th:text="'Thiết bị: ' + ${activity.deviceInfo}"></div>
+                                <div class="small" th:if="${activity.userAgent}" th:text="'Thiết bị: ' + ${activity.userAgent}"></div>
+                                <div class="small" th:if="${activity.endpoint}" th:text="'API: ' + ${activity.method} + ' ' + ${activity.endpoint}"></div>
                             </div>
                         </div>
                     </div>
@@ -346,6 +359,7 @@
                         <span class="text-muted">
                             Hiển thị <strong th:text="${activities.numberOfElements}">0</strong> trong tổng số 
                             <strong th:text="${activities.totalElements}">0</strong> hoạt động
+                            <span class="ms-2">(<strong th:text="${selectedSize}">10</strong> item/trang)</span>
                         </span>
                     </div>
                     <div class="pagination-stats">
@@ -361,7 +375,7 @@
                     <ul class="pagination justify-content-center mb-0">
                         <!-- First Page -->
                         <li class="page-item" th:classappend="${activities.first} ? 'disabled'">
-                            <a class="page-link" th:href="@{/activity-history(page=1, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate})}" th:if="${!activities.first}">
+                            <a class="page-link" th:href="@{/activity-history(page=0, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.first}">
                                 <i class="fa-solid fa-angles-left"></i> Đầu
                             </a>
                             <span class="page-link" th:if="${activities.first}">
@@ -371,7 +385,7 @@
                         
                         <!-- Previous Page -->
                         <li class="page-item" th:classappend="${activities.first} ? 'disabled'">
-                            <a class="page-link" th:href="@{/activity-history(page=${activities.number}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate})}" th:if="${!activities.first}">
+                            <a class="page-link" th:href="@{/activity-history(page=${activities.number - 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.first}">
                                 <i class="fa-solid fa-chevron-left"></i> Trước
                             </a>
                             <span class="page-link" th:if="${activities.first}">
@@ -382,12 +396,12 @@
                         <!-- Page Numbers -->
                         <li class="page-item" th:each="pageNum : ${#numbers.sequence(T(java.lang.Math).max(0, activities.number - 2), T(java.lang.Math).min(activities.totalPages - 1, activities.number + 2))}" 
                             th:classappend="${pageNum == activities.number} ? 'active'">
-                            <a class="page-link" th:href="@{/activity-history(page=${pageNum + 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate})}" th:text="${pageNum + 1}">1</a>
+                            <a class="page-link" th:href="@{/activity-history(page=${pageNum}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:text="${pageNum + 1}">1</a>
                         </li>
                         
                         <!-- Next Page -->
                         <li class="page-item" th:classappend="${activities.last} ? 'disabled'">
-                            <a class="page-link" th:href="@{/activity-history(page=${activities.number + 2}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate})}" th:if="${!activities.last}">
+                            <a class="page-link" th:href="@{/activity-history(page=${activities.number + 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.last}">
                                 Sau <i class="fa-solid fa-chevron-right"></i>
                             </a>
                             <span class="page-link" th:if="${activities.last}">
@@ -397,7 +411,7 @@
                         
                         <!-- Last Page -->
                         <li class="page-item" th:classappend="${activities.last} ? 'disabled'">
-                            <a class="page-link" th:href="@{/activity-history(page=${activities.totalPages}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate})}" th:if="${!activities.last}">
+                            <a class="page-link" th:href="@{/activity-history(page=${activities.totalPages - 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.last}">
                                 Cuối <i class="fa-solid fa-angles-right"></i>
                             </a>
                             <span class="page-link" th:if="${activities.last}">

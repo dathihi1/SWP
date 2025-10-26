@@ -5,7 +5,7 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: 1234
+    password: root
     hikari:
       maximum-pool-size: 100
       minimum-idle: 20
@@ -43,6 +43,17 @@ spring:
         max-size: 100
         queue-capacity: 1000
       thread-name-prefix: "payment-"
+      # Async executors for logging
+      activity-log-executor:
+        core-size: 10
+        max-size: 50
+        queue-capacity: 1000
+        thread-name-prefix: "activity-log-"
+      api-log-executor:
+        core-size: 5
+        max-size: 20
+        queue-capacity: 500
+        thread-name-prefix: "api-log-"
   jpa:
     hibernate:
       ddl-auto: update
@@ -60,11 +71,6 @@ spring:
           starttls:
             enable: true
     default-encoding: UTF-8
-  web:
-    resources:
-      static-locations: classpath:/static/,classpath:/templates/
-      cache:
-        period: 0
   security:
     oauth2:
       client:
@@ -115,6 +121,8 @@ vnpay:
 logging:
   level:
     com.badat.study1: INFO
+    com.badat.study1.service.UserActivityLogService: INFO
+    com.badat.study1.service.ApiCallLogService: INFO
     org.springframework.web: WARN
     org.hibernate: WARN
 server:

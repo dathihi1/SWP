@@ -253,6 +253,16 @@
             color: white;
         }
         
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background-color: #138496;
+            color: white;
+        }
+        
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -526,6 +536,11 @@
                                         <button class="btn btn-action btn-view" title="Xem chi tiết">
                                             <i class="fas fa-eye"></i>
                                         </button>
+                                        <a th:href="@{/admin/user-activity-logs(userId=${user.id})}" 
+                                           class="btn btn-action btn-info" 
+                                           title="Xem hoạt động">
+                                            <i class="fas fa-user-clock"></i>
+                                        </a>
                                         <button class="btn btn-action btn-edit" title="Chỉnh sửa" 
                                                 th:data-user-id="${user.id}" 
                                                 th:data-user-username="${user.username}"

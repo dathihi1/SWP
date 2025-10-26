@@ -6,6 +6,8 @@ import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
+
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +31,7 @@ public class AdminUserApiController {
     private final PasswordEncoder passwordEncoder;
     
     @PostMapping("/add")
-    public ResponseEntity<?> addUser(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> addUser(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || !authentication.isAuthenticated() || 
@@ -91,7 +93,7 @@ public class AdminUserApiController {
 
             // Log the user creation
             if (auditLogService != null) {
-                auditLogService.logUserCreation(currentUser, newUser);
+                auditLogService.logUserCreation(currentUser, newUser, httpRequest.getRequestURI(), httpRequest.getMethod());
             }
 
             log.info("Admin {} created new user {}", currentUser.getUsername(), newUser.getUsername());
@@ -227,7 +229,7 @@ public class AdminUserApiController {
     }
 
     @PutMapping("/{userId}/edit")
-    public ResponseEntity<?> editUser(@PathVariable Long userId, @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> editUser(@PathVariable Long userId, @RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || !authentication.isAuthenticated() || 
@@ -285,7 +287,7 @@ public class AdminUserApiController {
 
             // Log the edit action
             if (auditLogService != null) {
-                auditLogService.logUserEdit(currentUser, user, request);
+                auditLogService.logUserEdit(currentUser, user, request, httpRequest.getRequestURI(), httpRequest.getMethod());
             }
 
             log.info("Admin {} edited user {} information", currentUser.getUsername(), user.getUsername());
@@ -302,7 +304,7 @@ public class AdminUserApiController {
     }
 
     @PostMapping("/{userId}/lock")
-    public ResponseEntity<?> lockUser(@PathVariable Long userId) {
+    public ResponseEntity<?> lockUser(@PathVariable Long userId, HttpServletRequest request) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || !authentication.isAuthenticated() || 
@@ -329,7 +331,7 @@ public class AdminUserApiController {
 
             // Log the lock action
             if (auditLogService != null) {
-                auditLogService.logAccountLocked(user, "127.0.0.1", "Locked by admin: " + currentUser.getUsername());
+                auditLogService.logAccountLocked(user, "127.0.0.1", "Locked by admin: " + currentUser.getUsername(), request.getRequestURI(), request.getMethod());
             }
 
             log.info("Admin {} locked user {}", currentUser.getUsername(), user.getUsername());
@@ -346,7 +348,7 @@ public class AdminUserApiController {
     }
 
     @PostMapping("/{userId}/unlock")
-    public ResponseEntity<?> unlockUser(@PathVariable Long userId) {
+    public ResponseEntity<?> unlockUser(@PathVariable Long userId, HttpServletRequest request) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || !authentication.isAuthenticated() || 
@@ -373,7 +375,7 @@ public class AdminUserApiController {
 
             // Log the unlock action
             if (auditLogService != null) {
-                auditLogService.logAccountUnlocked(user, "127.0.0.1");
+                auditLogService.logAccountUnlocked(user, "127.0.0.1", request.getRequestURI(), request.getMethod());
             }
 
             log.info("Admin {} unlocked user {}", currentUser.getUsername(), user.getUsername());
@@ -390,7 +392,7 @@ public class AdminUserApiController {
     }
     
     @PostMapping("/{userId}/change-role")
-    public ResponseEntity<?> changeUserRole(@PathVariable Long userId, @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> changeUserRole(@PathVariable Long userId, @RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || !authentication.isAuthenticated() || 
@@ -446,7 +448,7 @@ public class AdminUserApiController {
 
             // Log the role change
             if (auditLogService != null) {
-                auditLogService.logRoleChange(currentUser, targetUser, oldRole, newRole, reason);
+                auditLogService.logRoleChange(currentUser, targetUser, oldRole, newRole, reason, httpRequest.getRequestURI(), httpRequest.getMethod());
             }
 
             log.info("Admin {} changed user {} role from {} to {}", 

@@ -26,6 +26,7 @@ public class CartService {
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
     private final WarehouseRepository warehouseRepository;
+    private final UserActivityLogService userActivityLogService;
 
     /**
      * Lấy người dùng hiện tại từ Spring Security Context.
@@ -107,6 +108,14 @@ public class CartService {
             cartItemRepository.save(newItem);
         }
 
+        // Log user activity
+        try {
+            User user = getCurrentUser();
+            userActivityLogService.logCartAction(user, "ADD_TO_CART", productId, quantity, null, "POST /api/cart/add", "POST", true, null);
+        } catch (Exception e) {
+            log.warn("Failed to log cart action: {}", e.getMessage());
+        }
+
         // Trả về Cart đã được tải đầy đủ (Fetch Join) cho phản hồi API
         return getOrCreateMyCart(true);
     }
@@ -127,6 +136,14 @@ public class CartService {
         item.setQuantity(quantity);
         cartItemRepository.save(item);
 
+        // Log user activity
+        try {
+            User user = getCurrentUser();
+            userActivityLogService.logCartAction(user, "UPDATE_CART", productId, quantity, null, "PUT /api/cart/update", "PUT", true, null);
+        } catch (Exception e) {
+            log.warn("Failed to log cart action: {}", e.getMessage());
+        }
+
         // Trả về Cart đã được tải đầy đủ (Fetch Join)
         return getOrCreateMyCart(true);
     }
@@ -144,6 +161,14 @@ public class CartService {
             cart.getItems().remove(item);
         }
         cartItemRepository.delete(item);
+
+        // Log user activity
+        try {
+            User user = getCurrentUser();
+            userActivityLogService.logCartAction(user, "REMOVE_FROM_CART", productId, 0, null, "DELETE /api/cart/remove", "DELETE", true, null);
+        } catch (Exception e) {
+            log.warn("Failed to log cart action: {}", e.getMessage());
+        }
 
         // Trả về Cart đã được tải đầy đủ (Fetch Join)
         return getOrCreateMyCart(true);
@@ -165,6 +190,14 @@ public class CartService {
             cartItemRepository.deleteAll(cart.getItems());
             cart.getItems().clear();
             cartRepository.save(cart);
+            
+            // Log user activity
+            try {
+                User user = getCurrentUser();
+                userActivityLogService.logCartAction(user, "CLEAR_CART", null, 0, null, "DELETE /api/cart/clear", "DELETE", true, null);
+            } catch (Exception e) {
+                log.warn("Failed to log cart action: {}", e.getMessage());
+            }
         }
         
         return cart;

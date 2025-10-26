@@ -38,6 +38,14 @@ public class LoginAttemptService {
         
         log.info("Failed login attempt recorded for user: {}, attempt: {}", username, attempts);
         
+        // Log failed login attempt to audit log
+        try {
+            auditLogService.logFailedLoginAttempt(username, ipAddress, "Mật khẩu không đúng", 
+                "POST /api/auth/login", "POST");
+        } catch (Exception e) {
+            log.error("Error logging failed login attempt: {}", e.getMessage());
+        }
+        
         // If max attempts reached, lock the account
         if (attempts >= MAX_LOGIN_ATTEMPTS) {
             lockAccount(username, ipAddress);
@@ -75,7 +83,7 @@ public class LoginAttemptService {
                 
                 // Log the event
                 auditLogService.logAccountLocked(user, ipAddress, 
-                    "Quá nhiều lần đăng nhập sai (" + MAX_LOGIN_ATTEMPTS + " lần)");
+                    "Quá nhiều lần đăng nhập sai (" + MAX_LOGIN_ATTEMPTS + " lần)", "SYSTEM", "AUTO");
                 
                 log.warn("Account locked due to too many failed login attempts: {}", username);
             }

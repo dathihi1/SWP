@@ -426,8 +426,11 @@
                             
                             <!-- Chi tiết -->
                             <div class="col-4">
-                                <span class="text-muted small" th:text="${activity.details}">Chi tiết</span>
-                                <div th:if="${!activity.success}" class="mt-1">
+                                <span class="text-muted small">
+                                    <span th:if="${activity.success}" class="text-success">Thành công</span>
+                                    <span th:unless="${activity.success}" class="text-danger">Thất bại</span>
+                                </span>
+                                <div th:if="${!activity.success and activity.failureReason}" class="mt-1">
                                     <span class="badge bg-danger" style="font-size: 0.7rem;" th:text="${activity.failureReason}">Lỗi</span>
                                 </div>
                             </div>
