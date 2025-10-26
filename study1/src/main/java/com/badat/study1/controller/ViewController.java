@@ -17,6 +17,7 @@ import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.OrderRepository;
+import com.badat.study1.repository.WarehouseRepository;
 import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
@@ -67,6 +68,7 @@ public class ViewController {
     private final ReviewRepository reviewRepository;
     private final OrderRepository orderRepository;
     private final AuditLogRepository auditLogRepository;
+    private final WarehouseRepository warehouseRepository;
 
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
@@ -167,11 +169,12 @@ public class ViewController {
                 vm.put("stallCategory", stall.getStallCategory());
 
                 // Compute product count by summing quantities of products in the stall
+                // Count available warehouse items (not locked, not deleted)
+                long totalStock = warehouseRepository.countAvailableItemsByStallId(stall.getId());
+                vm.put("productCount", (int) totalStock);
+                
+                // Get products for price range calculation
                 var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
-                int totalStock = products.stream()
-                        .mapToInt(p -> p.getQuantity() != null ? p.getQuantity() : 0)
-                        .sum();
-                vm.put("productCount", totalStock);
                 
                 // Calculate price range from available products
                 if (!products.isEmpty()) {
@@ -820,12 +823,9 @@ public class ViewController {
                 // Lấy tất cả sản phẩm trong gian hàng này
                 var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
 
-                // Tính tổng quantity của tất cả sản phẩm trong gian hàng
-                int totalStock = products.stream()
-                        .mapToInt(product -> product.getQuantity() != null ? product.getQuantity() : 0)
-                        .sum();
-
-                stall.setProductCount(totalStock);
+                // Tính tổng số lượng từ warehouse (không bị khóa, không bị xóa)
+                long totalStock = warehouseRepository.countAvailableItemsByStallId(stall.getId());
+                stall.setProductCount((int) totalStock);
                 
                 // Tính khoảng giá từ sản phẩm còn hàng
                 if (!products.isEmpty()) {
@@ -997,6 +997,13 @@ public class ViewController {
 
         // Lấy danh sách sản phẩm của gian hàng
         var products = productRepository.findByStallIdAndIsDeleteFalse(stallId);
+        
+        // Cập nhật quantity cho mỗi sản phẩm từ warehouse
+        products.forEach(product -> {
+            long warehouseCount = warehouseRepository.countAvailableItemsByProductId(product.getId());
+            product.setQuantity((int) warehouseCount);
+        });
+        
         model.addAttribute("products", products);
 
         return "seller/product-management";

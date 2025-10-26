@@ -11,6 +11,7 @@ import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.WalletRepository;
+import com.badat.study1.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,6 +35,7 @@ public class ProductBrowseController {
     private final ShopRepository shopRepository;
     private final StallRepository stallRepository;
     private final WalletRepository walletRepository;
+    private final WarehouseRepository warehouseRepository;
 
     @GetMapping("/products")
     public String listProducts(
@@ -93,13 +95,13 @@ public class ProductBrowseController {
                 }
         ));
 
-        // Compute product count per stall
+        // Compute product count per stall from warehouse (available items only)
         Map<Long, Integer> productCounts = stalls.stream().collect(Collectors.toMap(
                 Stall::getId,
                 s -> {
                     Long stallId = s.getId();
-                    List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(stallId);
-                    return products.size();
+                    long warehouseCount = warehouseRepository.countAvailableItemsByStallId(stallId);
+                    return (int) warehouseCount;
                 }
         ));
         // Add authentication attributes

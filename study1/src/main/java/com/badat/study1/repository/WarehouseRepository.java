@@ -100,4 +100,22 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      */
     @Query(value = "SELECT * FROM warehouse WHERE product_id = :productId AND locked = false AND is_delete = false ORDER BY created_at ASC LIMIT :quantity FOR UPDATE", nativeQuery = true)
     List<Warehouse> findAvailableItemsForReservation(@Param("productId") Long productId, @Param("quantity") Integer quantity);
+    
+    /**
+     * Count available warehouse items for a product (not locked, not deleted)
+     */
+    @Query(value = "SELECT COUNT(*) FROM warehouse WHERE product_id = :productId AND locked = false AND is_delete = false", nativeQuery = true)
+    long countAvailableItemsByProductId(@Param("productId") Long productId);
+    
+    /**
+     * Count available warehouse items for a stall (not locked, not deleted)
+     */
+    @Query(value = "SELECT COUNT(*) FROM warehouse WHERE stall_id = :stallId AND locked = false AND is_delete = false", nativeQuery = true)
+    long countAvailableItemsByStallId(@Param("stallId") Long stallId);
+    
+    /**
+     * Count available warehouse items for a shop (not locked, not deleted)
+     */
+    @Query(value = "SELECT COUNT(*) FROM warehouse WHERE shop_id = :shopId AND locked = false AND is_delete = false", nativeQuery = true)
+    long countAvailableItemsByShopId(@Param("shopId") Long shopId);
 }

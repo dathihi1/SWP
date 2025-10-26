@@ -207,9 +207,9 @@ public class ShopController {
             // Validate: Chỉ cho phép mở gian hàng khi có hàng trong kho
             if ("OPEN".equals(status)) {
                 // Kiểm tra xem gian hàng có sản phẩm nào trong kho không
-                var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
-                boolean hasStock = products.stream().anyMatch(product -> 
-                    product.getQuantity() != null && product.getQuantity() > 0);
+                // Check if stall has available warehouse items (not locked, not deleted)
+                long availableStock = warehouseRepository.countAvailableItemsByStallId(stall.getId());
+                boolean hasStock = availableStock > 0;
                 
                 if (!hasStock) {
                     redirectAttributes.addFlashAttribute("errorMessage", 
