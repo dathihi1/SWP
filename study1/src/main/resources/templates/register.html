@@ -172,18 +172,18 @@
                         <label for="password" class="form-label">Mật khẩu</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                            <input type="password" class="form-control" id="password" placeholder="••••••••" minlength="8" required>
+                            <input type="password" class="form-control" id="password" placeholder="••••••••" minlength="6" maxlength="100" required>
                         </div>
                     </div>
                     <div class="col-12 col-md-6">
                         <label for="confirm" class="form-label">Xác nhận mật khẩu</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa-solid fa-shield-halved"></i></span>
-                            <input type="password" class="form-control" id="confirm" placeholder="••••••••" minlength="8" required>
+                            <input type="password" class="form-control" id="confirm" placeholder="••••••••" minlength="6" maxlength="100" required>
                         </div>
                     </div>
                 </div>
-                <div class="form-text mt-1">Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.</div>
+                <div class="form-text mt-1">Mật khẩu phải từ 6-100 ký tự.</div>
                 <div class="mb-3">
                     <label class="form-label">Mã xác thực <span class="text-danger">*</span></label>
                     <div class="row g-2">
@@ -309,6 +309,14 @@
     // Load captcha on page load
     document.addEventListener('DOMContentLoaded', function() {
         initializeCaptcha();
+        
+        // Clear invalid class khi user edit field
+        document.getElementById('email').addEventListener('input', function() {
+            this.classList.remove('is-invalid');
+        });
+        document.getElementById('username').addEventListener('input', function() {
+            this.classList.remove('is-invalid');
+        });
     });
 
     document.getElementById('registerForm').addEventListener('submit', async function (event) {
@@ -329,10 +337,9 @@
             return;
         }
 
-        // Validate password strength
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/;
-        if (!passwordRegex.test(password)) {
-            alertBox.textContent = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt.';
+        // Validate password length
+        if (password.length < 6 || password.length > 100) {
+            alertBox.textContent = 'Mật khẩu phải từ 6-100 ký tự.';
             alertBox.classList.remove('d-none');
             return;
         }
@@ -367,18 +374,38 @@
                 }
             } else {
                 const errorData = await response.json();
-                alertBox.textContent = errorData.message || errorData.error || 'Đăng ký thất bại';
+                let errorMessage = errorData.error || 'Đăng ký thất bại';
+                
+                // Highlight field nếu có
+                if (errorData.field === 'email') {
+                    document.getElementById('email').classList.add('is-invalid');
+                    errorMessage = 'Email đã được sử dụng';
+                } else if (errorData.field === 'username') {
+                    document.getElementById('username').classList.add('is-invalid');
+                    errorMessage = 'Tên đăng nhập đã tồn tại';
+                }
+                
+                alertBox.textContent = errorMessage;
                 alertBox.classList.remove('d-none');
                 
-                // If captcha error, reload captcha
-                if (errorData.captchaRequired || errorData.error?.includes('xác thực')) {
-                    loadCaptcha();
-                }
+                // LUÔN reload captcha khi có bất kỳ lỗi nào
+                generateCaptcha();
             }
         } catch (error) {
             alertBox.textContent = 'Đã có lỗi xảy ra. Vui lòng thử lại.';
             alertBox.classList.remove('d-none');
+            
+            // LUÔN reload captcha khi có bất kỳ lỗi nào
+            generateCaptcha();
         }
+    });
+
+    // Clear invalid class khi user edit field
+    document.getElementById('email').addEventListener('input', function() {
+        this.classList.remove('is-invalid');
+    });
+    document.getElementById('username').addEventListener('input', function() {
+        this.classList.remove('is-invalid');
     });
 
 </script>

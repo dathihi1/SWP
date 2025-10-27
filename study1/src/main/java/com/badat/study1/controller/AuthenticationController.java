@@ -13,6 +13,8 @@ import com.badat.study1.service.UserService;
 import com.badat.study1.service.AuthenticationService;
 import com.badat.study1.service.CaptchaService;
 import com.badat.study1.service.IpLockoutService;
+import com.badat.study1.service.OtpLockoutService;
+import com.badat.study1.service.OtpService;
 import com.badat.study1.service.SecurityEventService;
 import com.badat.study1.service.CaptchaRateLimitService;
 import com.badat.study1.service.RateLimitService;
@@ -47,6 +49,8 @@ public class AuthenticationController {
     private final SecurityEventService securityEventService;
     private final CaptchaRateLimitService captchaRateLimitService;
     private final RateLimitService rateLimitService;
+    private final OtpLockoutService otpLockoutService;
+    private final OtpService otpService;
 
     @PostMapping("/login")
     @UserActivity(action = "LOGIN", category = UserActivityLog.Category.ACCOUNT)
@@ -229,7 +233,6 @@ public class AuthenticationController {
     public ResponseEntity<?> register(@RequestBody @Valid UserCreateRequest request, HttpServletRequest http) {
         try {
             String ipAddress = getClientIpAddress(http);
-            String userAgent = http.getHeader("User-Agent");
             
             // Log security event
             securityEventService.logSecurityEvent(
@@ -295,7 +298,23 @@ public class AuthenticationController {
             // Add delay to prevent timing attacks
             Thread.sleep(500 + new Random().nextInt(500));
             
-            userService.register(request);
+            // Call userService.register() - CATCH specific exceptions
+            try {
+                userService.register(request);
+            } catch (RuntimeException e) {
+                if ("EMAIL_EXISTS".equals(e.getMessage())) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Email đã được sử dụng",
+                        "field", "email"
+                    ));
+                } else if ("USERNAME_EXISTS".equals(e.getMessage())) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Tên đăng nhập đã tồn tại",
+                        "field", "username"
+                    ));
+                }
+                throw e; // Re-throw other exceptions
+            }
             
             // Record IP request
             rateLimitService.recordIpRequest(ipAddress, "register");
@@ -328,7 +347,6 @@ public class AuthenticationController {
     public ResponseEntity<?> verifyRegisterOtp(@RequestBody VerifyRequest request, HttpServletRequest httpRequest) {
         try {
             String ipAddress = getClientIpAddress(httpRequest);
-            String userAgent = httpRequest.getHeader("User-Agent");
             
             // Validate email format
             if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
@@ -349,7 +367,19 @@ public class AuthenticationController {
                 "OTP verification attempt for: " + request.getEmail()
             );
             
-            userService.verify(request.getEmail(), request.getOtp());
+            // Call userService.verify() với ipAddress
+            try {
+                userService.verify(request.getEmail(), request.getOtp(), ipAddress);
+            } catch (RuntimeException e) {
+                // Check if lockout error
+                if (e.getMessage().contains("nhập sai OTP quá 5 lần")) {
+                    return ResponseEntity.status(429).body(Map.of(
+                        "error", e.getMessage(),
+                        "locked", true
+                    ));
+                }
+                throw e; // Re-throw other errors
+            }
             
             // Log successful verification
             securityEventService.logSecurityEvent(
@@ -377,6 +407,36 @@ public class AuthenticationController {
         }
     }
 
+    @PostMapping("/check-otp-lockout")
+    public ResponseEntity<?> checkOtpLockout(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        try {
+            String email = request.get("email");
+            String ipAddress = getClientIpAddress(httpRequest);
+            String purpose = request.getOrDefault("purpose", "register");
+            
+            boolean isLocked = otpLockoutService.isLocked(email, ipAddress, purpose);
+            
+            if (isLocked) {
+                Long remainingSeconds = otpLockoutService.getLockoutTimeRemaining(email, ipAddress, purpose);
+                return ResponseEntity.ok(Map.of(
+                    "locked", true,
+                    "remainingSeconds", remainingSeconds,
+                    "message", "Bạn đã nhập sai OTP quá 5 lần. Vui lòng thử lại sau " + (remainingSeconds / 60) + " phút"
+                ));
+            }
+            
+            Long remainingAttempts = otpLockoutService.getRemainingAttempts(email, ipAddress, purpose);
+            return ResponseEntity.ok(Map.of(
+                "locked", false,
+                "remainingAttempts", remainingAttempts
+            ));
+            
+        } catch (Exception e) {
+            log.error("Error checking OTP lockout: {}", e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+        }
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request, HttpServletRequest httpRequest) {
         try {
@@ -400,13 +460,13 @@ public class AuthenticationController {
                 ));
             }
             
-            // Check IP rate limiting
-            if (rateLimitService.isIpRateLimited(ipAddress, "forgot_password")) {
+            // Check IP rate limiting với limit riêng cho forgot password
+            if (rateLimitService.isIpRateLimitedForForgotPassword(ipAddress)) {
                 log.warn("Forgot password rate limited - IP: {}", ipAddress);
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.RATE_LIMITED, ipAddress, 
                         "Forgot password rate limited");
                 return ResponseEntity.status(429).body(Map.of(
-                    "error", "Quá nhiều yêu cầu khôi phục mật khẩu. Vui lòng thử lại sau 1 giờ",
+                    "error", "Quá nhiều yêu cầu từ IP này. Vui lòng thử lại sau 1 giờ",
                     "rateLimited", true
                 ));
             }
@@ -431,7 +491,9 @@ public class AuthenticationController {
             }
             
             // Validate captcha correctness
+            log.info("Forgot password captcha validation - ID: {}, User input: {}", request.getCaptchaId(), request.getCaptchaCode());
             boolean captchaValid = captchaService.validateSimpleCaptcha(request.getCaptchaId(), request.getCaptchaCode());
+            log.info("Forgot password captcha validation result: {}", captchaValid);
             if (!captchaValid) {
                 captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
@@ -448,8 +510,8 @@ public class AuthenticationController {
             
             userService.forgotPassword(request.getEmail());
             
-            // Record request
-            rateLimitService.recordIpRequest(ipAddress, "forgot_password");
+            // Record IP request
+            rateLimitService.recordForgotPasswordIpRequest(ipAddress);
             
             // Log successful request
             securityEventService.logSecurityEvent(
@@ -460,14 +522,156 @@ public class AuthenticationController {
             
             // Always return success to prevent email enumeration
             return ResponseEntity.ok(Map.of(
-                "message", "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu"
+                "success", true,
+                "message", "Mã OTP đã được gửi đến email của bạn",
+                "nextUrl", "/verify-otp?email=" + request.getEmail() + "&type=forgot_password"
             ));
             
         } catch (Exception e) {
-            log.error("Forgot password error: {}", e.getMessage());
+            log.error("Forgot password error: {}", e.getMessage(), e);
+            // Always return success to prevent email enumeration
             return ResponseEntity.ok(Map.of(
-                "message", "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu"
+                "success", true,
+                "message", "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu",
+                "nextUrl", "/verify-otp?email=" + request.getEmail() + "&type=forgot_password"
             ));
+        }
+    }
+
+    @PostMapping("/verify-forgot-password-otp")
+    @UserActivity(action = "OTP_VERIFY", category = UserActivityLog.Category.ACCOUNT)
+    public ResponseEntity<?> verifyForgotPasswordOtp(@RequestBody VerifyRequest request, HttpServletRequest httpRequest) {
+        try {
+            String ipAddress = getClientIpAddress(httpRequest);
+            
+            // Validate email format
+            if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+                log.warn("Forgot password OTP verification attempt with empty email from IP: {}", ipAddress);
+                return ResponseEntity.badRequest().body(ApiResponse.error("Email không được để trống"));
+            }
+            
+            // Validate OTP format
+            if (request.getOtp() == null || request.getOtp().trim().isEmpty()) {
+                log.warn("Forgot password OTP verification attempt with empty OTP from IP: {}", ipAddress);
+                return ResponseEntity.badRequest().body(ApiResponse.error("Mã OTP không được để trống"));
+            }
+            
+            // Log security event
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.OTP_VERIFY_ATTEMPT, 
+                ipAddress, 
+                "Forgot password OTP verification attempt for: " + request.getEmail()
+            );
+            
+            // Call userService.verifyForgotPasswordOtp() với ipAddress
+            try {
+                userService.verifyForgotPasswordOtp(request.getEmail(), request.getOtp(), ipAddress);
+            } catch (RuntimeException e) {
+                // Check if lockout error
+                if (e.getMessage().contains("nhập sai OTP quá 5 lần")) {
+                    return ResponseEntity.status(429).body(Map.of(
+                        "error", e.getMessage(),
+                        "locked", true
+                    ));
+                }
+                throw e; // Re-throw other errors
+            }
+            
+            // Generate resetToken and save to Redis
+            String resetToken = otpService.generateResetToken(request.getEmail());
+            
+            // Log successful verification
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.OTP_VERIFY_SUCCESS, 
+                ipAddress, 
+                "Forgot password OTP verified successfully for: " + request.getEmail()
+            );
+            
+            // Return nextUrl to reset-password page
+            return ResponseEntity.ok(ApiResponse.success("Mã OTP hợp lệ",
+                    Map.of("nextUrl", "/reset-password?email=" + request.getEmail() + "&token=" + resetToken)));
+                    
+        } catch (Exception e) {
+            log.error("Forgot password OTP verification failed for email: {} from IP: {}, error: {}", 
+                request.getEmail(), getClientIpAddress(httpRequest), e.getMessage());
+            
+            // Log failed verification
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.OTP_VERIFY_FAILED, 
+                getClientIpAddress(httpRequest), 
+                "Forgot password OTP verification failed for: " + request.getEmail() + ", reason: " + e.getMessage()
+            );
+            
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    @UserActivity(action = "RESET_PASSWORD", category = UserActivityLog.Category.ACCOUNT)
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        try {
+            String ipAddress = getClientIpAddress(httpRequest);
+            String email = request.get("email");
+            String resetToken = request.get("resetToken");
+            String newPassword = request.get("newPassword");
+            String repassword = request.get("repassword");
+            
+            // Validate inputs
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Email không được để trống"));
+            }
+            
+            if (resetToken == null || resetToken.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Token không hợp lệ"));
+            }
+            
+            if (newPassword == null || newPassword.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Mật khẩu mới không được để trống"));
+            }
+            
+            if (repassword == null || repassword.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Xác nhận mật khẩu không được để trống"));
+            }
+            
+            if (!newPassword.equals(repassword)) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Mật khẩu mới và xác nhận mật khẩu không khớp"));
+            }
+            
+            if (newPassword.length() < 6 || newPassword.length() > 100) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Mật khẩu phải từ 6-100 ký tự"));
+            }
+            
+            // Log security event
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.PASSWORD_RESET, 
+                ipAddress, 
+                "Reset password attempt for: " + email
+            );
+            
+            // Validate resetToken and reset password
+            userService.resetPasswordWithToken(email, resetToken, newPassword);
+            
+            // Log successful reset
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.PASSWORD_RESET, 
+                ipAddress, 
+                "Password reset successfully for: " + email
+            );
+            
+            return ResponseEntity.ok(ApiResponse.success("Mật khẩu đã được đặt lại thành công"));
+                    
+        } catch (Exception e) {
+            log.error("Reset password failed for email: {} from IP: {}, error: {}", 
+                request.get("email"), getClientIpAddress(httpRequest), e.getMessage());
+            
+            // Log failed reset
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.PASSWORD_RESET, 
+                getClientIpAddress(httpRequest), 
+                "Reset password failed for: " + request.get("email") + ", reason: " + e.getMessage()
+            );
+            
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 

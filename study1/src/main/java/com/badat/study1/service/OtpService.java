@@ -24,6 +24,7 @@ public class OtpService {
     private final EmailTemplateService emailTemplateService;
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
+    private final OtpLockoutService otpLockoutService;
     
     @Value("${security.rate-limit.otp-expire-minutes:10}")
     private int otpExpireMinutes;
@@ -35,8 +36,8 @@ public class OtpService {
     private static final String RESET_TOKEN_PREFIX = "reset_token:";
     
     public void sendOtp(String email, String purpose) {
-        // Check rate limiting
-        if (rateLimitService.isEmailRateLimited(email)) {
+        // Check rate limiting (skip for forgot password)
+        if (!"forgot_password".equals(purpose) && rateLimitService.isEmailRateLimited(email)) {
             throw new RuntimeException("Quá nhiều yêu cầu. Vui lòng thử lại sau 1 giờ.");
         }
         
@@ -55,6 +56,7 @@ public class OtpService {
                 .build();
         
         redisTemplate.opsForValue().set(otpKey, otpData, otpExpireMinutes, TimeUnit.MINUTES);
+        log.info("OTP stored in Redis - key: {}, expire: {} minutes", otpKey, otpExpireMinutes);
         
         // Send HTML email based on purpose
         try {
@@ -102,7 +104,15 @@ public class OtpService {
         log.info("OTP sent to email: {} for purpose: {}", email, purpose);
     }
     
-    public boolean verifyOtp(String email, String otp, String purpose) {
+    public boolean verifyOtp(String email, String otp, String purpose, String ipAddress) {
+        // Check lockout TRƯỚC
+        if (otpLockoutService.isLocked(email, ipAddress, purpose)) {
+            Long remainingSeconds = otpLockoutService.getLockoutTimeRemaining(email, ipAddress, purpose);
+            long minutes = remainingSeconds / 60;
+            int maxAttempts = "forgot_password".equals(purpose) ? 10 : 5;
+            throw new RuntimeException("Bạn đã nhập sai OTP quá " + maxAttempts + " lần. Vui lòng thử lại sau " + minutes + " phút");
+        }
+        
         String otpKey = OTP_PREFIX + purpose + ":" + email;
         
         log.info("Verifying OTP - email: {}, purpose: {}, otp: {}, key: {}", email, purpose, otp, otpKey);
@@ -140,11 +150,14 @@ public class OtpService {
         log.info("OTP comparison - input: '{}' vs stored: '{}' -> {}", otp, otpData.getOtp(), isValid);
         
         if (isValid) {
-            // Clear OTP on successful verification
+            // Clear OTP và clear lockout attempts
             redisTemplate.delete(otpKey);
+            otpLockoutService.clearAttempts(email, ipAddress, purpose);
             rateLimitService.recordOtpAttempt(email, true);
             log.info("OTP verified successfully for email: {}", email);
         } else {
+            // Record failed attempt trong OtpLockoutService
+            otpLockoutService.recordFailedAttempt(email, ipAddress, purpose);
             rateLimitService.recordOtpAttempt(email, false);
             log.warn("OTP verification failed for email: {}, attempt: {}", email, otpData.getAttempts());
         }
