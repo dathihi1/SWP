@@ -5,6 +5,7 @@ import com.badat.study1.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.integration.redis.util.RedisLockRegistry;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -274,5 +275,116 @@ public class WarehouseLockService {
     private Long getCurrentUserId() {
         // TODO: Implement proper authentication
         return 1L; // Placeholder
+    }
+    
+    /**
+     * Lấy số lượng hàng có sẵn cho product (không bị lock, không bị xóa)
+     */
+    public long getAvailableStockCount(Long productId) {
+        return warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(productId);
+    }
+    
+    /**
+     * Reserve warehouse items với timeout (tạm thời lock với thời gian hết hạn)
+     * Sử dụng để tránh race condition khi nhiều user cùng mua
+     */
+    @Transactional
+    public List<Warehouse> reserveWarehouseItemsWithTimeout(Map<Long, Integer> productQuantities, Long userId, int timeoutMinutes) {
+        List<Warehouse> reservedItems = new ArrayList<>();
+        
+        log.info("Reserving warehouse items with {} minutes timeout for user: {}", timeoutMinutes, userId);
+        
+        try {
+            for (Map.Entry<Long, Integer> entry : productQuantities.entrySet()) {
+                Long productId = entry.getKey();
+                Integer requiredQuantity = entry.getValue();
+                
+                String lockKey = "warehouse:reserve:" + productId;
+                Lock lock = redisLockRegistry.obtain(lockKey);
+                
+                try {
+                    if (lock.tryLock(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                        log.info("Acquired reservation lock for product: {}", productId);
+                        
+                        // SỬ DỤNG SELECT FOR UPDATE để tránh race condition
+                        // Lock database rows ngay từ đầu để đảm bảo atomicity
+                        List<Warehouse> items = warehouseRepository.findAvailableItemsForReservation(productId, requiredQuantity);
+                        
+                        if (items.size() < requiredQuantity) {
+                            log.warn("Not enough stock for product {}. Required: {}, Available: {}", 
+                                productId, requiredQuantity, items.size());
+                            throw new RuntimeException("Không đủ hàng cho sản phẩm: " + productId + 
+                                " (cần " + requiredQuantity + ", chỉ có " + items.size() + ")");
+                        }
+                        
+                        // Set reservation timeout
+                        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(timeoutMinutes);
+                        for (Warehouse item : items) {
+                            item.setLocked(true);
+                            item.setLockedBy(userId);
+                            item.setLockedAt(LocalDateTime.now());
+                            item.setReservedUntil(expiresAt); // Thêm field này vào Warehouse model
+                        }
+                        
+                        warehouseRepository.saveAll(items);
+                        reservedItems.addAll(items);
+                        
+                        log.info("Successfully reserved {} items for product {} until {}", 
+                            items.size(), productId, expiresAt);
+                            
+                    } else {
+                        log.warn("Failed to acquire reservation lock for product: {}", productId);
+                        throw new RuntimeException("Không thể đặt chỗ hàng cho sản phẩm: " + productId);
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+            
+            log.info("Successfully reserved {} total items with timeout", reservedItems.size());
+            return reservedItems;
+            
+        } catch (Exception e) {
+            // Rollback: release tất cả items đã reserve
+            log.error("Failed to reserve warehouse items, releasing all reservations", e);
+            for (Warehouse item : reservedItems) {
+                try {
+                    unlockWarehouseItem(item.getId());
+                } catch (Exception rollbackEx) {
+                    log.error("Failed to release item during rollback: {}", item.getId(), rollbackEx);
+                }
+            }
+            throw new RuntimeException("Không thể đặt chỗ hàng: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Cron job để release expired reservations
+     */
+    @Scheduled(fixedRate = 60000) // Mỗi 1 phút
+    @Transactional
+    public void releaseExpiredReservations() {
+        log.info("Checking for expired warehouse reservations...");
+        
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            List<Warehouse> expiredItems = warehouseRepository.findByLockedTrueAndReservedUntilBefore(now);
+            
+            if (!expiredItems.isEmpty()) {
+                log.info("Found {} expired warehouse reservations", expiredItems.size());
+                
+                for (Warehouse item : expiredItems) {
+                    item.setLocked(false);
+                    item.setLockedBy(null);
+                    item.setLockedAt(null);
+                    item.setReservedUntil(null);
+                }
+                
+                warehouseRepository.saveAll(expiredItems);
+                log.info("Released {} expired warehouse reservations", expiredItems.size());
+            }
+        } catch (Exception e) {
+            log.error("Error releasing expired reservations: {}", e.getMessage(), e);
+        }
     }
 }

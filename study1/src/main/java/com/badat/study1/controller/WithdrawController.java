@@ -235,11 +235,18 @@ public class WithdrawController {
             String email = user.getEmail();
             String purpose = "Yêu cầu rút tiền";
             
-            if (!otpService.verifyOtp(email, purpose, otp)) {
+            log.info("Verifying OTP for withdraw - email: {}, purpose: {}, otp: {}", email, purpose, otp);
+            
+            boolean isValid = otpService.verifyOtp(email, otp, purpose);
+            
+            if (!isValid) {
+                log.warn("OTP verification failed for email: {}, purpose: {}", email, purpose);
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "Mã OTP không hợp lệ hoặc đã hết hạn");
                 return ResponseEntity.badRequest().body(error);
             }
+            
+            log.info("OTP verified successfully for email: {}, purpose: {}", email, purpose);
             
             // Create withdraw request DTO
             WithdrawRequestDto requestDto = WithdrawRequestDto.builder()

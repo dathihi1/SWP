@@ -284,45 +284,53 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="d-flex align-items-center justify-content-between">
-                <a class="navbar-brand d-flex align-items-center" th:href="@{/admin}" href="/admin">
-                    <i class="fa-solid fa-shield-halved me-2" style="color:#ff7b00;"></i>
-                    MMO Market Admin
-                </a>
-            </div>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">ADMIN</div>
-            <a href="/admin" class="menu-item">
-                <i class="fas fa-tachometer-alt"></i>
-                Dashboard
-            </a>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">QUẢN LÝ</div>
-            <a href="/admin/users" class="menu-item active">
-                <i class="fas fa-users"></i>
-                Quản lý người dùng
-            </a>
-            <a href="/admin/stalls" class="menu-item">
-                <i class="fas fa-store"></i>
-                Quản lý cửa hàng
-            </a>
-            <a href="/admin/withdraw-requests" class="menu-item">
-                <i class="fas fa-money-bill-transfer"></i>
-                Yêu cầu rút tiền
-            </a>
-            <a href="/admin/audit-logs" class="menu-item">
-                <i class="fas fa-clipboard-list"></i>
-                Audit Logs
+   <!-- Sidebar -->
+   <div class="sidebar">
+    <div class="sidebar-header">
+        <div class="d-flex align-items-center justify-content-between">
+            <a class="navbar-brand d-flex align-items-center" th:href="@{/admin}" href="/admin">
+                <i class="fa-solid fa-shield-halved me-2" style="color:#ff7b00;"></i>
+                MMO Market Admin
             </a>
         </div>
     </div>
+    
+    <div class="menu-section">
+        <div class="section-title">ADMIN</div>
+        <a href="/admin" class="menu-item">
+            <i class="fas fa-tachometer-alt"></i>
+            Dashboard
+        </a>
+    </div>
+    
+    <div class="menu-section">
+        <div class="section-title">QUẢN LÝ</div>
+        <a href="/admin/users" class="menu-item">
+            <i class="fas fa-users"></i>
+            Quản lý người dùng
+        </a>
+        <a href="/admin/stalls" class="menu-item">
+            <i class="fas fa-store"></i>
+            Quản lý cửa hàng
+        </a>
+        <a href="/admin/withdraw-requests" class="menu-item">
+            <i class="fas fa-money-bill-transfer"></i>
+            Yêu cầu rút tiền
+        </a>
+        <a href="/admin/audit-logs" class="menu-item">
+            <i class="fas fa-clipboard-list"></i>
+            Audit Logs
+        </a>
+        <a href="/admin/api-logs" class="menu-item">
+            <i class="fas fa-code"></i>
+            API Logs
+        </a>
+        <a href="/admin/user-activity-logs" class="menu-item">
+            <i class="fas fa-user-clock"></i>
+            User Activity Logs
+        </a>
+    </div>
+</div>
     
     <!-- Main Content -->
     <div class="main-content">
@@ -739,10 +747,10 @@
             
             // Set active menu item based on current path
             const currentPath = window.location.pathname;
-            const menuItems = document.querySelectorAll('.menu-item[data-path]');
+            const menuItems = document.querySelectorAll('.menu-item[href]');
             
             menuItems.forEach(function(item) {
-                const itemPath = item.getAttribute('data-path');
+                const itemPath = item.getAttribute('href');
                 if (currentPath === itemPath || (itemPath !== '/admin' && currentPath.startsWith(itemPath))) {
                     item.classList.add('active');
                 }

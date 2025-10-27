@@ -213,7 +213,7 @@
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
+    <div class="sidebar">
         <div class="sidebar-header">
             <div class="d-flex align-items-center justify-content-between">
                 <a class="navbar-brand d-flex align-items-center" th:href="@{/admin}" href="/admin">
@@ -253,7 +253,7 @@
                 <i class="fas fa-code"></i>
                 API Logs
             </a>
-            <a href="/admin/user-activity-logs" class="menu-item active">
+            <a href="/admin/user-activity-logs" class="menu-item">
                 <i class="fas fa-user-clock"></i>
                 User Activity Logs
             </a>
@@ -444,6 +444,17 @@
             
             sidebar.classList.toggle('show');
             mainContent.classList.toggle('expanded');
+        });
+        
+        // Set active menu item based on current path
+        const currentPath = window.location.pathname;
+        const menuItems = document.querySelectorAll('.menu-item[href]');
+        
+        menuItems.forEach(function(item) {
+            const itemPath = item.getAttribute('href');
+            if (currentPath === itemPath || (itemPath !== '/admin' && currentPath.startsWith(itemPath))) {
+                item.classList.add('active');
+            }
         });
 
         // Auto-hide sidebar on mobile when clicking outside

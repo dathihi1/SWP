@@ -426,7 +426,7 @@
                 <i class="fas fa-users"></i>
                 Quản lý người dùng
             </a>
-            <a href="/admin/stalls" class="menu-item active" onclick="showSellersList()">
+            <a href="/admin/stalls" class="menu-item">
                 <i class="fas fa-store"></i>
                 Quản lý cửa hàng
             </a>
@@ -859,6 +859,17 @@
                     mainContent.style.marginLeft = '0';
                 } else {
                     mainContent.style.marginLeft = '280px';
+                }
+            });
+            
+            // Set active menu item based on current path
+            const currentPath = window.location.pathname;
+            const menuItems = document.querySelectorAll('.menu-item[href]');
+            
+            menuItems.forEach(function(item) {
+                const itemPath = item.getAttribute('href');
+                if (currentPath === itemPath || (itemPath !== '/admin' && currentPath.startsWith(itemPath))) {
+                    item.classList.add('active');
                 }
             });
             

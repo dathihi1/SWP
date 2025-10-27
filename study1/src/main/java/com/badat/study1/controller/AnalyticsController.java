@@ -1,8 +1,10 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.Order;
+import com.badat.study1.model.OrderItem;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.OrderRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 public class AnalyticsController {
 
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final StallRepository stallRepository;
     private final ShopRepository shopRepository;
 
@@ -46,16 +49,16 @@ public class AnalyticsController {
         }
 
         LocalDateTime startDateTime = start.atStartOfDay();
-        List<Order> orders = orderRepository.findBySellerIdOrderByCreatedAtDesc(user.getId());
+        List<OrderItem> orderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
         
-        // Filter orders by date range
-        List<Order> ordersInRange = orders.stream()
-                .filter(order -> order.getCreatedAt().isAfter(startDateTime))
+        // Filter order items by date range
+        List<OrderItem> orderItemsInRange = orderItems.stream()
+                .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDateTime))
                 .collect(Collectors.toList());
         
-        // Filter completed orders for revenue calculation
-        List<Order> completed = ordersInRange.stream()
-                .filter(order -> order.getStatus() == Order.Status.COMPLETED)
+        // Filter completed order items for revenue calculation
+        List<OrderItem> completed = orderItemsInRange.stream()
+                .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.COMPLETED)
                 .collect(Collectors.toList());
 
         // Prepare labels per day
@@ -70,15 +73,17 @@ public class AnalyticsController {
             LocalDate day = start.plusDays(i);
             labels.add(day.toString());
             
-            // Revenue: chỉ tính từ COMPLETED orders
+            // Revenue: chỉ tính từ COMPLETED order items
             BigDecimal dayTotal = completed.stream()
-                    .filter(order -> !order.getCreatedAt().toLocalDate().isBefore(day) && !order.getCreatedAt().toLocalDate().isAfter(day))
-                    .map(order -> order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO)
+                    .filter(orderItem -> !orderItem.getCreatedAt().toLocalDate().isBefore(day) && !orderItem.getCreatedAt().toLocalDate().isAfter(day))
+                    .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             
-            // Order count: tính từ TẤT CẢ orders (PENDING, COMPLETED, CANCELLED, REFUNDED)
-            long dayCount = ordersInRange.stream()
-                    .filter(order -> !order.getCreatedAt().toLocalDate().isBefore(day) && !order.getCreatedAt().toLocalDate().isAfter(day))
+            // Order count: đếm số order_id riêng biệt từ order items
+            long dayCount = orderItemsInRange.stream()
+                    .filter(orderItem -> !orderItem.getCreatedAt().toLocalDate().isBefore(day) && !orderItem.getCreatedAt().toLocalDate().isAfter(day))
+                    .map(OrderItem::getOrderId)
+                    .distinct()
                     .count();
             
             totals.add(dayTotal);
@@ -87,15 +92,15 @@ public class AnalyticsController {
             ordersSum += dayCount;
         }
 
-        // Calculate pending amount (PENDING orders limited by selected date range)
-        BigDecimal pendingSum = orders.stream()
-                .filter(order -> order.getStatus() == Order.Status.PENDING)
-                .filter(order -> order.getCreatedAt().isAfter(startDateTime))
-                .filter(order -> {
-                    LocalDate od = order.getCreatedAt().toLocalDate();
+        // Calculate pending amount (PENDING order items limited by selected date range)
+        BigDecimal pendingSum = orderItems.stream()
+                .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.PENDING)
+                .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDateTime))
+                .filter(orderItem -> {
+                    LocalDate od = orderItem.getCreatedAt().toLocalDate();
                     return !od.isBefore(start) && !od.isAfter(end);
                 })
-                .map(order -> order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO)
+                .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> body = new HashMap<>();
@@ -161,17 +166,17 @@ public class AnalyticsController {
         }
 
         LocalDateTime startDt = start.atStartOfDay();
-        List<Order> orders = orderRepository.findBySellerIdOrderByCreatedAtDesc(user.getId());
+        List<OrderItem> orderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
         
-        // Filter orders by date range and stall
-        List<Order> ordersInRange = orders.stream()
-                .filter(order -> order.getCreatedAt().isAfter(startDt))
-                .filter(order -> stallId == null || stallId.equals(order.getStallId()))
+        // Filter order items by date range and stall
+        List<OrderItem> orderItemsInRange = orderItems.stream()
+                .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDt))
+                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getStallId()))
                 .collect(Collectors.toList());
         
-        // Filter completed orders for revenue calculation
-        List<Order> filtered = ordersInRange.stream()
-                .filter(order -> order.getStatus() == Order.Status.COMPLETED)
+        // Filter completed order items for revenue calculation
+        List<OrderItem> filtered = orderItemsInRange.stream()
+                .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.COMPLETED)
                 .collect(Collectors.toList());
 
         List<String> labels = new ArrayList<>();
@@ -184,15 +189,17 @@ public class AnalyticsController {
             LocalDate day = start.plusDays(i);
             labels.add(day.toString());
             
-            // Revenue: chỉ tính từ COMPLETED orders
+            // Revenue: chỉ tính từ COMPLETED order items
             BigDecimal dayTotal = filtered.stream()
-                    .filter(order -> !order.getCreatedAt().toLocalDate().isBefore(day) && !order.getCreatedAt().toLocalDate().isAfter(day))
-                    .map(order -> order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO)
+                    .filter(orderItem -> !orderItem.getCreatedAt().toLocalDate().isBefore(day) && !orderItem.getCreatedAt().toLocalDate().isAfter(day))
+                    .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             
-            // Order count: tính từ TẤT CẢ orders (PENDING, COMPLETED, CANCELLED, REFUNDED)
-            long dayCount = ordersInRange.stream()
-                    .filter(order -> !order.getCreatedAt().toLocalDate().isBefore(day) && !order.getCreatedAt().toLocalDate().isAfter(day))
+            // Order count: đếm số order_id riêng biệt từ order items
+            long dayCount = orderItemsInRange.stream()
+                    .filter(orderItem -> !orderItem.getCreatedAt().toLocalDate().isBefore(day) && !orderItem.getCreatedAt().toLocalDate().isAfter(day))
+                    .map(OrderItem::getOrderId)
+                    .distinct()
                     .count();
             
             totals.add(dayTotal);
@@ -202,15 +209,15 @@ public class AnalyticsController {
         }
 
         // pending sum for selected stall (or all stalls) limited by selected date range
-        BigDecimal pendingSum = orders.stream()
-                .filter(order -> order.getStatus() == Order.Status.PENDING)
-                .filter(order -> order.getCreatedAt().isAfter(startDt))
-                .filter(order -> stallId == null || stallId.equals(order.getStallId()))
-                .filter(order -> {
-                    LocalDate od = order.getCreatedAt().toLocalDate();
+        BigDecimal pendingSum = orderItems.stream()
+                .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.PENDING)
+                .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDt))
+                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getStallId()))
+                .filter(orderItem -> {
+                    LocalDate od = orderItem.getCreatedAt().toLocalDate();
                     return !od.isBefore(start) && !od.isAfter(end);
                 })
-                .map(order -> order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO)
+                .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> body = new HashMap<>();

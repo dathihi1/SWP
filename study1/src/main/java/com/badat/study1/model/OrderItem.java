@@ -65,6 +65,12 @@ public class OrderItem extends BaseEntity {
     @Column(name = "seller_id", nullable = false)
     Long sellerId;
 
+    @Column(name = "shop_id", nullable = false)
+    Long shopId;
+
+    @Column(name = "stall_id", nullable = false)
+    Long stallId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default

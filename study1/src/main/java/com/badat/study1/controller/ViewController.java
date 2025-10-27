@@ -70,6 +70,7 @@ public class ViewController {
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final AuditLogRepository auditLogRepository;
     private final ApiCallLogRepository apiCallLogRepository;
     private final UserActivityLogRepository userActivityLogRepository;
@@ -987,59 +988,47 @@ public class ViewController {
         var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         
-        // Get orders for this seller with pagination (10 orders per page)
+        // Get order items for this seller with pagination (10 items per page)
         Pageable pageable = PageRequest.of(page, 10);
-        List<com.badat.study1.model.Order> allOrders = orderRepository.findBySellerIdOrderByCreatedAtDesc(user.getId());
-        
-        // Populate transient fields from first OrderItem for each Order
-        for (com.badat.study1.model.Order order : allOrders) {
-            if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
-                com.badat.study1.model.OrderItem firstItem = order.getOrderItems().get(0);
-                order.setProduct(firstItem.getProduct());
-                // Đếm số lượng order_item thay vì lấy quantity của item đầu tiên
-                order.setQuantity(order.getOrderItems().size());
-                order.setUnitPrice(firstItem.getUnitPrice());
-            }
-        }
+        List<com.badat.study1.model.OrderItem> allOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
         
         // Apply filters
-        List<com.badat.study1.model.Order> filteredOrders = allOrders.stream()
-                .filter(order -> status == null || status.isEmpty() || order.getStatus().name().equals(status.toUpperCase()))
-                .filter(order -> stallId == null || stallId.equals(order.getStallId()))
-                // Note: productId filter removed since Order doesn't have direct productId field
-                // If product filtering is needed, it should be done through OrderItem relationship
-                .filter(order -> {
+        List<com.badat.study1.model.OrderItem> filteredOrderItems = allOrderItems.stream()
+                .filter(orderItem -> status == null || status.isEmpty() || orderItem.getStatus().name().equals(status.toUpperCase()))
+                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getWarehouse().getStall().getId()))
+                .filter(orderItem -> productId == null || productId.equals(orderItem.getProductId()))
+                .filter(orderItem -> {
                     if (dateFrom == null || dateFrom.isEmpty()) return true;
-                    return order.getCreatedAt().toLocalDate().isAfter(java.time.LocalDate.parse(dateFrom).minusDays(1));
+                    return orderItem.getCreatedAt().toLocalDate().isAfter(java.time.LocalDate.parse(dateFrom).minusDays(1));
                 })
-                .filter(order -> {
+                .filter(orderItem -> {
                     if (dateTo == null || dateTo.isEmpty()) return true;
-                    return order.getCreatedAt().toLocalDate().isBefore(java.time.LocalDate.parse(dateTo).plusDays(1));
+                    return orderItem.getCreatedAt().toLocalDate().isBefore(java.time.LocalDate.parse(dateTo).plusDays(1));
                 })
                 .collect(java.util.stream.Collectors.toList());
         
         // Create pagination manually
         int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), filteredOrders.size());
-        List<com.badat.study1.model.Order> pageContent = filteredOrders.subList(start, end);
+        int end = Math.min((start + pageable.getPageSize()), filteredOrderItems.size());
+        List<com.badat.study1.model.OrderItem> pageContent = filteredOrderItems.subList(start, end);
         
-        Page<com.badat.study1.model.Order> ordersPage = new org.springframework.data.domain.PageImpl<>(
+        Page<com.badat.study1.model.OrderItem> orderItemsPage = new org.springframework.data.domain.PageImpl<>(
             pageContent, 
             pageable, 
-            filteredOrders.size()
+            filteredOrderItems.size()
         );
-        model.addAttribute("orders", ordersPage.getContent());
+        model.addAttribute("orders", orderItemsPage.getContent());
         model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", ordersPage.getTotalPages());
-        model.addAttribute("totalElements", ordersPage.getTotalElements());
-        model.addAttribute("hasNext", ordersPage.hasNext());
-        model.addAttribute("hasPrevious", ordersPage.hasPrevious());
+        model.addAttribute("totalPages", orderItemsPage.getTotalPages());
+        model.addAttribute("totalElements", orderItemsPage.getTotalElements());
+        model.addAttribute("hasNext", orderItemsPage.hasNext());
+        model.addAttribute("hasPrevious", orderItemsPage.hasPrevious());
         model.addAttribute("selectedStatus", status);
         model.addAttribute("selectedStallId", stallId);
         model.addAttribute("selectedProductId", productId);
         model.addAttribute("selectedDateFrom", dateFrom);
         model.addAttribute("selectedDateTo", dateTo);
-        model.addAttribute("orderStatuses", com.badat.study1.model.Order.Status.values());
+        model.addAttribute("orderStatuses", com.badat.study1.model.OrderItem.Status.values());
         model.addAttribute("stalls", stalls);
         model.addAttribute("products", products);
 
