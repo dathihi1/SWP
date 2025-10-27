@@ -20,6 +20,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -225,7 +226,7 @@ public class WithdrawController {
     
     @PostMapping("/api/withdraw/request")
     @ResponseBody
-    public ResponseEntity<?> createWithdrawRequest(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> createWithdrawRequest(@RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             User user = (User) auth.getPrincipal();
@@ -237,7 +238,8 @@ public class WithdrawController {
             
             log.info("Verifying OTP for withdraw - email: {}, purpose: {}, otp: {}", email, purpose, otp);
             
-            boolean isValid = otpService.verifyOtp(email, otp, purpose);
+            String ipAddress = getClientIpAddress(httpRequest);
+            boolean isValid = otpService.verifyOtp(email, otp, purpose, ipAddress);
             
             if (!isValid) {
                 log.warn("OTP verification failed for email: {}, purpose: {}", email, purpose);
@@ -403,6 +405,15 @@ public class WithdrawController {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
+        }
+    }
+    
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
+        if (xForwardedForHeader == null) {
+            return request.getRemoteAddr();
+        } else {
+            return xForwardedForHeader.split(",")[0];
         }
     }
     

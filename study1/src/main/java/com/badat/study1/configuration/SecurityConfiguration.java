@@ -38,7 +38,7 @@ public class SecurityConfiguration {
             "/product/**", 
             "/cart", 
             "/auth/**", 
-            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/verify-register-otp", "/api/auth/reset-password", "/api/auth/captcha/**",
+            "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/verify-register-otp", "/api/auth/verify-forgot-password-otp", "/api/auth/reset-password", "/api/auth/check-otp-lockout", "/api/auth/captcha/**",
             "/api/cart/test", // Thêm test endpoint vào whitelist
             "/users/**", 
             "/login", "/register", "/verify-otp", "/forgot-password", "/reset-password", 

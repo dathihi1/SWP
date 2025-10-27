@@ -73,7 +73,9 @@ public class SecurityEvent {
         REGISTER_SUCCESS,
         REGISTER_VERIFIED,
         EMAIL_ENUMERATION_ATTEMPT,
-        TIMING_ATTACK_ATTEMPT
+        TIMING_ATTACK_ATTEMPT,
+        OTP_LOCKED,
+        EMAIL_RATE_LIMIT
     }
 }
 
