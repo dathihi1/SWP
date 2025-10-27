@@ -70,12 +70,31 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
         }
 
-        // Tìm user theo email
-        Optional<User> existingUser = userRepository.findByEmail(email);
+        // Tìm user theo email (chỉ tài khoản chưa bị xóa)
+        Optional<User> existingUser = userRepository.findByEmailAndIsDeleteFalse(email);
+        
+        // Kiểm tra nếu email tồn tại nhưng tài khoản đã bị xóa
+        if (existingUser.isEmpty()) {
+            Optional<User> deletedUser = userRepository.findByEmail(email);
+            if (deletedUser.isPresent() && deletedUser.get().getIsDelete()) {
+                throw new OAuth2AuthenticationException(
+                    "Tài khoản Google với email " + email + " đã bị xóa. " +
+                    "Vui lòng liên hệ quản trị viên để khôi phục tài khoản."
+                );
+            }
+        }
         
         User user;
         if (existingUser.isPresent()) {
             user = existingUser.get();
+            
+            // Kiểm tra nếu tài khoản bị khóa
+            if (user.getStatus() == User.Status.LOCKED) {
+                throw new OAuth2AuthenticationException(
+                    "Tài khoản Google với email " + email + " đã bị khóa. " +
+                    "Vui lòng liên hệ quản trị viên để mở khóa tài khoản."
+                );
+            }
             
             // Kiểm tra nếu user đã đăng ký bằng cách thủ công (provider = LOCAL)
             if ("LOCAL".equals(user.getProvider())) {
@@ -117,10 +136,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         // Username = Email (theo yêu cầu)
         String username = email;
         
-        // Đảm bảo username là unique (nếu email đã tồn tại)
+        // Đảm bảo username là unique (nếu email đã tồn tại) - chỉ kiểm tra tài khoản chưa bị xóa
         String originalUsername = username;
         int counter = 1;
-        while (userRepository.findByUsername(username).isPresent()) {
+        while (userRepository.findByUsernameAndIsDeleteFalse(username).isPresent()) {
             username = originalUsername + "_" + counter;
             counter++;
         }

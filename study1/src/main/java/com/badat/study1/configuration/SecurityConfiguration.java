@@ -1,6 +1,8 @@
 package com.badat.study1.configuration;
 
 import com.badat.study1.service.CustomOAuth2UserService;
+import com.badat.study1.service.UserActivityLogService;
+import jakarta.servlet.http.HttpServletRequest;
 import com.badat.study1.service.JwtService;
 import com.badat.study1.service.UserDetailServiceCustomizer;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +55,8 @@ public class SecurityConfiguration {
     private final UserDetailServiceCustomizer userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final UserActivityLogService userActivityLogService;
+    private final ApiCallLogFilter apiCallLogFilter;
     private final JwtService jwtService;
     private final AdminAuthenticationSuccessHandler adminAuthenticationSuccessHandler;
     private final ClientRegistrationRepository clientRegistrationRepository;
@@ -97,6 +101,9 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
+        // Add API call logging filter first
+        http.addFilterBefore(apiCallLogFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+        
         // Add JWT filter before default authentication
         http.addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
@@ -128,6 +135,16 @@ public class SecurityConfiguration {
                     CustomOAuth2UserService.CustomOAuth2User oauth2User = (CustomOAuth2UserService.CustomOAuth2User) authentication.getPrincipal();
 
                     log.info("OAuth2 user authenticated: {}", oauth2User.getUser().getEmail());
+
+                    // Log OAuth2 login activity
+                    try {
+                        String ipAddress = getClientIpAddress(request);
+                        String userAgent = request.getHeader("User-Agent");
+                        userActivityLogService.logLogin(oauth2User.getUser(), ipAddress, userAgent, 
+                            request.getRequestURI(), request.getMethod(), true, null);
+                    } catch (Exception e) {
+                        log.warn("Failed to log OAuth2 login activity: {}", e.getMessage());
+                    }
 
                     // Generate JWT token
                     String accessToken = jwtService.generateAccessToken(oauth2User.getUser());
@@ -212,6 +229,20 @@ public class SecurityConfiguration {
                 log.error("Error redirecting after OAuth2 failure: {}", e.getMessage());
             }
         };
+    }
+    
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
+        }
+        
+        return request.getRemoteAddr();
     }
 
 }

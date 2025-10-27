@@ -62,10 +62,18 @@ public class SecurityEvent {
         OTP_SENT,
         OTP_VERIFIED,
         OTP_FAILED,
+        OTP_VERIFY_ATTEMPT,
+        OTP_VERIFY_SUCCESS,
+        OTP_VERIFY_FAILED,
         PASSWORD_RESET,
         INVALID_OTP_ATTEMPT,
         RATE_LIMITED,
-        SECURITY_ALERT
+        SECURITY_ALERT,
+        REGISTER_ATTEMPT,
+        REGISTER_SUCCESS,
+        REGISTER_VERIFIED,
+        EMAIL_ENUMERATION_ATTEMPT,
+        TIMING_ATTACK_ATTEMPT
     }
 }
 

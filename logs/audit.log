@@ -1,3 +1,15 @@
+
+2025-10-27 08:50:27.046 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=1 ip=0:0:0:0:0:0:0:1
+2025-10-27 08:50:30.848 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=2 ip=0:0:0:0:0:0:0:1
+2025-10-27 08:50:33.791 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=3 ip=0:0:0:0:0:0:0:1
+2025-10-27 08:50:36.599 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=4 ip=0:0:0:0:0:0:0:1
+2025-10-27 08:50:39.929 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=5 ip=0:0:0:0:0:0:0:1
+2025-10-27 09:14:09.209 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=1 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dat2801zz@gmail.com"
+2025-10-27 09:15:06.911 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=1 ip=0:0:0:0:0:0:0:1
+2025-10-27 09:15:16.811 INFO  com.badat.study1.audit - USER_EDIT: Admin dat2801zz@gmail.com edited user admin information. Changes: Admin dat2801zz@gmail.com ?ï¿½ ch?nh s?a thï¿½ng tin c?a user admin. Cï¿½c thay ??i: role=SELLER, status=ACTIVE
+2025-10-27 09:21:08.257 INFO  com.badat.study1.audit - USER_EDIT: Admin dat2801zz@gmail.com edited user seller1 information. Changes: Admin dat2801zz@gmail.com ?ï¿½ ch?nh s?a thï¿½ng tin c?a user seller1. Cï¿½c thay ??i: role=ADMIN, status=ACTIVE
+2025-10-27 09:21:39.969 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=1 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dat2801zz@gmail.com"
+2025-10-27 11:19:11.601 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=1 ip=0:0:0:0:0:0:0:1
 2025-10-24 00:00:00.593 INFO  com.badat.study1.audit - REGISTER userId=null ip=0:0:0:0:0:0:0:1 success=true details="POST /api/auth/register status=200 durationMs=4768" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
 2025-10-24 00:00:01.785 INFO  com.badat.study1.audit - REGISTER userId=null ip=0:0:0:0:0:0:0:1 success=true details="POST /api/auth/register status=200 durationMs=4306" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
 2025-10-24 00:00:30.628 INFO  com.badat.study1.audit - OTP_VERIFY userId=null ip=0:0:0:0:0:0:0:1 success=true details="POST /api/auth/verify-register-otp status=400 durationMs=16" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
@@ -39,8 +51,8 @@
 2025-10-26 07:35:26.941 INFO  com.badat.study1.audit - API_CALL userId=2 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/seller/sales status=200 durationMs=23" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
 2025-10-26 07:35:26.965 INFO  com.badat.study1.audit - API_CALL userId=2 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/seller/stalls status=200 durationMs=6" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
 2025-10-26 07:35:26.967 INFO  com.badat.study1.audit - API_CALL userId=2 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/seller/sales status=200 durationMs=12" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
-2025-10-26 07:35:50.047 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=2 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thông tin cá nhân"
-2025-10-26 07:35:50.047 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=2 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thông tin cá nhân"
+2025-10-26 07:35:50.047 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=2 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thï¿½ng tin cï¿½ nhï¿½n"
+2025-10-26 07:35:50.047 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=2 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thï¿½ng tin cï¿½ nhï¿½n"
 2025-10-26 07:35:50.061 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=2 ip=0:0:0:0:0:0:0:1 success=true details="PUT /api/profile status=200 durationMs=27" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
 2025-10-26 07:35:50.064 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=2 ip=0:0:0:0:0:0:0:1 success=true details="PUT /api/profile status=200 durationMs=27" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
 2025-10-26 07:36:05.357 INFO  com.badat.study1.audit - LOGOUT userId=2 ip=0:0:0:0:0:0:0:1 ua="Unknown Device"
@@ -55,9 +67,9 @@
 2025-10-26 07:37:29.147 INFO  com.badat.study1.audit - LOGIN userId=null ip=0:0:0:0:0:0:0:1 success=true details="POST /api/auth/login status=200 durationMs=100" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=SECURITY_EVENT
 2025-10-26 07:37:30.375 INFO  com.badat.study1.audit - API_CALL userId=5 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/auth/me status=200 durationMs=0" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
 2025-10-26 07:37:44.836 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=5 ip=0:0:0:0:0:0:0:1 success=true details="PUT /api/profile status=200 durationMs=24" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
-2025-10-26 07:37:44.836 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=5 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thông tin cá nhân"
+2025-10-26 07:37:44.836 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=5 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thï¿½ng tin cï¿½ nhï¿½n"
 2025-10-26 07:37:44.850 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=5 ip=0:0:0:0:0:0:0:1 success=true details="PUT /api/profile status=200 durationMs=25" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
-2025-10-26 07:37:44.850 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=5 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thông tin cá nhân"
+2025-10-26 07:37:44.850 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=5 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thï¿½ng tin cï¿½ nhï¿½n"
 2025-10-26 07:39:21.442 INFO  com.badat.study1.audit - API_CALL userId=5 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/profile/avatar/me status=200 durationMs=16" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
 2025-10-26 07:41:35.224 INFO  com.badat.study1.audit - API_CALL userId=5 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/auth/captcha/simple status=200 durationMs=3" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
 2025-10-26 07:41:35.228 INFO  com.badat.study1.audit - API_CALL userId=5 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/auth/captcha/simple status=200 durationMs=2" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
@@ -116,9 +128,9 @@
 2025-10-26 07:56:36.962 INFO  com.badat.study1.audit - LOGIN userId=6 ip=0:0:0:0:0:0:0:1 success=true ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" reason=null
 2025-10-26 07:56:37.076 INFO  com.badat.study1.audit - LOGIN userId=null ip=0:0:0:0:0:0:0:1 success=true details="POST /api/auth/login status=200 durationMs=221" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=SECURITY_EVENT
 2025-10-26 07:56:38.201 INFO  com.badat.study1.audit - API_CALL userId=6 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/auth/me status=200 durationMs=0" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
-2025-10-26 07:57:12.418 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=6 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thông tin cá nhân"
+2025-10-26 07:57:12.418 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=6 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thï¿½ng tin cï¿½ nhï¿½n"
 2025-10-26 07:57:12.418 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=6 ip=0:0:0:0:0:0:0:1 success=true details="PUT /api/profile status=200 durationMs=115" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
-2025-10-26 07:57:12.440 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=6 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thông tin cá nhân"
+2025-10-26 07:57:12.440 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=6 ip=0:0:0:0:0:0:0:1 details="C?p nh?t thï¿½ng tin cï¿½ nhï¿½n"
 2025-10-26 07:57:12.440 INFO  com.badat.study1.audit - PROFILE_UPDATE userId=6 ip=0:0:0:0:0:0:0:1 success=true details="PUT /api/profile status=200 durationMs=115" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=USER_ACTION
 2025-10-26 07:57:56.483 INFO  com.badat.study1.audit - API_CALL userId=6 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/profile/avatar/me status=200 durationMs=26" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
 2025-10-26 07:59:12.862 INFO  com.badat.study1.audit - API_CALL userId=6 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/auth/captcha/simple status=200 durationMs=4" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
@@ -289,3 +301,4 @@
 2025-10-26 09:54:58.426 INFO  com.badat.study1.audit - LOGIN userId=5 ip=0:0:0:0:0:0:0:1 success=true ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" reason=null
 2025-10-26 09:54:58.491 INFO  com.badat.study1.audit - LOGIN userId=null ip=0:0:0:0:0:0:0:1 success=true details="POST /api/auth/login status=200 durationMs=216" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=SECURITY_EVENT
 2025-10-26 09:55:00.224 INFO  com.badat.study1.audit - API_CALL userId=5 ip=0:0:0:0:0:0:0:1 success=true details="GET /api/auth/me status=200 durationMs=1" reason=null ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" category=API_CALL
+

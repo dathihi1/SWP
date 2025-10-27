@@ -21,8 +21,12 @@ public class RateLimitService {
     @Value("${security.rate-limit.otp-max-attempts:5}")
     private int otpMaxAttempts;
     
+    @Value("${security.rate-limit.register-max-requests-per-hour:5}")
+    private int registerMaxRequestsPerHour;
+    
     private static final String EMAIL_RATE_LIMIT_PREFIX = "rate_limit:forgot_password:";
     private static final String OTP_ATTEMPTS_PREFIX = "otp_attempts:";
+    private static final String REGISTER_RATE_LIMIT_PREFIX = "rate_limit:register:";
     
     public boolean isEmailRateLimited(String email) {
         String key = EMAIL_RATE_LIMIT_PREFIX + email;
@@ -86,6 +90,30 @@ public class RateLimitService {
         String key = OTP_ATTEMPTS_PREFIX + email;
         redisTemplate.delete(key);
         log.info("OTP rate limit cleared for: {}", email);
+    }
+    
+    public boolean isIpRateLimited(String ipAddress, String type) {
+        String key = REGISTER_RATE_LIMIT_PREFIX + ipAddress;
+        Long attempts = (Long) redisTemplate.opsForValue().get(key);
+        return attempts != null && attempts >= registerMaxRequestsPerHour;
+    }
+    
+    public void recordIpRequest(String ipAddress, String type) {
+        String key = REGISTER_RATE_LIMIT_PREFIX + ipAddress;
+        Long attempts = redisTemplate.opsForValue().increment(key);
+        redisTemplate.expire(key, 1, TimeUnit.HOURS);
+        
+        if (attempts == 1) {
+            log.info("First {} request from IP: {}", type, ipAddress);
+        } else {
+            log.warn("{} request #{} from IP: {}", type, attempts, ipAddress);
+        }
+    }
+    
+    public void clearIpRateLimit(String ipAddress) {
+        String key = REGISTER_RATE_LIMIT_PREFIX + ipAddress;
+        redisTemplate.delete(key);
+        log.info("IP rate limit cleared for: {}", ipAddress);
     }
 }
 
