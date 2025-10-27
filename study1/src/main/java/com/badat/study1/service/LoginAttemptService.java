@@ -83,7 +83,7 @@ public class LoginAttemptService {
                 
                 // Log the event
                 auditLogService.logAccountLocked(user, ipAddress, 
-                    "Quá nhiều lần đăng nhập sai (" + MAX_LOGIN_ATTEMPTS + " lần)", "SYSTEM", "AUTO");
+                    "Quá nhiều lần đăng nhập sai (" + MAX_LOGIN_ATTEMPTS + " lần)", "/api/auth/login", "POST");
                 
                 log.warn("Account locked due to too many failed login attempts: {}", username);
             }

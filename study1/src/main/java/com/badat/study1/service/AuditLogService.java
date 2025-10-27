@@ -32,6 +32,11 @@ public class AuditLogService {
 
     @Async("auditExecutor")
     public void logRoleChange(User adminUser, User targetUser, User.Role oldRole, User.Role newRole, String reason, String endpoint, String method) {
+        logRoleChange(adminUser, targetUser, oldRole, newRole, reason, endpoint, method, "127.0.0.1");
+    }
+    
+    @Async("auditExecutor")
+    public void logRoleChange(User adminUser, User targetUser, User.Role oldRole, User.Role newRole, String reason, String endpoint, String method, String ipAddress) {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(adminUser.getId())
@@ -40,7 +45,7 @@ public class AuditLogService {
                     .details(String.format("Admin %s đã thay đổi vai trò của user %s từ %s thành %s. Lý do: %s", 
                         adminUser.getUsername(), targetUser.getUsername(), oldRole.name(), newRole.name(), 
                         reason != null ? reason : "Không có lý do"))
-                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .ipAddress(ipAddress != null ? ipAddress : "127.0.0.1")
                     .success(true)
                     .failureReason(null)
                     .deviceInfo("Admin Panel")
@@ -61,6 +66,11 @@ public class AuditLogService {
 
     @Async("auditExecutor")
     public void logUserEdit(User adminUser, User targetUser, Map<String, String> changes, String endpoint, String method) {
+        logUserEdit(adminUser, targetUser, changes, endpoint, method, "127.0.0.1");
+    }
+    
+    @Async("auditExecutor")
+    public void logUserEdit(User adminUser, User targetUser, Map<String, String> changes, String endpoint, String method, String ipAddress) {
         try {
             StringBuilder details = new StringBuilder();
             details.append("Admin ").append(adminUser.getUsername())
@@ -85,7 +95,7 @@ public class AuditLogService {
                     .action("USER_EDIT")
                     .category(AuditLog.Category.ADMIN_ACTION)
                     .details(details.toString())
-                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .ipAddress(ipAddress != null ? ipAddress : "127.0.0.1")
                     .success(true)
                     .failureReason(null)
                     .deviceInfo("Admin Panel")
@@ -106,6 +116,11 @@ public class AuditLogService {
 
     @Async("auditExecutor")
     public void logUserCreation(User adminUser, User newUser, String endpoint, String method) {
+        logUserCreation(adminUser, newUser, endpoint, method, "127.0.0.1");
+    }
+    
+    @Async("auditExecutor")
+    public void logUserCreation(User adminUser, User newUser, String endpoint, String method, String ipAddress) {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(adminUser.getId())
@@ -113,7 +128,7 @@ public class AuditLogService {
                     .category(AuditLog.Category.ADMIN_ACTION)
                     .details(String.format("Admin %s đã tạo tài khoản mới cho user %s (Email: %s)", 
                         adminUser.getUsername(), newUser.getUsername(), newUser.getEmail()))
-                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .ipAddress(ipAddress != null ? ipAddress : "127.0.0.1")
                     .success(true)
                     .failureReason(null)
                     .deviceInfo("Admin Panel")
@@ -142,8 +157,8 @@ public class AuditLogService {
                     .category(AuditLog.Category.SECURITY_EVENT)
                     .details("SECURITY EVENT: Tài khoản " + user.getUsername() + " bị khóa từ IP: " + ipAddress + " - Lý do: " + reason)
                     .ipAddress(ipAddress)
-                    .success(false)
-                    .failureReason(reason)
+                    .success(true)  // Lock action is successful
+                    .failureReason(null)  // No failure since lock succeeded
                     .endpoint(endpoint)
                     .method(method)
                     .build();

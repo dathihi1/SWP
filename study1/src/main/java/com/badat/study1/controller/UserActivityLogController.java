@@ -1,5 +1,6 @@
 package com.badat.study1.controller;
 
+import com.badat.study1.dto.response.UserActivityLogResponse;
 import com.badat.study1.model.User;
 import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.service.UserActivityLogService;
@@ -19,7 +20,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Controller
@@ -76,8 +79,20 @@ public class UserActivityLogController {
                 activities.getNumberOfElements(), currentUser.getUsername(), 
                 activities.getTotalElements(), activities.getNumber());
             
+            // Convert to DTO with parsed User-Agent information
+            List<UserActivityLogResponse> activityResponses = activities.getContent().stream()
+                    .map(UserActivityLogResponse::fromEntity)
+                    .collect(Collectors.toList());
+            
+            // Create a custom Page with DTOs
+            Page<UserActivityLogResponse> activityPage = new org.springframework.data.domain.PageImpl<>(
+                activityResponses, 
+                pageable, 
+                activities.getTotalElements()
+            );
+            
             // Prepare model data
-            model.addAttribute("activities", activities);
+            model.addAttribute("activities", activityPage);
             model.addAttribute("selectedAction", action);
             model.addAttribute("selectedSuccess", success);
             model.addAttribute("selectedFromDate", fromDate);
@@ -114,7 +129,7 @@ public class UserActivityLogController {
             model.addAttribute("actionMappings", actionMappings);
             model.addAttribute("availableActions", actionMappings.keySet());
             
-            log.info("Found {} activities for user {}", activities.getTotalElements(), currentUser.getUsername());
+            log.info("Found {} activities for user {}", activityPage.getTotalElements(), currentUser.getUsername());
             
             return "customer/activity-history";
             

@@ -14,3 +14,10 @@ public @interface UserActivity {
     UserActivityLog.Category category();
 }
 
+
+
+
+
+
+
+

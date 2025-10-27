@@ -252,8 +252,8 @@
                 <input type="hidden" id="emailHidden">
                 <div class="mb-3">
                     <label class="form-label">Email</label>
-                    <input type="text" class="form-control" id="emailVisible" readonly>
-                    <div class="form-text">Email dùng để nhận OTP</div>
+                    <input type="text" class="form-control" id="emailVisible" readonly style="background-color: #f8f9fa; cursor: not-allowed;">
+                    <div class="form-text">Email dùng để nhận OTP (không thể thay đổi)</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Mã OTP</label>
@@ -315,6 +315,19 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
     alertBox.classList.add('d-none');
     successAlert.classList.add('d-none');
     
+    // Validate email input
+    if (!email) {
+        showError('Email không được để trống');
+        return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showError('Email không hợp lệ');
+        return;
+    }
+    
     // Validate OTP input
     if (!otp) {
         showError('Vui lòng nhập mã OTP');
@@ -323,6 +336,12 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
     
     if (otp.length !== 6) {
         showError('Mã OTP phải có 6 chữ số');
+        return;
+    }
+    
+    // Validate OTP contains only numbers
+    if (!/^\d{6}$/.test(otp)) {
+        showError('Mã OTP chỉ được chứa số');
         return;
     }
     

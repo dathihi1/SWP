@@ -541,6 +541,7 @@
                                             <i class="fas fa-user-clock"></i>
                                         </a>
                                         <button class="btn btn-action btn-edit" title="Chỉnh sửa" 
+                                                th:if="${user.role.name() != 'ADMIN'}"
                                                 th:data-user-id="${user.id}" 
                                                 th:data-user-username="${user.username}"
                                                 th:data-user-email="${user.email}"
@@ -683,20 +684,18 @@
                             <small class="text-muted">Email không thể thay đổi</small>
                         </div>
                         <div class="mb-3">
-                            <label for="editFullName" class="form-label">Họ và tên</label>
-                            <input type="text" class="form-control" id="editFullName" name="fullName">
+                            <label class="form-label">Họ và tên</label>
+                            <p class="form-control-plaintext border-bottom pb-2" id="editFullName"></p>
                         </div>
                         <div class="mb-3">
-                            <label for="editPhone" class="form-label">Số điện thoại</label>
-                            <input type="text" class="form-control" id="editPhone" name="phone">
+                            <label class="form-label">Số điện thoại</label>
+                            <p class="form-control-plaintext border-bottom pb-2" id="editPhone"></p>
                         </div>
                         <div class="mb-3">
                             <label for="editRole" class="form-label">Vai trò <span class="text-danger">*</span></label>
                             <select class="form-select" id="editRole" name="role" required>
-                                <option value="">Chọn vai trò</option>
                                 <option value="USER">User</option>
                                 <option value="SELLER">Seller</option>
-                                <option value="ADMIN">Admin</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -834,8 +833,11 @@
             document.getElementById('editUserId').value = userData.userId;
             document.getElementById('editUsername').value = userData.userUsername || '';
             document.getElementById('editEmail').value = userData.userEmail || '';
-            document.getElementById('editFullName').value = userData.userFullname || '';
-            document.getElementById('editPhone').value = userData.userPhone || '';
+            
+            // Set as text content instead of input value
+            document.getElementById('editFullName').textContent = userData.userFullname || 'Chưa có';
+            document.getElementById('editPhone').textContent = userData.userPhone || 'Chưa có';
+            
             document.getElementById('editRole').value = userData.userRole || '';
             document.getElementById('editStatus').value = userData.userStatus || '';
             
@@ -845,8 +847,6 @@
         
         window.confirmEditUser = function() {
             const userId = document.getElementById('editUserId').value;
-            const fullName = document.getElementById('editFullName').value.trim();
-            const phone = document.getElementById('editPhone').value.trim();
             const role = document.getElementById('editRole').value;
             const status = document.getElementById('editStatus').value;
             
@@ -856,8 +856,6 @@
             }
             
             const formData = {
-                fullName: fullName,
-                phone: phone,
                 role: role,
                 status: status
             };

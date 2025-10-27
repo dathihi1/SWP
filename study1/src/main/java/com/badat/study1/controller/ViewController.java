@@ -25,6 +25,7 @@ import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import java.time.LocalDateTime;
 import com.badat.study1.dto.response.AuditLogResponse;
+import com.badat.study1.util.PaginationValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -1489,6 +1490,21 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             return "redirect:/";
         }
 
+        // Validate pagination parameters
+        int validatedPage = PaginationValidator.validatePage(page);
+        int validatedSize = PaginationValidator.validateSize(size);
+        
+        // Redirect if parameters were invalid
+        if (validatedPage != page || validatedSize != size) {
+            String redirectUrl = "/admin/audit-logs?page=" + validatedPage + "&size=" + validatedSize;
+            if (action != null) redirectUrl += "&action=" + action;
+            if (category != null) redirectUrl += "&category=" + category;
+            if (success != null) redirectUrl += "&success=" + success;
+            if (startDate != null) redirectUrl += "&startDate=" + startDate;
+            if (endDate != null) redirectUrl += "&endDate=" + endDate;
+            return "redirect:" + redirectUrl;
+        }
+
         // Get audit logs with filters
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         
@@ -1669,6 +1685,22 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         }
 
         try {
+            // Validate pagination parameters
+            int validatedPage = PaginationValidator.validatePage(page);
+            int validatedSize = PaginationValidator.validateSize(size);
+            
+            // Redirect if parameters were invalid
+            if (validatedPage != page || validatedSize != size) {
+                String redirectUrl = "/admin/api-logs?page=" + validatedPage + "&size=" + validatedSize;
+                if (userId != null) redirectUrl += "&userId=" + userId;
+                if (endpoint != null && !endpoint.trim().isEmpty()) redirectUrl += "&endpoint=" + endpoint;
+                if (method != null && !method.trim().isEmpty()) redirectUrl += "&method=" + method;
+                if (statusCode != null) redirectUrl += "&statusCode=" + statusCode;
+                if (fromDate != null) redirectUrl += "&fromDate=" + fromDate;
+                if (toDate != null) redirectUrl += "&toDate=" + toDate;
+                return "redirect:" + redirectUrl;
+            }
+            
             // Parse dates
             LocalDateTime fromDateTime = null;
             LocalDateTime toDateTime = null;
@@ -1685,9 +1717,37 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
 
             Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
             
+            log.info("Admin API logs query - userId: {}, endpoint: '{}', method: '{}', statusCode: {}, fromDate: {}, toDate: {}, page: {}, size: {}", 
+                userId, endpoint, method, statusCode, fromDateTime, toDateTime, page, size);
+            
+            // Normalize empty strings to null for query
+            String normalizedEndpoint = (endpoint != null && !endpoint.trim().isEmpty()) ? endpoint : null;
+            String normalizedMethod = (method != null && !method.trim().isEmpty()) ? method : null;
+            
             // Get API logs with filters
             Page<com.badat.study1.model.ApiCallLog> apiLogs = apiCallLogRepository.findWithFilters(
-                userId, endpoint, method, statusCode, fromDateTime, toDateTime, pageable);
+                userId, normalizedEndpoint, normalizedMethod, statusCode, fromDateTime, toDateTime, pageable);
+            
+            log.info("Found {} API logs (total: {}, page: {}, totalPages: {})", 
+                apiLogs.getNumberOfElements(), apiLogs.getTotalElements(), apiLogs.getNumber(), apiLogs.getTotalPages());
+            
+            // Debug: Try simple query to see if data exists
+            long totalLogs = apiCallLogRepository.count();
+            log.info("Total API logs in database: {}", totalLogs);
+            
+            // If page is beyond total pages, redirect to last page
+            if (page >= apiLogs.getTotalPages() && apiLogs.getTotalPages() > 0) {
+                log.warn("Requested page {} is beyond total pages {}, redirecting to page {}", 
+                    page, apiLogs.getTotalPages(), apiLogs.getTotalPages() - 1);
+                String redirectUrl = "/admin/api-logs?page=" + (apiLogs.getTotalPages() - 1) + "&size=" + size;
+                if (userId != null) redirectUrl += "&userId=" + userId;
+                if (endpoint != null && !endpoint.trim().isEmpty()) redirectUrl += "&endpoint=" + endpoint;
+                if (method != null && !method.trim().isEmpty()) redirectUrl += "&method=" + method;
+                if (statusCode != null) redirectUrl += "&statusCode=" + statusCode;
+                if (fromDate != null) redirectUrl += "&fromDate=" + fromDate;
+                if (toDate != null) redirectUrl += "&toDate=" + toDate;
+                return "redirect:" + redirectUrl;
+            }
             
             // Get statistics
             LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
@@ -1707,10 +1767,10 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             model.addAttribute("numberOfElements", apiLogs.getNumberOfElements());
             model.addAttribute("pageSize", size);
             
-            // Filter values
+            // Filter values (use normalized values)
             model.addAttribute("selectedUserId", userId);
-            model.addAttribute("selectedEndpoint", endpoint);
-            model.addAttribute("selectedMethod", method);
+            model.addAttribute("selectedEndpoint", normalizedEndpoint);
+            model.addAttribute("selectedMethod", normalizedMethod);
             model.addAttribute("selectedStatusCode", statusCode);
             model.addAttribute("fromDate", fromDate);
             model.addAttribute("toDate", toDate);
@@ -1757,6 +1817,21 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         }
 
         try {
+            // Validate pagination parameters
+            int validatedPage = PaginationValidator.validatePage(page);
+            int validatedSize = PaginationValidator.validateSize(size);
+            
+            // Redirect if parameters were invalid
+            if (validatedPage != page || validatedSize != size) {
+                String redirectUrl = "/admin/user-activity-logs?page=" + validatedPage + "&size=" + validatedSize;
+                if (userId != null) redirectUrl += "&userId=" + userId;
+                if (action != null) redirectUrl += "&action=" + action;
+                if (category != null) redirectUrl += "&category=" + category;
+                if (fromDate != null) redirectUrl += "&fromDate=" + fromDate;
+                if (toDate != null) redirectUrl += "&toDate=" + toDate;
+                return "redirect:" + redirectUrl;
+            }
+            
             // Parse dates
             LocalDateTime fromDateTime = null;
             LocalDateTime toDateTime = null;
@@ -1783,8 +1858,27 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
                 }
             }
             
+            log.info("Admin user activity logs query - userId: {}, action: {}, category: {}, fromDate: {}, toDate: {}, page: {}, size: {}", 
+                userId, action, category, fromDateTime, toDateTime, page, size);
+            
             Page<UserActivityLog> userActivityLogs = userActivityLogRepository.findAdminViewWithFilters(
                 userId, action, categoryEnum, fromDateTime, toDateTime, pageable);
+            
+            log.info("Found {} user activity logs (total: {}, page: {}, totalPages: {})", 
+                userActivityLogs.getNumberOfElements(), userActivityLogs.getTotalElements(), userActivityLogs.getNumber(), userActivityLogs.getTotalPages());
+            
+            // If page is beyond total pages, redirect to last page
+            if (page >= userActivityLogs.getTotalPages() && userActivityLogs.getTotalPages() > 0) {
+                log.warn("Requested page {} is beyond total pages {}, redirecting to page {}", 
+                    page, userActivityLogs.getTotalPages(), userActivityLogs.getTotalPages() - 1);
+                String redirectUrl = "/admin/user-activity-logs?page=" + (userActivityLogs.getTotalPages() - 1) + "&size=" + size;
+                if (userId != null) redirectUrl += "&userId=" + userId;
+                if (action != null) redirectUrl += "&action=" + action;
+                if (category != null) redirectUrl += "&category=" + category;
+                if (fromDate != null) redirectUrl += "&fromDate=" + fromDate;
+                if (toDate != null) redirectUrl += "&toDate=" + toDate;
+                return "redirect:" + redirectUrl;
+            }
             
             // Get distinct values for filter dropdowns
             List<String> actions = userActivityLogRepository.findDistinctActions();

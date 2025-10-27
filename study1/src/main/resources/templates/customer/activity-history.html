@@ -278,23 +278,41 @@
             <div class="card activity-card">
                 <div class="card-header bg-light">
                     <div class="row align-items-center">
-                        <div class="col-md-2">
-                            <strong>Trạng thái</strong>
-                        </div>
                         <div class="col-md-3">
                             <strong>Hoạt động</strong>
                         </div>
-                        <div class="col-md-3">
-                            <strong>IP & Thiết bị</strong>
-                        </div>
                         <div class="col-md-2">
                             <strong>Thời gian</strong>
+                        </div>
+                        <div class="col-md-2">
+                            <strong>Trạng thái</strong>
+                        </div>
+                        <div class="col-md-2">
+                            <strong>Địa chỉ IP</strong>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Thiết bị & Trình duyệt</strong>
                         </div>
                     </div>
                 </div>
                 <div class="card-body p-0">
                     <div th:if="${activities != null and !activities.empty}" class="activity-timeline">
                         <div th:each="activity : ${activities.content}" class="activity-item d-flex align-items-center py-3 border-bottom">
+                            <!-- Hoạt động -->
+                            <div class="col-md-3">
+                                <span class="fw-semibold" th:text="${actionMappings[activity.action] != null ? actionMappings[activity.action] : activity.action}">Hoạt động</span>
+                                <div class="small text-muted" th:if="${activity.category}" th:text="'Loại: ' + ${activity.category}"></div>
+                                <div th:if="${!activity.success && activity.failureReason}" class="mt-1">
+                                    <small class="text-danger" th:text="${activity.failureReason}">Lý do lỗi</small>
+                                </div>
+                            </div>
+                            
+                            <!-- Thời gian -->
+                            <div class="col-md-2">
+                                <div class="small text-muted" th:text="${#temporals.format(activity.createdAt, 'dd/MM/yyyy')}">Ngày</div>
+                                <div class="small text-muted" th:text="${#temporals.format(activity.createdAt, 'HH:mm:ss')}">Giờ</div>
+                            </div>
+                            
                             <!-- Trạng thái -->
                             <div class="col-md-2">
                                 <div class="d-flex align-items-center">
@@ -306,34 +324,41 @@
                                 </div>
                             </div>
                             
-                            <!-- Hoạt động -->
-                            <div class="col-md-3">
-                                <span class="fw-semibold" th:text="${actionMappings[activity.action] != null ? actionMappings[activity.action] : activity.action}">Hoạt động</span>
-                                <div class="small text-muted" th:if="${activity.category}" th:text="'Loại: ' + ${activity.category}"></div>
-                                <div th:if="${!activity.success && activity.failureReason}" class="mt-1">
-                                    <small class="text-danger" th:text="${activity.failureReason}">Lý do lỗi</small>
-                                </div>
-                            </div>
-                            
-                            <!-- IP & User-Agent -->
-                            <div class="col-md-3">
+                            <!-- Địa chỉ IP -->
+                            <div class="col-md-2">
                                 <div class="small" th:if="${activity.ipAddress}">
                                     <i class="fa-solid fa-network-wired me-1"></i>
                                     <span th:text="${activity.ipAddress}"></span>
                                 </div>
-                                <div class="small text-muted mt-1" th:if="${activity.userAgent}">
-                                    <i class="fa-solid fa-desktop me-1"></i>
-                                    <span th:text="${#strings.abbreviate(activity.userAgent, 60)}" title="${activity.userAgent}"></span>
-                                </div>
-                                <div th:if="${activity.ipAddress == null && activity.userAgent == null}" class="text-muted small">
+                                <div th:if="${activity.ipAddress == null}" class="text-muted small">
                                     Không có thông tin
                                 </div>
                             </div>
                             
-                            <!-- Thời gian -->
-                            <div class="col-md-2">
-                                <div class="small text-muted" th:text="${#temporals.format(activity.createdAt, 'dd/MM/yyyy')}">Ngày</div>
-                                <div class="small text-muted" th:text="${#temporals.format(activity.createdAt, 'HH:mm:ss')}">Giờ</div>
+                            <!-- Thiết bị & Trình duyệt -->
+                            <div class="col-md-3">
+                                <div class="small" th:if="${activity.browserName != 'N/A'}">
+                                    <i th:class="${activity.browserName.toLowerCase().contains('chrome')} ? 'fa-brands fa-chrome me-1' : 
+                                                 (${activity.browserName.toLowerCase().contains('firefox')} ? 'fa-brands fa-firefox me-1' : 
+                                                 (${activity.browserName.toLowerCase().contains('safari')} ? 'fa-brands fa-safari me-1' : 
+                                                 (${activity.browserName.toLowerCase().contains('edge')} ? 'fa-brands fa-edge me-1' : 'fa-solid fa-globe me-1')))"></i>
+                                    <span th:text="${activity.browserName + ' ' + activity.browserVersion}">Chrome 120.0</span>
+                                </div>
+                                <div class="small text-muted mt-1" th:if="${activity.operatingSystem != 'N/A'}">
+                                    <i th:class="${activity.operatingSystem.toLowerCase().contains('windows')} ? 'fa-brands fa-windows me-1' : 
+                                                 (${activity.operatingSystem.toLowerCase().contains('mac')} ? 'fa-brands fa-apple me-1' : 
+                                                 (${activity.operatingSystem.toLowerCase().contains('linux')} ? 'fa-brands fa-linux me-1' : 
+                                                 (${activity.operatingSystem.toLowerCase().contains('android')} ? 'fa-brands fa-android me-1' : 'fa-solid fa-desktop me-1')))"></i>
+                                    <span th:text="${activity.operatingSystem + ' - ' + activity.deviceType}">Windows 10 - Desktop</span>
+                                </div>
+                                <div class="small text-muted" th:if="${activity.userAgent}" 
+                                     th:title="${activity.userAgent}">
+                                    <i class="fa-solid fa-info-circle me-1"></i>
+                                    <span class="text-truncate">User-Agent gốc</span>
+                                </div>
+                                <div th:if="${activity.browserName == 'N/A'}" class="text-muted small">
+                                    Không có thông tin
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -23,32 +23,19 @@ public class ApiCallLogService {
     private final ApiCallLogRepository apiCallLogRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     
+    // New method with extracted data to avoid request recycling
     @Async("apiLogExecutor")
-    public void logApiCall(Long userId, HttpServletRequest request, HttpServletResponse response, long durationMs) {
+    public void logApiCall(Long userId, String endpoint, String method, int statusCode, String ipAddress, String userAgent, long durationMs) {
         try {
             // Skip logging for certain endpoints
-            if (shouldSkipLogging(request)) {
+            if (shouldSkipLogging(endpoint)) {
                 return;
             }
             
-            String endpoint = request.getRequestURI();
-            String method = request.getMethod();
-            int statusCode = response.getStatus();
-            
-            // Extract request parameters
-            String requestParams = extractRequestParams(request);
-            
-            // Extract request body (for POST/PUT requests)
-            String requestBody = extractRequestBody(request);
+            log.debug("Logging API call: {} {} - UserId: {} - Status: {}", method, endpoint, userId, statusCode);
             
             // Determine response status
             String responseStatus = determineResponseStatus(statusCode);
-            
-            // Extract IP address
-            String ipAddress = getClientIpAddress(request);
-            
-            // Extract user agent
-            String userAgent = request.getHeader("User-Agent");
             
             // Extract error message if any
             String errorMessage = statusCode >= 400 ? "HTTP " + statusCode : null;
@@ -58,8 +45,8 @@ public class ApiCallLogService {
                     .endpoint(endpoint)
                     .method(method)
                     .statusCode(statusCode)
-                    .requestParams(requestParams)
-                    .requestBody(requestBody)
+                    .requestParams(null) // Can't extract in async context
+                    .requestBody(null)   // Can't extract in async context
                     .responseStatus(responseStatus)
                     .durationMs((int) durationMs)
                     .ipAddress(ipAddress)
@@ -75,9 +62,26 @@ public class ApiCallLogService {
         }
     }
     
-    private boolean shouldSkipLogging(HttpServletRequest request) {
-        String endpoint = request.getRequestURI();
-        
+    // Legacy method for backward compatibility (deprecated)
+    @Async("apiLogExecutor")
+    @Deprecated
+    public void logApiCall(Long userId, HttpServletRequest request, HttpServletResponse response, long durationMs) {
+        try {
+            // Extract data BEFORE async call to avoid request recycling issues
+            String endpoint = request.getRequestURI();
+            String method = request.getMethod();
+            int statusCode = response.getStatus();
+            String ipAddress = getClientIpAddress(request);
+            String userAgent = request.getHeader("User-Agent");
+            
+            // Call new method with extracted data
+            logApiCall(userId, endpoint, method, statusCode, ipAddress, userAgent, durationMs);
+        } catch (Exception e) {
+            log.error("Error logging API call (legacy): {}", e.getMessage());
+        }
+    }
+    
+    private boolean shouldSkipLogging(String endpoint) {
         // Skip static resources
         if (endpoint.startsWith("/css/") || 
             endpoint.startsWith("/js/") || 

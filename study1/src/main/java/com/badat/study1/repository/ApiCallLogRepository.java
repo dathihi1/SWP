@@ -27,7 +27,7 @@ public interface ApiCallLogRepository extends JpaRepository<ApiCallLog, Long> {
     // Filter methods with date range
     @Query("SELECT a FROM ApiCallLog a WHERE " +
            "(:userId IS NULL OR a.userId = :userId) " +
-           "AND (:endpoint IS NULL OR a.endpoint LIKE %:endpoint%) " +
+           "AND (:endpoint IS NULL OR a.endpoint LIKE CONCAT('%', :endpoint, '%')) " +
            "AND (:method IS NULL OR a.method = :method) " +
            "AND (:statusCode IS NULL OR a.statusCode = :statusCode) " +
            "AND (:fromDate IS NULL OR a.createdAt >= :fromDate) " +

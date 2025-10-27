@@ -93,7 +93,8 @@ public class AdminUserApiController {
 
             // Log the user creation
             if (auditLogService != null) {
-                auditLogService.logUserCreation(currentUser, newUser, httpRequest.getRequestURI(), httpRequest.getMethod());
+                String clientIp = getClientIpAddress(httpRequest);
+                auditLogService.logUserCreation(currentUser, newUser, httpRequest.getRequestURI(), httpRequest.getMethod(), clientIp);
             }
 
             log.info("Admin {} created new user {}", currentUser.getUsername(), newUser.getUsername());
@@ -151,7 +152,7 @@ public class AdminUserApiController {
     }
 
     @PostMapping("/{userId}/toggle-lock")
-    public ResponseEntity<?> toggleUserLock(@PathVariable Long userId) {
+    public ResponseEntity<?> toggleUserLock(@PathVariable Long userId, HttpServletRequest request) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication == null || !authentication.isAuthenticated() || 
@@ -170,13 +171,31 @@ public class AdminUserApiController {
                 return ResponseEntity.status(404).body(Map.of("error", "User not found"));
             }
 
+            // Store old status for audit logging (for future use if needed)
+            // User.Status oldStatus = userToToggle.getStatus();
+            
             // Toggle status
             if (userToToggle.getStatus() == User.Status.ACTIVE) {
                 userToToggle.setStatus(User.Status.LOCKED);
                 log.info("Admin {} locked user {}", currentUser.getUsername(), userToToggle.getUsername());
+                
+                // Log the lock action
+                if (auditLogService != null) {
+                    String clientIp = getClientIpAddress(request);
+                    auditLogService.logAccountLocked(userToToggle, clientIp, 
+                        "Locked by admin: " + currentUser.getUsername(), 
+                        request.getRequestURI(), request.getMethod());
+                }
             } else {
                 userToToggle.setStatus(User.Status.ACTIVE);
                 log.info("Admin {} unlocked user {}", currentUser.getUsername(), userToToggle.getUsername());
+                
+                // Log the unlock action
+                if (auditLogService != null) {
+                    String clientIp = getClientIpAddress(request);
+                    auditLogService.logAccountUnlocked(userToToggle, clientIp, 
+                        request.getRequestURI(), request.getMethod());
+                }
             }
 
             userService.save(userToToggle);
@@ -247,19 +266,27 @@ public class AdminUserApiController {
                 return ResponseEntity.status(404).body(Map.of("error", "User not found"));
             }
 
+            // Prevent editing ADMIN users
+            if (user.getRole() == User.Role.ADMIN) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Không thể chỉnh sửa thông tin của Admin"));
+            }
+
             // Store old role for shop management
             User.Role oldRole = user.getRole();
             
-            // Update user fields (username and email cannot be changed)
-            if (request.containsKey("fullName")) {
-                user.setFullName(request.get("fullName"));
-            }
-            if (request.containsKey("phone")) {
-                user.setPhone(request.get("phone"));
-            }
+            // fullName and phone are now readonly in frontend, so we don't update them
+            
             if (request.containsKey("role")) {
                 try {
                     User.Role newRole = User.Role.valueOf(request.get("role").toUpperCase());
+                    
+                    // Prevent changing to ADMIN role
+                    if (newRole == User.Role.ADMIN) {
+                        return ResponseEntity.badRequest()
+                            .body(Map.of("error", "Không thể nâng quyền lên Admin"));
+                    }
+                    
                     user.setRole(newRole);
                 } catch (IllegalArgumentException e) {
                     return ResponseEntity.badRequest().body(Map.of("error", "Invalid role"));
@@ -287,7 +314,8 @@ public class AdminUserApiController {
 
             // Log the edit action
             if (auditLogService != null) {
-                auditLogService.logUserEdit(currentUser, user, request, httpRequest.getRequestURI(), httpRequest.getMethod());
+                String clientIp = getClientIpAddress(httpRequest);
+                auditLogService.logUserEdit(currentUser, user, request, httpRequest.getRequestURI(), httpRequest.getMethod(), clientIp);
             }
 
             log.info("Admin {} edited user {} information", currentUser.getUsername(), user.getUsername());
@@ -331,7 +359,8 @@ public class AdminUserApiController {
 
             // Log the lock action
             if (auditLogService != null) {
-                auditLogService.logAccountLocked(user, "127.0.0.1", "Locked by admin: " + currentUser.getUsername(), request.getRequestURI(), request.getMethod());
+                String clientIp = getClientIpAddress(request);
+                auditLogService.logAccountLocked(user, clientIp, "Locked by admin: " + currentUser.getUsername(), request.getRequestURI(), request.getMethod());
             }
 
             log.info("Admin {} locked user {}", currentUser.getUsername(), user.getUsername());
@@ -375,7 +404,8 @@ public class AdminUserApiController {
 
             // Log the unlock action
             if (auditLogService != null) {
-                auditLogService.logAccountUnlocked(user, "127.0.0.1", request.getRequestURI(), request.getMethod());
+                String clientIp = getClientIpAddress(request);
+                auditLogService.logAccountUnlocked(user, clientIp, request.getRequestURI(), request.getMethod());
             }
 
             log.info("Admin {} unlocked user {}", currentUser.getUsername(), user.getUsername());
@@ -448,7 +478,8 @@ public class AdminUserApiController {
 
             // Log the role change
             if (auditLogService != null) {
-                auditLogService.logRoleChange(currentUser, targetUser, oldRole, newRole, reason, httpRequest.getRequestURI(), httpRequest.getMethod());
+                String clientIp = getClientIpAddress(httpRequest);
+                auditLogService.logRoleChange(currentUser, targetUser, oldRole, newRole, reason, httpRequest.getRequestURI(), httpRequest.getMethod(), clientIp);
             }
 
             log.info("Admin {} changed user {} role from {} to {}", 
@@ -534,5 +565,37 @@ public class AdminUserApiController {
             log.error("Error getting pending sellers: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
         }
+    }
+    
+    /**
+     * Get client IP address from request, considering proxy headers
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
+        }
+        
+        String xForwarded = request.getHeader("X-Forwarded");
+        if (xForwarded != null && !xForwarded.isEmpty() && !"unknown".equalsIgnoreCase(xForwarded)) {
+            return xForwarded;
+        }
+        
+        String forwardedFor = request.getHeader("Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(forwardedFor)) {
+            return forwardedFor;
+        }
+        
+        String forwarded = request.getHeader("Forwarded");
+        if (forwarded != null && !forwarded.isEmpty() && !"unknown".equalsIgnoreCase(forwarded)) {
+            return forwarded;
+        }
+        
+        return request.getRemoteAddr();
     }
 }
