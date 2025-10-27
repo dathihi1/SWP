@@ -18,8 +18,14 @@ public class UserDetailServiceCustomizer implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameAndIsDeleteFalse(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User does not exist"));
+
+        // Kiểm tra nếu tài khoản bị khóa
+        if (user.getStatus() == User.Status.LOCKED) {
+            log.warn("Attempted login for locked account: {}", username);
+            throw new BadCredentialsException("Tài khoản đã bị khóa");
+        }
 
         // Kiểm tra nếu user đăng ký bằng Google mà cố đăng nhập manual
         if ("GOOGLE".equals(user.getProvider())) {

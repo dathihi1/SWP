@@ -1,19 +1,21 @@
 package com.badat.study1.controller;
 
-import com.badat.study1.annotation.Auditable;
+import com.badat.study1.annotation.UserActivity;
+import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.dto.request.LoginRequest;
 import com.badat.study1.dto.response.LoginResponse;
 import com.badat.study1.dto.response.CaptchaResponse;
 import com.badat.study1.dto.request.UserCreateRequest;
 import com.badat.study1.dto.request.VerifyRequest;
+import com.badat.study1.dto.request.ForgotPasswordRequest;
 import com.badat.study1.dto.response.ApiResponse;
 import com.badat.study1.service.UserService;
 import com.badat.study1.service.AuthenticationService;
-import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.CaptchaService;
 import com.badat.study1.service.IpLockoutService;
 import com.badat.study1.service.SecurityEventService;
 import com.badat.study1.service.CaptchaRateLimitService;
+import com.badat.study1.service.RateLimitService;
 import com.badat.study1.model.SecurityEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +27,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 @Slf4j
 @RestController
@@ -38,14 +42,14 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
     private final UserService userService;
-    private final AuditLogService auditLogService;
     private final CaptchaService captchaService;
     private final IpLockoutService ipLockoutService;
     private final SecurityEventService securityEventService;
     private final CaptchaRateLimitService captchaRateLimitService;
+    private final RateLimitService rateLimitService;
 
     @PostMapping("/login")
-    @Auditable(action = "LOGIN")
+    @UserActivity(action = "LOGIN", category = UserActivityLog.Category.ACCOUNT)
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         try {
             String ipAddress = getClientIpAddress(request);
@@ -221,33 +225,254 @@ public class AuthenticationController {
 
     // Registration flow: FE validates, BE validates again, send OTP async, immediately respond with nextUrl
     @PostMapping("/register")
-    @Auditable(action = "REGISTER")
-    public ResponseEntity<?> register(@RequestBody UserCreateRequest request, HttpServletRequest http) {
+    @UserActivity(action = "REGISTER", category = UserActivityLog.Category.ACCOUNT)
+    public ResponseEntity<?> register(@RequestBody @Valid UserCreateRequest request, HttpServletRequest http) {
         try {
+            String ipAddress = getClientIpAddress(http);
+            String userAgent = http.getHeader("User-Agent");
+            
+            // Log security event
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.REGISTER_ATTEMPT, 
+                ipAddress, 
+                "Registration attempt for: " + request.getEmail()
+            );
+            
+            // Check IP lockout
+            if (ipLockoutService.isIpLocked(ipAddress)) {
+                log.warn("Registration blocked - IP locked: {}", ipAddress);
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.IP_LOCKED, ipAddress, 
+                        "Registration attempt from locked IP");
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "IP đã bị khóa do quá nhiều lần đăng nhập sai",
+                    "lockedUntil", "30 phút"
+                ));
+            }
+            
+            // Check IP rate limiting for registration
+            if (rateLimitService.isIpRateLimited(ipAddress, "register")) {
+                log.warn("Registration rate limited - IP: {}", ipAddress);
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.RATE_LIMITED, ipAddress, 
+                        "Registration rate limited");
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "Quá nhiều yêu cầu đăng ký. Vui lòng thử lại sau 1 giờ",
+                    "rateLimited", true
+                ));
+            }
+            
+            // Validate captcha
+            if (request.getCaptchaCode() == null || request.getCaptchaCode().trim().isEmpty()) {
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_REQUIRED, ipAddress, 
+                        "Registration without captcha");
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Vui lòng nhập mã xác thực",
+                    "captchaRequired", true
+                ));
+            }
+            
+            if (request.getCaptchaId() == null || request.getCaptchaId().trim().isEmpty()) {
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
+                        "Registration without captcha ID");
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Mã xác thực không hợp lệ, vui lòng làm mới trang",
+                    "captchaRequired", true
+                ));
+            }
+            
+            // Validate captcha correctness
+            boolean captchaValid = captchaService.validateSimpleCaptcha(request.getCaptchaId(), request.getCaptchaCode());
+            if (!captchaValid) {
+                captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
+                        "Registration with invalid captcha");
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Mã xác thực không đúng, vui lòng nhập lại",
+                    "captchaRequired", true,
+                    "captcha", captchaService.generateSimpleCaptcha()
+                ));
+            }
+            
+            // Add delay to prevent timing attacks
+            Thread.sleep(500 + new Random().nextInt(500));
+            
             userService.register(request);
-            // Forward immediately to verify-otp page with email
-            return ResponseEntity.ok(ApiResponse.success("OTP đã được gửi (nếu hợp lệ)",
-                    Map.of("nextUrl", "/verify-otp?email=" + request.getEmail())));
+            
+            // Record IP request
+            rateLimitService.recordIpRequest(ipAddress, "register");
+            
+            // Log successful registration attempt
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.REGISTER_SUCCESS, 
+                ipAddress, 
+                "OTP sent to: " + request.getEmail()
+            );
+            
+            // Always return success to prevent email enumeration
+            return ResponseEntity.ok(ApiResponse.success(
+                "Nếu email hợp lệ, chúng tôi đã gửi mã OTP",
+                Map.of("nextUrl", "/verify-otp?email=" + request.getEmail())
+            ));
+            
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            log.error("Registration error: {}", e.getMessage());
+            // Don't leak information
+            return ResponseEntity.ok(ApiResponse.success(
+                "Nếu email hợp lệ, chúng tôi đã gửi mã OTP",
+                Map.of("nextUrl", "/verify-otp?email=" + request.getEmail())
+            ));
         }
     }
 
     @PostMapping("/verify-register-otp")
-    @Auditable(action = "OTP_VERIFY")
-    public ResponseEntity<?> verifyRegisterOtp(@RequestBody VerifyRequest request) {
+    @UserActivity(action = "OTP_VERIFY", category = UserActivityLog.Category.ACCOUNT)
+    public ResponseEntity<?> verifyRegisterOtp(@RequestBody VerifyRequest request, HttpServletRequest httpRequest) {
         try {
+            String ipAddress = getClientIpAddress(httpRequest);
+            String userAgent = httpRequest.getHeader("User-Agent");
+            
+            // Validate email format
+            if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+                log.warn("OTP verification attempt with empty email from IP: {}", ipAddress);
+                return ResponseEntity.badRequest().body(ApiResponse.error("Email không được để trống"));
+            }
+            
+            // Validate OTP format
+            if (request.getOtp() == null || request.getOtp().trim().isEmpty()) {
+                log.warn("OTP verification attempt with empty OTP from IP: {}", ipAddress);
+                return ResponseEntity.badRequest().body(ApiResponse.error("Mã OTP không được để trống"));
+            }
+            
+            // Log security event
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.OTP_VERIFY_ATTEMPT, 
+                ipAddress, 
+                "OTP verification attempt for: " + request.getEmail()
+            );
+            
             userService.verify(request.getEmail(), request.getOtp());
+            
+            // Log successful verification
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.OTP_VERIFY_SUCCESS, 
+                ipAddress, 
+                "OTP verified successfully for: " + request.getEmail()
+            );
+            
             // On success, redirect to login page
             return ResponseEntity.ok(ApiResponse.success("Đăng ký thành công",
                     Map.of("nextUrl", "/login")));
+                    
         } catch (Exception e) {
+            log.error("OTP verification failed for email: {} from IP: {}, error: {}", 
+                request.getEmail(), getClientIpAddress(httpRequest), e.getMessage());
+            
+            // Log failed verification
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.OTP_VERIFY_FAILED, 
+                getClientIpAddress(httpRequest), 
+                "OTP verification failed for: " + request.getEmail() + ", reason: " + e.getMessage()
+            );
+            
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request, HttpServletRequest httpRequest) {
+        try {
+            String ipAddress = getClientIpAddress(httpRequest);
+            
+            // Log security event
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.FORGOT_PASSWORD_REQUEST, 
+                ipAddress, 
+                "Forgot password attempt for: " + request.getEmail()
+            );
+            
+            // Check IP lockout
+            if (ipLockoutService.isIpLocked(ipAddress)) {
+                log.warn("Forgot password blocked - IP locked: {}", ipAddress);
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.IP_LOCKED, ipAddress, 
+                        "Forgot password attempt from locked IP");
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "IP đã bị khóa do quá nhiều lần đăng nhập sai",
+                    "lockedUntil", "30 phút"
+                ));
+            }
+            
+            // Check IP rate limiting
+            if (rateLimitService.isIpRateLimited(ipAddress, "forgot_password")) {
+                log.warn("Forgot password rate limited - IP: {}", ipAddress);
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.RATE_LIMITED, ipAddress, 
+                        "Forgot password rate limited");
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "Quá nhiều yêu cầu khôi phục mật khẩu. Vui lòng thử lại sau 1 giờ",
+                    "rateLimited", true
+                ));
+            }
+            
+            // Validate captcha
+            if (request.getCaptchaCode() == null || request.getCaptchaCode().trim().isEmpty()) {
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_REQUIRED, ipAddress, 
+                        "Forgot password without captcha");
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Vui lòng nhập mã xác thực",
+                    "captchaRequired", true
+                ));
+            }
+            
+            if (request.getCaptchaId() == null || request.getCaptchaId().trim().isEmpty()) {
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
+                        "Forgot password without captcha ID");
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Mã xác thực không hợp lệ, vui lòng làm mới trang",
+                    "captchaRequired", true
+                ));
+            }
+            
+            // Validate captcha correctness
+            boolean captchaValid = captchaService.validateSimpleCaptcha(request.getCaptchaId(), request.getCaptchaCode());
+            if (!captchaValid) {
+                captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
+                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
+                        "Forgot password with invalid captcha");
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Mã xác thực không đúng, vui lòng nhập lại",
+                    "captchaRequired", true,
+                    "captcha", captchaService.generateSimpleCaptcha()
+                ));
+            }
+            
+            // Add delay to prevent timing attacks
+            Thread.sleep(500 + new Random().nextInt(500));
+            
+            userService.forgotPassword(request.getEmail());
+            
+            // Record request
+            rateLimitService.recordIpRequest(ipAddress, "forgot_password");
+            
+            // Log successful request
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.FORGOT_PASSWORD_REQUEST, 
+                ipAddress, 
+                "Password reset email sent to: " + request.getEmail()
+            );
+            
+            // Always return success to prevent email enumeration
+            return ResponseEntity.ok(Map.of(
+                "message", "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu"
+            ));
+            
+        } catch (Exception e) {
+            log.error("Forgot password error: {}", e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                "message", "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu"
+            ));
+        }
+    }
+
     @PostMapping("/logout")
-    @Auditable(action = "LOGOUT")
+    @UserActivity(action = "LOGOUT", category = UserActivityLog.Category.ACCOUNT)
     public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader, HttpServletRequest request) {
         try {
             // Prefer header; if missing, try cookie via JwtAuthenticationFilter, but here we only need header token to blacklist
@@ -271,12 +496,7 @@ public class AuthenticationController {
             // Get user info before logout for audit logging
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
-                Object principal = auth.getPrincipal();
-                if (principal instanceof com.badat.study1.model.User) {
-                    com.badat.study1.model.User user = (com.badat.study1.model.User) principal;
-                    String ipAddress = getClientIpAddress(request);
-                    auditLogService.logLogout(user, ipAddress);
-                }
+                // Logout will be handled by UserActivityAspect
             }
             
             authenticationService.logout(token);

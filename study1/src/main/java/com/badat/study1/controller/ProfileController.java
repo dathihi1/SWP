@@ -1,10 +1,11 @@
 package com.badat.study1.controller;
 
-import com.badat.study1.annotation.Auditable;
+import com.badat.study1.annotation.UserActivity;
+import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.dto.request.UpdateProfileRequest;
 import com.badat.study1.dto.request.ChangePasswordRequest;
 import com.badat.study1.model.User;
-import com.badat.study1.service.AuditLogService;
+import com.badat.study1.service.UserActivityLogService;
 import com.badat.study1.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,10 +28,10 @@ import java.util.Map;
 public class ProfileController {
     
     private final UserService userService;
-    private final AuditLogService auditLogService;
+    private final UserActivityLogService userActivityLogService;
     
     @PutMapping("/profile")
-    @Auditable(action = "PROFILE_UPDATE")
+    @UserActivity(action = "PROFILE_UPDATE", category = UserActivityLog.Category.ACCOUNT)
     public ResponseEntity<?> updateProfile(@Valid @RequestBody UpdateProfileRequest request, 
                                         HttpServletRequest httpRequest) {
         try {
@@ -42,6 +43,7 @@ public class ProfileController {
             
             User currentUser = (User) authentication.getPrincipal();
             String ipAddress = getClientIpAddress(httpRequest);
+            String userAgent = httpRequest.getHeader("User-Agent");
             
             log.info("Profile update request for user: {}, IP: {}", currentUser.getUsername(), ipAddress);
             
@@ -49,7 +51,7 @@ public class ProfileController {
             User updatedUser = userService.updateProfile(currentUser.getId(), request);
             
             // Log the profile update
-            auditLogService.logProfileUpdate(updatedUser, ipAddress, "Cập nhật thông tin cá nhân");
+            userActivityLogService.logProfileUpdate(updatedUser, "Cập nhật thông tin cá nhân", ipAddress, userAgent, httpRequest.getRequestURI(), httpRequest.getMethod(), true, null);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -76,7 +78,7 @@ public class ProfileController {
     }
     
     @PostMapping("/profile/change-password")
-    @Auditable(action = "PASSWORD_CHANGE")
+    @UserActivity(action = "PASSWORD_CHANGE", category = UserActivityLog.Category.ACCOUNT)
     public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request, 
                                           HttpServletRequest httpRequest) {
         try {
@@ -88,6 +90,7 @@ public class ProfileController {
             
             User currentUser = (User) authentication.getPrincipal();
             String ipAddress = getClientIpAddress(httpRequest);
+            String userAgent = httpRequest.getHeader("User-Agent");
             
             log.info("Password change request for user: {}, IP: {}", currentUser.getUsername(), ipAddress);
             
@@ -95,7 +98,7 @@ public class ProfileController {
             userService.changePassword(currentUser.getId(), request.getCurrentPassword(), request.getNewPassword());
             
             // Log the password change
-            auditLogService.logPasswordChange(currentUser, ipAddress, "Đổi mật khẩu");
+            userActivityLogService.logPasswordChange(currentUser, ipAddress, userAgent, httpRequest.getRequestURI(), httpRequest.getMethod(), true, null);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

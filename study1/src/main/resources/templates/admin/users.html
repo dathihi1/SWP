@@ -253,6 +253,16 @@
             color: white;
         }
         
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background-color: #138496;
+            color: white;
+        }
+        
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -274,45 +284,53 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="d-flex align-items-center justify-content-between">
-                <a class="navbar-brand d-flex align-items-center" th:href="@{/admin}" href="/admin">
-                    <i class="fa-solid fa-shield-halved me-2" style="color:#ff7b00;"></i>
-                    MMO Market Admin
-                </a>
-            </div>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">ADMIN</div>
-            <a href="/admin" class="menu-item">
-                <i class="fas fa-tachometer-alt"></i>
-                Dashboard
-            </a>
-        </div>
-        
-        <div class="menu-section">
-            <div class="section-title">QUẢN LÝ</div>
-            <a href="/admin/users" class="menu-item active">
-                <i class="fas fa-users"></i>
-                Quản lý người dùng
-            </a>
-            <a href="/admin/stalls" class="menu-item">
-                <i class="fas fa-store"></i>
-                Quản lý cửa hàng
-            </a>
-            <a href="/admin/withdraw-requests" class="menu-item">
-                <i class="fas fa-money-bill-transfer"></i>
-                Yêu cầu rút tiền
-            </a>
-            <a href="/admin/audit-logs" class="menu-item">
-                <i class="fas fa-clipboard-list"></i>
-                Audit Logs
+   <!-- Sidebar -->
+   <div class="sidebar">
+    <div class="sidebar-header">
+        <div class="d-flex align-items-center justify-content-between">
+            <a class="navbar-brand d-flex align-items-center" th:href="@{/admin}" href="/admin">
+                <i class="fa-solid fa-shield-halved me-2" style="color:#ff7b00;"></i>
+                MMO Market Admin
             </a>
         </div>
     </div>
+    
+    <div class="menu-section">
+        <div class="section-title">ADMIN</div>
+        <a href="/admin" class="menu-item">
+            <i class="fas fa-tachometer-alt"></i>
+            Dashboard
+        </a>
+    </div>
+    
+    <div class="menu-section">
+        <div class="section-title">QUẢN LÝ</div>
+        <a href="/admin/users" class="menu-item">
+            <i class="fas fa-users"></i>
+            Quản lý người dùng
+        </a>
+        <a href="/admin/stalls" class="menu-item">
+            <i class="fas fa-store"></i>
+            Quản lý cửa hàng
+        </a>
+        <a href="/admin/withdraw-requests" class="menu-item">
+            <i class="fas fa-money-bill-transfer"></i>
+            Yêu cầu rút tiền
+        </a>
+        <a href="/admin/audit-logs" class="menu-item">
+            <i class="fas fa-clipboard-list"></i>
+            Audit Logs
+        </a>
+        <a href="/admin/api-logs" class="menu-item">
+            <i class="fas fa-code"></i>
+            API Logs
+        </a>
+        <a href="/admin/user-activity-logs" class="menu-item">
+            <i class="fas fa-user-clock"></i>
+            User Activity Logs
+        </a>
+    </div>
+</div>
     
     <!-- Main Content -->
     <div class="main-content">
@@ -525,7 +543,13 @@
                                         <button class="btn btn-action btn-view" title="Xem chi tiết">
                                             <i class="fas fa-eye"></i>
                                         </button>
+                                        <a th:href="@{/admin/user-activity-logs(userId=${user.id})}" 
+                                           class="btn btn-action btn-info" 
+                                           title="Xem hoạt động">
+                                            <i class="fas fa-user-clock"></i>
+                                        </a>
                                         <button class="btn btn-action btn-edit" title="Chỉnh sửa" 
+                                                th:if="${user.role.name() != 'ADMIN'}"
                                                 th:data-user-id="${user.id}" 
                                                 th:data-user-username="${user.username}"
                                                 th:data-user-email="${user.email}"
@@ -668,20 +692,18 @@
                             <small class="text-muted">Email không thể thay đổi</small>
                         </div>
                         <div class="mb-3">
-                            <label for="editFullName" class="form-label">Họ và tên</label>
-                            <input type="text" class="form-control" id="editFullName" name="fullName">
+                            <label class="form-label">Họ và tên</label>
+                            <p class="form-control-plaintext border-bottom pb-2" id="editFullName"></p>
                         </div>
                         <div class="mb-3">
-                            <label for="editPhone" class="form-label">Số điện thoại</label>
-                            <input type="text" class="form-control" id="editPhone" name="phone">
+                            <label class="form-label">Số điện thoại</label>
+                            <p class="form-control-plaintext border-bottom pb-2" id="editPhone"></p>
                         </div>
                         <div class="mb-3">
                             <label for="editRole" class="form-label">Vai trò <span class="text-danger">*</span></label>
                             <select class="form-select" id="editRole" name="role" required>
-                                <option value="">Chọn vai trò</option>
                                 <option value="USER">User</option>
                                 <option value="SELLER">Seller</option>
-                                <option value="ADMIN">Admin</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -725,10 +747,10 @@
             
             // Set active menu item based on current path
             const currentPath = window.location.pathname;
-            const menuItems = document.querySelectorAll('.menu-item[data-path]');
+            const menuItems = document.querySelectorAll('.menu-item[href]');
             
             menuItems.forEach(function(item) {
-                const itemPath = item.getAttribute('data-path');
+                const itemPath = item.getAttribute('href');
                 if (currentPath === itemPath || (itemPath !== '/admin' && currentPath.startsWith(itemPath))) {
                     item.classList.add('active');
                 }
@@ -819,8 +841,11 @@
             document.getElementById('editUserId').value = userData.userId;
             document.getElementById('editUsername').value = userData.userUsername || '';
             document.getElementById('editEmail').value = userData.userEmail || '';
-            document.getElementById('editFullName').value = userData.userFullname || '';
-            document.getElementById('editPhone').value = userData.userPhone || '';
+            
+            // Set as text content instead of input value
+            document.getElementById('editFullName').textContent = userData.userFullname || 'Chưa có';
+            document.getElementById('editPhone').textContent = userData.userPhone || 'Chưa có';
+            
             document.getElementById('editRole').value = userData.userRole || '';
             document.getElementById('editStatus').value = userData.userStatus || '';
             
@@ -830,8 +855,6 @@
         
         window.confirmEditUser = function() {
             const userId = document.getElementById('editUserId').value;
-            const fullName = document.getElementById('editFullName').value.trim();
-            const phone = document.getElementById('editPhone').value.trim();
             const role = document.getElementById('editRole').value;
             const status = document.getElementById('editStatus').value;
             
@@ -841,8 +864,6 @@
             }
             
             const formData = {
-                fullName: fullName,
-                phone: phone,
                 role: role,
                 status: status
             };

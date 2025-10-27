@@ -81,13 +81,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 log.warn("JWT Filter - Token validation failed for Google user: {}", username);
                             }
                         } else {
-                            // For LOCAL users, use UserDetailsService
+                            // For LOCAL users, use UserDetailsService for validation but set User as principal
                             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                             if (jwtService.isTokenValid(token, userDetails)) {
                                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                        userDetails,
+                                        user,  // Use User object instead of UserDetails
                                         null,
-                                        userDetails.getAuthorities()
+                                        user.getAuthorities()
                                 );
                                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                                 SecurityContextHolder.getContext().setAuthentication(authentication);

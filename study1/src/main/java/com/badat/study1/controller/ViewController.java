@@ -7,7 +7,10 @@ import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.model.Product;
 import com.badat.study1.model.Review;
+import com.badat.study1.model.ApiCallLog;
+import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.repository.AuditLogRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
@@ -15,14 +18,15 @@ import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ReviewRepository;
-import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.OrderRepository;
-import com.badat.study1.repository.WarehouseRepository;
+import com.badat.study1.repository.ApiCallLogRepository;
+import com.badat.study1.repository.UserActivityLogRepository;
 import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import java.time.LocalDateTime;
 import com.badat.study1.dto.response.AuditLogResponse;
+import com.badat.study1.util.PaginationValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -69,7 +73,8 @@ public class ViewController {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final AuditLogRepository auditLogRepository;
-    private final WarehouseRepository warehouseRepository;
+    private final ApiCallLogRepository apiCallLogRepository;
+    private final UserActivityLogRepository userActivityLogRepository;
 
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
@@ -170,12 +175,11 @@ public class ViewController {
                 vm.put("stallCategory", stall.getStallCategory());
 
                 // Compute product count by summing quantities of products in the stall
-                // Count available warehouse items (not locked, not deleted)
-                long totalStock = warehouseRepository.countAvailableItemsByStallId(stall.getId());
-                vm.put("productCount", (int) totalStock);
-                
-                // Get products for price range calculation
                 var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
+                int totalStock = products.stream()
+                        .mapToInt(p -> p.getQuantity() != null ? p.getQuantity() : 0)
+                        .sum();
+                vm.put("productCount", totalStock);
                 
                 // Calculate price range from available products
                 if (!products.isEmpty()) {
@@ -582,125 +586,6 @@ public class ViewController {
         return "customer/profile";
     }
 
-    @GetMapping("/activity-history")
-    public String activityHistoryPage(Model model, 
-                                    @RequestParam(defaultValue = "1") int page,
-                                    @RequestParam(required = false) String action,
-                                    @RequestParam(required = false) Boolean success,
-                                    @RequestParam(required = false) String fromDate,
-                                    @RequestParam(required = false) String toDate,
-                                    @RequestParam(required = false) String technicalAction,
-                                    @RequestParam(required = false) String ipFilter) {
-        try {
-            log.info("Activity history page requested for page: {}, action: {}, success: {}", page, action, success);
-            
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
-                    !authentication.getName().equals("anonymousUser");
-
-            if (!isAuthenticated) {
-                log.warn("Unauthenticated access to activity history page");
-                return "redirect:/login";
-            }
-
-            User user = (User) authentication.getPrincipal();
-            log.info("Loading activity history for user: {}", user.getUsername());
-            
-            model.addAttribute("username", user.getUsername());
-            model.addAttribute("isAuthenticated", true);
-            model.addAttribute("userRole", user.getRole().name());
-            model.addAttribute("user", user);
-
-            // Lấy số dư ví với error handling
-            try {
-                BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                        .map(Wallet::getBalance)
-                        .orElse(BigDecimal.ZERO);
-                model.addAttribute("walletBalance", walletBalance);
-            } catch (Exception e) {
-                log.error("Error getting wallet balance for user {}: {}", user.getId(), e.getMessage());
-                model.addAttribute("walletBalance", BigDecimal.ZERO);
-            }
-
-            // Use technicalAction if provided, otherwise use action
-            String finalAction = (technicalAction != null && !technicalAction.isEmpty()) ? technicalAction : action;
-            
-            // Lấy lịch sử hoạt động với retry logic và error handling
-            Page<AuditLogResponse> activities = null;
-            int maxRetries = 3;
-            int retryCount = 0;
-            
-            while (activities == null && retryCount < maxRetries) {
-                try {
-                    log.info("Attempting to get audit logs for user {} (attempt {})", user.getId(), retryCount + 1);
-                    activities = auditLogService.getUserAuditLogsWithFilters(
-                            user.getId(), page, 5, finalAction, success, fromDate, toDate, null);
-                    
-                    if (activities != null) {
-                        log.info("Successfully retrieved {} activities for user {}", activities.getTotalElements(), user.getId());
-                    }
-                    break;
-                } catch (Exception e) {
-                    retryCount++;
-                    log.error("Attempt {} failed to get audit logs for user {}: {}", retryCount, user.getId(), e.getMessage());
-                    
-                    if (retryCount >= maxRetries) {
-                        log.error("All retry attempts failed for user {}", user.getId());
-                        activities = Page.empty();
-                    } else {
-                        // Wait before retry
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            log.error("Thread interrupted while retrying for user {}", user.getId());
-                            activities = Page.empty();
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            if (activities == null) {
-                activities = Page.empty();
-            }
-            
-            model.addAttribute("activities", activities);
-            model.addAttribute("currentPage", page);
-            
-            // Filter parameters
-            model.addAttribute("selectedAction", finalAction);
-            model.addAttribute("selectedSuccess", success);
-            model.addAttribute("selectedFromDate", fromDate);
-            model.addAttribute("selectedToDate", toDate);
-            model.addAttribute("selectedIp", ipFilter);
-            
-            // Available actions for filter with user-friendly names
-            Map<String, String> actionMappings = new HashMap<>();
-            actionMappings.put("LOGIN", "Đăng nhập");
-            actionMappings.put("LOGOUT", "Đăng xuất");
-            actionMappings.put("ACCOUNT_LOCKED", "Khóa tài khoản");
-            actionMappings.put("ACCOUNT_UNLOCKED", "Mở khóa tài khoản");
-            actionMappings.put("PASSWORD_CHANGE", "Đổi mật khẩu");
-            actionMappings.put("PROFILE_UPDATE", "Cập nhật thông tin");
-            actionMappings.put("REGISTER", "Đăng ký tài khoản");
-            actionMappings.put("OTP_VERIFY", "Xác minh OTP");
-            
-            model.addAttribute("actionMappings", actionMappings);
-            model.addAttribute("availableActions", actionMappings.keySet());
-            
-            log.info("Available actions for user {}: {}", user.getUsername(), actionMappings.keySet());
-
-            log.info("Activity history page loaded successfully for user {}", user.getUsername());
-            return "customer/activity-history";
-            
-        } catch (Exception e) {
-            log.error("Critical error in activityHistoryPage: {}", e.getMessage(), e);
-            // Return error page or redirect to home
-            return "redirect:/";
-        }
-    }
-
     @GetMapping("/cart")
     public String cartPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -824,9 +709,12 @@ public class ViewController {
                 // Lấy tất cả sản phẩm trong gian hàng này
                 var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
 
-                // Tính tổng số lượng từ warehouse (không bị khóa, không bị xóa)
-                long totalStock = warehouseRepository.countAvailableItemsByStallId(stall.getId());
-                stall.setProductCount((int) totalStock);
+                // Tính tổng quantity của tất cả sản phẩm trong gian hàng
+                int totalStock = products.stream()
+                        .mapToInt(product -> product.getQuantity() != null ? product.getQuantity() : 0)
+                        .sum();
+
+                stall.setProductCount(totalStock);
                 
                 // Tính khoảng giá từ sản phẩm còn hàng
                 if (!products.isEmpty()) {
@@ -998,13 +886,6 @@ public class ViewController {
 
         // Lấy danh sách sản phẩm của gian hàng
         var products = productRepository.findByStallIdAndIsDeleteFalse(stallId);
-        
-        // Cập nhật quantity cho mỗi sản phẩm từ warehouse
-        products.forEach(product -> {
-            long warehouseCount = warehouseRepository.countAvailableItemsByProductId(product.getId());
-            product.setQuantity((int) warehouseCount);
-        });
-        
         model.addAttribute("products", products);
 
         return "seller/product-management";
@@ -1599,6 +1480,21 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             return "redirect:/";
         }
 
+        // Validate pagination parameters
+        int validatedPage = PaginationValidator.validatePage(page);
+        int validatedSize = PaginationValidator.validateSize(size);
+        
+        // Redirect if parameters were invalid
+        if (validatedPage != page || validatedSize != size) {
+            String redirectUrl = "/admin/audit-logs?page=" + validatedPage + "&size=" + validatedSize;
+            if (action != null) redirectUrl += "&action=" + action;
+            if (category != null) redirectUrl += "&category=" + category;
+            if (success != null) redirectUrl += "&success=" + success;
+            if (startDate != null) redirectUrl += "&startDate=" + startDate;
+            if (endDate != null) redirectUrl += "&endDate=" + endDate;
+            return "redirect:" + redirectUrl;
+        }
+
         // Get audit logs with filters
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         
@@ -1751,6 +1647,268 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         } catch (Exception e) {
             log.error("Error during logout: {}", e.getMessage(), e);
             return "redirect:/login?error=logout_failed";
+        }
+    }
+
+    // ==================== ADMIN API LOGS & USER ACTIVITY LOGS ====================
+    
+    @GetMapping("/admin/api-logs")
+    public String adminApiLogs(Model model,
+                              @RequestParam(defaultValue = "0") int page,
+                              @RequestParam(defaultValue = "20") int size,
+                              @RequestParam(required = false) Long userId,
+                              @RequestParam(required = false) String endpoint,
+                              @RequestParam(required = false) String method,
+                              @RequestParam(required = false) Integer statusCode,
+                              @RequestParam(required = false) String fromDate,
+                              @RequestParam(required = false) String toDate) {
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || 
+            "anonymousUser".equals(authentication.getName())) {
+            return "redirect:/login";
+        }
+
+        User currentUser = (User) authentication.getPrincipal();
+        if (!currentUser.getRole().equals(User.Role.ADMIN)) {
+            return "redirect:/?error=access_denied";
+        }
+
+        try {
+            // Validate pagination parameters
+            int validatedPage = PaginationValidator.validatePage(page);
+            int validatedSize = PaginationValidator.validateSize(size);
+            
+            // Redirect if parameters were invalid
+            if (validatedPage != page || validatedSize != size) {
+                String redirectUrl = "/admin/api-logs?page=" + validatedPage + "&size=" + validatedSize;
+                if (userId != null) redirectUrl += "&userId=" + userId;
+                if (endpoint != null && !endpoint.trim().isEmpty()) redirectUrl += "&endpoint=" + endpoint;
+                if (method != null && !method.trim().isEmpty()) redirectUrl += "&method=" + method;
+                if (statusCode != null) redirectUrl += "&statusCode=" + statusCode;
+                if (fromDate != null) redirectUrl += "&fromDate=" + fromDate;
+                if (toDate != null) redirectUrl += "&toDate=" + toDate;
+                return "redirect:" + redirectUrl;
+            }
+            
+            // Parse dates
+            LocalDateTime fromDateTime = null;
+            LocalDateTime toDateTime = null;
+            
+            if (fromDate != null && !fromDate.trim().isEmpty()) {
+                fromDateTime = LocalDateTime.parse(fromDate + " 00:00:00", 
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+            
+            if (toDate != null && !toDate.trim().isEmpty()) {
+                toDateTime = LocalDateTime.parse(toDate + " 23:59:59", 
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            
+            log.info("Admin API logs query - userId: {}, endpoint: '{}', method: '{}', statusCode: {}, fromDate: {}, toDate: {}, page: {}, size: {}", 
+                userId, endpoint, method, statusCode, fromDateTime, toDateTime, page, size);
+            
+            // Normalize empty strings to null for query
+            String normalizedEndpoint = (endpoint != null && !endpoint.trim().isEmpty()) ? endpoint : null;
+            String normalizedMethod = (method != null && !method.trim().isEmpty()) ? method : null;
+            
+            // Get API logs with filters
+            Page<com.badat.study1.model.ApiCallLog> apiLogs = apiCallLogRepository.findWithFilters(
+                userId, normalizedEndpoint, normalizedMethod, statusCode, fromDateTime, toDateTime, pageable);
+            
+            log.info("Found {} API logs (total: {}, page: {}, totalPages: {})", 
+                apiLogs.getNumberOfElements(), apiLogs.getTotalElements(), apiLogs.getNumber(), apiLogs.getTotalPages());
+            
+            // Debug: Try simple query to see if data exists
+            long totalLogs = apiCallLogRepository.count();
+            log.info("Total API logs in database: {}", totalLogs);
+            
+            // If page is beyond total pages, redirect to last page
+            if (page >= apiLogs.getTotalPages() && apiLogs.getTotalPages() > 0) {
+                log.warn("Requested page {} is beyond total pages {}, redirecting to page {}", 
+                    page, apiLogs.getTotalPages(), apiLogs.getTotalPages() - 1);
+                String redirectUrl = "/admin/api-logs?page=" + (apiLogs.getTotalPages() - 1) + "&size=" + size;
+                if (userId != null) redirectUrl += "&userId=" + userId;
+                if (endpoint != null && !endpoint.trim().isEmpty()) redirectUrl += "&endpoint=" + endpoint;
+                if (method != null && !method.trim().isEmpty()) redirectUrl += "&method=" + method;
+                if (statusCode != null) redirectUrl += "&statusCode=" + statusCode;
+                if (fromDate != null) redirectUrl += "&fromDate=" + fromDate;
+                if (toDate != null) redirectUrl += "&toDate=" + toDate;
+                return "redirect:" + redirectUrl;
+            }
+            
+            // Get statistics
+            LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
+            Double avgResponseTime = apiCallLogRepository.findAverageResponseTime(weekAgo);
+            Long errorCount = apiCallLogRepository.countErrorsSince(weekAgo);
+            Long totalCalls = apiCallLogRepository.countTotalCallsSince(weekAgo);
+            
+            // Get distinct values for filter dropdowns
+            List<String> endpoints = apiCallLogRepository.findDistinctEndpoints();
+            List<String> methods = apiCallLogRepository.findDistinctMethods();
+            List<Integer> statusCodes = apiCallLogRepository.findDistinctStatusCodes();
+            
+            model.addAttribute("apiLogs", apiLogs);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("totalPages", apiLogs.getTotalPages());
+            model.addAttribute("totalElements", apiLogs.getTotalElements());
+            model.addAttribute("numberOfElements", apiLogs.getNumberOfElements());
+            model.addAttribute("pageSize", size);
+            
+            // Filter values (use normalized values)
+            model.addAttribute("selectedUserId", userId);
+            model.addAttribute("selectedEndpoint", normalizedEndpoint);
+            model.addAttribute("selectedMethod", normalizedMethod);
+            model.addAttribute("selectedStatusCode", statusCode);
+            model.addAttribute("fromDate", fromDate);
+            model.addAttribute("toDate", toDate);
+            
+            // Filter options
+            model.addAttribute("endpoints", endpoints);
+            model.addAttribute("methods", methods);
+            model.addAttribute("statusCodes", statusCodes);
+            
+            // Statistics
+            model.addAttribute("avgResponseTime", avgResponseTime != null ? Math.round(avgResponseTime) : 0);
+            model.addAttribute("errorCount", errorCount);
+            model.addAttribute("totalCalls", totalCalls);
+            model.addAttribute("errorRate", totalCalls > 0 ? Math.round((double) errorCount / totalCalls * 100) : 0);
+            
+            return "admin/api-logs";
+            
+        } catch (Exception e) {
+            log.error("Error loading admin API logs: {}", e.getMessage(), e);
+            model.addAttribute("error", "Có lỗi xảy ra khi tải dữ liệu API logs");
+            return "admin/api-logs";
+        }
+    }
+
+    @GetMapping("/admin/user-activity-logs")
+    public String adminUserActivityLogs(Model model,
+                                       @RequestParam(defaultValue = "0") int page,
+                                       @RequestParam(defaultValue = "20") int size,
+                                       @RequestParam(required = false) Long userId,
+                                       @RequestParam(required = false) String action,
+                                       @RequestParam(required = false) String category,
+                                       @RequestParam(required = false) String fromDate,
+                                       @RequestParam(required = false) String toDate) {
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || 
+            "anonymousUser".equals(authentication.getName())) {
+            return "redirect:/login";
+        }
+
+        User currentUser = (User) authentication.getPrincipal();
+        if (!currentUser.getRole().equals(User.Role.ADMIN)) {
+            return "redirect:/?error=access_denied";
+        }
+
+        try {
+            // Validate pagination parameters
+            int validatedPage = PaginationValidator.validatePage(page);
+            int validatedSize = PaginationValidator.validateSize(size);
+            
+            // Redirect if parameters were invalid
+            if (validatedPage != page || validatedSize != size) {
+                String redirectUrl = "/admin/user-activity-logs?page=" + validatedPage + "&size=" + validatedSize;
+                if (userId != null) redirectUrl += "&userId=" + userId;
+                if (action != null) redirectUrl += "&action=" + action;
+                if (category != null) redirectUrl += "&category=" + category;
+                if (fromDate != null) redirectUrl += "&fromDate=" + fromDate;
+                if (toDate != null) redirectUrl += "&toDate=" + toDate;
+                return "redirect:" + redirectUrl;
+            }
+            
+            // Parse dates
+            LocalDateTime fromDateTime = null;
+            LocalDateTime toDateTime = null;
+            
+            if (fromDate != null && !fromDate.trim().isEmpty()) {
+                fromDateTime = LocalDateTime.parse(fromDate + " 00:00:00", 
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+            
+            if (toDate != null && !toDate.trim().isEmpty()) {
+                toDateTime = LocalDateTime.parse(toDate + " 23:59:59", 
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            }
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            
+            // Get user activity logs with filters
+            UserActivityLog.Category categoryEnum = null;
+            if (category != null && !category.isEmpty()) {
+                try {
+                    categoryEnum = UserActivityLog.Category.valueOf(category.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid category: {}", category);
+                }
+            }
+            
+            log.info("Admin user activity logs query - userId: {}, action: {}, category: {}, fromDate: {}, toDate: {}, page: {}, size: {}", 
+                userId, action, category, fromDateTime, toDateTime, page, size);
+            
+            Page<UserActivityLog> userActivityLogs = userActivityLogRepository.findAdminViewWithFilters(
+                userId, action, categoryEnum, fromDateTime, toDateTime, pageable);
+            
+            log.info("Found {} user activity logs (total: {}, page: {}, totalPages: {})", 
+                userActivityLogs.getNumberOfElements(), userActivityLogs.getTotalElements(), userActivityLogs.getNumber(), userActivityLogs.getTotalPages());
+            
+            // If page is beyond total pages, redirect to last page
+            if (page >= userActivityLogs.getTotalPages() && userActivityLogs.getTotalPages() > 0) {
+                log.warn("Requested page {} is beyond total pages {}, redirecting to page {}", 
+                    page, userActivityLogs.getTotalPages(), userActivityLogs.getTotalPages() - 1);
+                String redirectUrl = "/admin/user-activity-logs?page=" + (userActivityLogs.getTotalPages() - 1) + "&size=" + size;
+                if (userId != null) redirectUrl += "&userId=" + userId;
+                if (action != null) redirectUrl += "&action=" + action;
+                if (category != null) redirectUrl += "&category=" + category;
+                if (fromDate != null) redirectUrl += "&fromDate=" + fromDate;
+                if (toDate != null) redirectUrl += "&toDate=" + toDate;
+                return "redirect:" + redirectUrl;
+            }
+            
+            // Get distinct values for filter dropdowns
+            List<String> actions = userActivityLogRepository.findDistinctActions();
+            List<UserActivityLog.Category> categories = userActivityLogRepository.findDistinctCategories();
+            
+            // Convert categories to strings for template
+            List<String> categoryStrings = categories.stream()
+                .map(c -> c.name())
+                .toList();
+            
+            model.addAttribute("userActivityLogs", userActivityLogs);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("totalPages", userActivityLogs.getTotalPages());
+            model.addAttribute("totalElements", userActivityLogs.getTotalElements());
+            model.addAttribute("numberOfElements", userActivityLogs.getNumberOfElements());
+            model.addAttribute("pageSize", size);
+            
+            // Filter values
+            model.addAttribute("selectedUserId", userId);
+            model.addAttribute("selectedAction", action);
+            model.addAttribute("selectedCategory", category);
+            model.addAttribute("fromDate", fromDate);
+            model.addAttribute("toDate", toDate);
+            
+            // Filter options
+            model.addAttribute("actions", actions);
+            model.addAttribute("categories", categoryStrings);
+            
+            // Add user info
+            model.addAttribute("username", currentUser.getUsername());
+            model.addAttribute("isAuthenticated", true);
+            model.addAttribute("userRole", currentUser.getRole().name());
+            model.addAttribute("user", currentUser);
+            
+            return "admin/user-activity-logs";
+            
+        } catch (Exception e) {
+            log.error("Error loading admin user activity logs: {}", e.getMessage(), e);
+            model.addAttribute("error", "Có lỗi xảy ra khi tải dữ liệu user activity logs");
+            return "admin/user-activity-logs";
         }
     }
 }
