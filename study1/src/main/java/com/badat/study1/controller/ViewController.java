@@ -10,6 +10,7 @@ import com.badat.study1.model.Review;
 import com.badat.study1.model.ApiCallLog;
 import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.repository.AuditLogRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
