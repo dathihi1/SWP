@@ -942,12 +942,25 @@ public class ViewController {
         model.addAttribute("product", product);
         model.addAttribute("stall", stallOptional.get());
         
+        // Simple pagination validation - validate before creating PageRequest
+        int validatedPage = page;
+        if (page < 0) {
+            validatedPage = 0;
+        }
+        
         // Lấy lịch sử upload gần nhất cho sản phẩm này với pagination (5 bản ghi mỗi trang)
-        Pageable pageable = PageRequest.of(page, 5);
+        Pageable pageable = PageRequest.of(validatedPage, 5);
         Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
         
+        // Check if page exceeds total pages
+        if (validatedPage >= uploadHistoryPage.getTotalPages() && uploadHistoryPage.getTotalPages() > 0) {
+            validatedPage = uploadHistoryPage.getTotalPages() - 1;
+            pageable = PageRequest.of(validatedPage, 5);
+            uploadHistoryPage = uploadHistoryRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
+        }
+        
         model.addAttribute("recentUploads", uploadHistoryPage.getContent());
-        model.addAttribute("currentPage", page);
+        model.addAttribute("currentPage", validatedPage);
         model.addAttribute("totalPages", uploadHistoryPage.getTotalPages());
         model.addAttribute("totalElements", uploadHistoryPage.getTotalElements());
         model.addAttribute("hasNext", uploadHistoryPage.hasNext());
@@ -989,8 +1002,14 @@ public class ViewController {
         var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         
+        // Simple pagination validation - validate before creating PageRequest
+        int validatedPage = page;
+        if (page < 0) {
+            validatedPage = 0;
+        }
+        
         // Get order items for this seller with pagination (10 items per page)
-        Pageable pageable = PageRequest.of(page, 10);
+        Pageable pageable = PageRequest.of(validatedPage, 10);
         List<com.badat.study1.model.OrderItem> allOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
         
         // Apply filters
@@ -1008,6 +1027,15 @@ public class ViewController {
                 })
                 .collect(java.util.stream.Collectors.toList());
         
+        // Calculate total pages for validation
+        int totalPages = (filteredOrderItems.size() + pageable.getPageSize() - 1) / pageable.getPageSize();
+        
+        // Check if page exceeds total pages
+        if (validatedPage >= totalPages && totalPages > 0) {
+            validatedPage = totalPages - 1;
+            pageable = PageRequest.of(validatedPage, 10);
+        }
+        
         // Create pagination manually
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), filteredOrderItems.size());
@@ -1019,7 +1047,7 @@ public class ViewController {
             filteredOrderItems.size()
         );
         model.addAttribute("orders", orderItemsPage.getContent());
-        model.addAttribute("currentPage", page);
+        model.addAttribute("currentPage", validatedPage);
         model.addAttribute("totalPages", orderItemsPage.getTotalPages());
         model.addAttribute("totalElements", orderItemsPage.getTotalElements());
         model.addAttribute("hasNext", orderItemsPage.hasNext());

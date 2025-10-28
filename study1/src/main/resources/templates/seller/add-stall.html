@@ -733,6 +733,14 @@
                 return;
             }
 
+            // Validate that image has been cropped
+            if (!croppedImageData) {
+                e.preventDefault();
+                alert('Bạn phải cắt ảnh trước khi tạo gian hàng!');
+                document.getElementById('stallImageFile').focus();
+                return;
+            }
+
             // Handle cropped image data
             if (croppedImageData) {
                 // Create a new FormData object
@@ -749,6 +757,7 @@
                 
                 // Add cropped image as a file
                 formData.append('stallImageFile', croppedImageData, 'cropped-image.jpg');
+                formData.append('isCropped', 'true');
                 
                 // Prevent default form submission
                 e.preventDefault();

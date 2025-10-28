@@ -58,6 +58,7 @@ public class ShopController {
                           @RequestParam String detailedDescription,
                           @RequestParam(required = false) MultipartFile stallImageFile,
                           @RequestParam(required = false) Boolean uniqueProducts,
+                          @RequestParam(required = false) String isCropped,
                           RedirectAttributes redirectAttributes) {
         
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -76,6 +77,37 @@ public class ShopController {
         }
         
         
+        // Validate required text fields
+        if (stallName == null || stallName.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Tên gian hàng là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (businessType == null || businessType.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Loại hình kinh doanh là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (stallCategory == null || stallCategory.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Loại gian hàng là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (discount == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Chiết khấu cho sàn là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (shortDescription == null || shortDescription.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (detailedDescription == null || detailedDescription.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
         // Validate unique products checkbox
         if (uniqueProducts == null || !uniqueProducts) {
             redirectAttributes.addFlashAttribute("errorMessage", "Bạn phải đồng ý với cam kết 'Sản phẩm không trùng lặp' để tạo gian hàng!");
@@ -85,6 +117,12 @@ public class ShopController {
         // Validate stall image is required
         if (stallImageFile == null || stallImageFile.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Hình ảnh gian hàng là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        // Validate that image has been cropped
+        if (isCropped == null || !isCropped.equals("true")) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Bạn phải cắt ảnh trước khi tạo gian hàng!");
             return "redirect:/seller/add-stall";
         }
         
@@ -278,6 +316,17 @@ public class ShopController {
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
+        }
+        
+        // Validate required fields
+        if (productName == null || productName.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Tên mặt hàng là bắt buộc!");
+            return "redirect:/seller/product-management/" + stallId;
+        }
+        
+        if (productPrice == null || productPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Giá tiền phải lớn hơn 0!");
+            return "redirect:/seller/product-management/" + stallId;
         }
         
         try {
@@ -932,6 +981,17 @@ public class ShopController {
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
+        }
+        
+        // Validate required fields
+        if (productName == null || productName.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Tên mặt hàng là bắt buộc!");
+            return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
+        }
+        
+        if (productPrice == null || productPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Giá tiền phải lớn hơn 0!");
+            return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
         }
         
         try {

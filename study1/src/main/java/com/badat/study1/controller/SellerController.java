@@ -41,6 +41,7 @@ public class SellerController {
                                            @RequestParam("identity") String identity,
                                            @RequestParam("bankAccountNumber") String bankAccountNumber,
                                            @RequestParam("bankName") String bankName,
+                                           @RequestParam(value = "agree", required = false) String agree,
                                            Model model,
                                            RedirectAttributes redirectAttributes) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -57,6 +58,18 @@ public class SellerController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("userRole", user.getRole().name());
         model.addAttribute("walletBalance", walletRepository.findByUserId(user.getId()).map(w -> w.getBalance()).orElse(null));
+
+        // Server-side validation for checkbox agreement
+        if (agree == null || !agree.equals("on")) {
+            redirectAttributes.addFlashAttribute("submitError", "Bạn phải đồng ý với Điều khoản & Chính sách để tiếp tục.");
+            return "redirect:/seller/register";
+        }
+
+        // Server-side validation for shop name uniqueness
+        if (shopRepository.findByShopName(ownerName.trim()).isPresent()) {
+            redirectAttributes.addFlashAttribute("submitError", "Tên shop đã tồn tại. Vui lòng chọn tên khác.");
+            return "redirect:/seller/register";
+        }
 
         // If shop already exists, just show success info-like state
         if (shopRepository.findByUserId(user.getId()).isPresent()) {
