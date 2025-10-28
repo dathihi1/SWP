@@ -3,10 +3,12 @@ package com.badat.study1.controller;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Stall;
 import com.badat.study1.model.Order;
+import com.badat.study1.model.OrderItem;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.OrderRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.WithdrawRequestRepository;
 import com.badat.study1.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class AdminController {
     private final ShopRepository shopRepository;
     private final StallRepository stallRepository;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final WithdrawRequestRepository withdrawRequestRepository;
     private final AuditLogRepository auditLogRepository;
     
@@ -145,22 +148,29 @@ public class AdminController {
         // Calculate revenue for each seller
         List<Map<String, Object>> sellerRevenue = sellers.stream()
             .map(seller -> {
-                // Get all completed orders for this seller
-                List<Order> completedOrders = orderRepository.findBySellerIdOrderByCreatedAtDesc(seller.getId())
+                // Get all completed order items for this seller
+                List<OrderItem> completedOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(seller.getId())
                     .stream()
-                    .filter(order -> order.getStatus() == Order.Status.COMPLETED)
+                    .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.COMPLETED)
                     .collect(Collectors.toList());
                 
-                // Calculate total revenue
-                BigDecimal totalRevenue = completedOrders.stream()
-                    .map(order -> order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO)
+                // Calculate total revenue from order items
+                BigDecimal totalRevenue = completedOrderItems.stream()
+                    .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
                 
-                // Count total orders (all statuses)
-                long totalOrders = orderRepository.findBySellerIdOrderByCreatedAtDesc(seller.getId()).size();
+                // Count total orders (distinct order_id from order items)
+                long totalOrders = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(seller.getId())
+                    .stream()
+                    .map(OrderItem::getOrderId)
+                    .distinct()
+                    .count();
                 
-                // Count completed orders
-                long completedOrdersCount = completedOrders.size();
+                // Count completed orders (distinct order_id from completed order items)
+                long completedOrdersCount = completedOrderItems.stream()
+                    .map(OrderItem::getOrderId)
+                    .distinct()
+                    .count();
                 
                 // Get seller's shop info
                 var shop = shopRepository.findByUserId(seller.getId()).orElse(null);

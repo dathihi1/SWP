@@ -10,6 +10,7 @@ import com.badat.study1.repository.WithdrawRequestRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.service.WithdrawService;
 import com.badat.study1.service.OtpService;
+import com.badat.study1.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +33,7 @@ public class WithdrawController {
     
     private final WithdrawService withdrawService;
     private final OtpService otpService;
+    private final AuditLogService auditLogService;
     private final WalletRepository walletRepository;
     private final WithdrawRequestRepository withdrawRequestRepository;
     private final ShopRepository shopRepository;
@@ -99,9 +102,26 @@ public class WithdrawController {
     
     @PostMapping("/api/admin/withdraw/approve-simple/{requestId}")
     @ResponseBody
-    public ResponseEntity<?> approveWithdrawRequestSimple(@PathVariable Long requestId) {
+    public ResponseEntity<?> approveWithdrawRequestSimple(@PathVariable Long requestId, jakarta.servlet.http.HttpServletRequest request) {
         try {
+            // Get current admin user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            User adminUser = (User) authentication.getPrincipal();
+            
+            // Get withdraw request details for logging
+            WithdrawRequest withdrawRequest = withdrawRequestRepository.findById(requestId).orElse(null);
+            if (withdrawRequest == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Withdraw request not found");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
             withdrawService.approveWithdrawRequestSimple(requestId);
+            
+            // Log audit event
+            auditLogService.logWithdrawApproved(adminUser, requestId, withdrawRequest.getAmount(), 
+                request.getRequestURI(), request.getMethod());
+            
             Map<String, String> response = new HashMap<>();
             response.put("message", "Duyệt yêu cầu rút tiền thành công");
             return ResponseEntity.ok(response);
@@ -115,9 +135,28 @@ public class WithdrawController {
     
     @PostMapping("/api/admin/withdraw/reject-simple/{requestId}")
     @ResponseBody
-    public ResponseEntity<?> rejectWithdrawRequestSimple(@PathVariable Long requestId) {
+    public ResponseEntity<?> rejectWithdrawRequestSimple(@PathVariable Long requestId, 
+                                                        @RequestParam(required = false) String reason,
+                                                        jakarta.servlet.http.HttpServletRequest request) {
         try {
+            // Get current admin user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            User adminUser = (User) authentication.getPrincipal();
+            
+            // Get withdraw request details for logging
+            WithdrawRequest withdrawRequest = withdrawRequestRepository.findById(requestId).orElse(null);
+            if (withdrawRequest == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Withdraw request not found");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
             withdrawService.rejectWithdrawRequestSimple(requestId);
+            
+            // Log audit event
+            auditLogService.logWithdrawRejected(adminUser, requestId, withdrawRequest.getAmount(), 
+                reason, request.getRequestURI(), request.getMethod());
+            
             Map<String, String> response = new HashMap<>();
             response.put("message", "Từ chối yêu cầu rút tiền thành công");
             return ResponseEntity.ok(response);
@@ -187,7 +226,7 @@ public class WithdrawController {
     
     @PostMapping("/api/withdraw/request")
     @ResponseBody
-    public ResponseEntity<?> createWithdrawRequest(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> createWithdrawRequest(@RequestBody Map<String, Object> request, HttpServletRequest httpRequest) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             User user = (User) auth.getPrincipal();
@@ -199,7 +238,8 @@ public class WithdrawController {
             
             log.info("Verifying OTP for withdraw - email: {}, purpose: {}, otp: {}", email, purpose, otp);
             
-            boolean isValid = otpService.verifyOtp(email, otp, purpose);
+            String ipAddress = getClientIpAddress(httpRequest);
+            boolean isValid = otpService.verifyOtp(email, otp, purpose, ipAddress);
             
             if (!isValid) {
                 log.warn("OTP verification failed for email: {}, purpose: {}", email, purpose);
@@ -271,9 +311,26 @@ public class WithdrawController {
     
     @PostMapping("/api/admin/withdraw/approve/{requestId}")
     @ResponseBody
-    public ResponseEntity<?> approveWithdrawRequest(@PathVariable Long requestId) {
+    public ResponseEntity<?> approveWithdrawRequest(@PathVariable Long requestId, jakarta.servlet.http.HttpServletRequest request) {
         try {
+            // Get current admin user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            User adminUser = (User) authentication.getPrincipal();
+            
+            // Get withdraw request details for logging
+            WithdrawRequest withdrawRequest = withdrawRequestRepository.findById(requestId).orElse(null);
+            if (withdrawRequest == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Withdraw request not found");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
             withdrawService.approveWithdrawRequest(requestId);
+            
+            // Log audit event
+            auditLogService.logWithdrawApproved(adminUser, requestId, withdrawRequest.getAmount(), 
+                request.getRequestURI(), request.getMethod());
+            
             Map<String, String> response = new HashMap<>();
             response.put("message", "Duyệt yêu cầu rút tiền thành công");
             return ResponseEntity.ok(response);
@@ -287,9 +344,28 @@ public class WithdrawController {
     
     @PostMapping("/api/admin/withdraw/reject/{requestId}")
     @ResponseBody
-    public ResponseEntity<?> rejectWithdrawRequest(@PathVariable Long requestId) {
+    public ResponseEntity<?> rejectWithdrawRequest(@PathVariable Long requestId, 
+                                                  @RequestParam(required = false) String reason,
+                                                  jakarta.servlet.http.HttpServletRequest request) {
         try {
+            // Get current admin user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            User adminUser = (User) authentication.getPrincipal();
+            
+            // Get withdraw request details for logging
+            WithdrawRequest withdrawRequest = withdrawRequestRepository.findById(requestId).orElse(null);
+            if (withdrawRequest == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Withdraw request not found");
+                return ResponseEntity.badRequest().body(error);
+            }
+            
             withdrawService.rejectWithdrawRequest(requestId);
+            
+            // Log audit event
+            auditLogService.logWithdrawRejected(adminUser, requestId, withdrawRequest.getAmount(), 
+                reason, request.getRequestURI(), request.getMethod());
+            
             Map<String, String> response = new HashMap<>();
             response.put("message", "Từ chối yêu cầu rút tiền thành công");
             return ResponseEntity.ok(response);
@@ -329,6 +405,15 @@ public class WithdrawController {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
+        }
+    }
+    
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
+        if (xForwardedForHeader == null) {
+            return request.getRemoteAddr();
+        } else {
+            return xForwardedForHeader.split(",")[0];
         }
     }
     

@@ -1,7 +1,7 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
-import com.badat.study1.service.AuditLogService;
+import com.badat.study1.service.UserActivityLogService;
 import com.badat.study1.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import java.util.Map;
 public class AvatarController {
     
     private final UserService userService;
-    private final AuditLogService auditLogService;
+    private final UserActivityLogService userActivityLogService;
     
     @PostMapping("/avatar")
     public ResponseEntity<?> uploadAvatar(@RequestParam("file") MultipartFile file,
@@ -40,6 +40,7 @@ public class AvatarController {
             
             User currentUser = (User) authentication.getPrincipal();
             String ipAddress = getClientIpAddress(request);
+            String userAgent = request.getHeader("User-Agent");
             
             log.info("Avatar upload request for user: {}, IP: {}", currentUser.getUsername(), ipAddress);
             
@@ -64,7 +65,7 @@ public class AvatarController {
             userService.uploadAvatar(currentUser.getId(), file);
             
             // Log the avatar upload
-            auditLogService.logProfileUpdate(currentUser, ipAddress, "Cập nhật avatar");
+            userActivityLogService.logProfileUpdate(currentUser, "Cập nhật avatar", ipAddress, userAgent, request.getRequestURI(), request.getMethod(), true, null);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -174,6 +175,7 @@ public class AvatarController {
             
             User currentUser = (User) authentication.getPrincipal();
             String ipAddress = getClientIpAddress(request);
+            String userAgent = request.getHeader("User-Agent");
             
             log.info("Avatar delete request for user: {}, IP: {}", currentUser.getUsername(), ipAddress);
             
@@ -181,7 +183,7 @@ public class AvatarController {
             userService.deleteAvatar(currentUser.getId());
             
             // Log the avatar deletion
-            auditLogService.logProfileUpdate(currentUser, ipAddress, "Xóa avatar");
+            userActivityLogService.logProfileUpdate(currentUser, "Xóa avatar", ipAddress, userAgent, request.getRequestURI(), request.getMethod(), true, null);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

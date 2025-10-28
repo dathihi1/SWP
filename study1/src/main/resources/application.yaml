@@ -5,7 +5,7 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: 123456789
+    password: root
     hikari:
       maximum-pool-size: 100
       minimum-idle: 20
@@ -43,6 +43,17 @@ spring:
         max-size: 100
         queue-capacity: 1000
       thread-name-prefix: "payment-"
+      # Async executors for logging
+      activity-log-executor:
+        core-size: 10
+        max-size: 50
+        queue-capacity: 1000
+        thread-name-prefix: "activity-log-"
+      api-log-executor:
+        core-size: 5
+        max-size: 20
+        queue-capacity: 500
+        thread-name-prefix: "api-log-"
   jpa:
     hibernate:
       ddl-auto: update
@@ -60,11 +71,6 @@ spring:
           starttls:
             enable: true
     default-encoding: UTF-8
-  web:
-    resources:
-      static-locations: classpath:/static/,classpath:/templates/
-      cache:
-        period: 0
   security:
     oauth2:
       client:
@@ -93,12 +99,15 @@ security:
     max-attempts-per-ip: 5      # NEW
     lockout-minutes: 15          # NEW
   rate-limit:
-    ip-max-attempts: 10
-    ip-lockout-minutes: 30
+    ip-max-attempts: 15  # Tăng từ 10 lên 15 cho forgot password
+    ip-lockout-minutes: 60  # Giữ nguyên 1 giờ
+    forgot-password-ip-max-attempts: 20  # Riêng cho forgot password
     captcha-required-attempts: 3
     email-max-requests-per-hour: 3
-    otp-max-attempts: 5
+    otp-max-attempts: 5  # Giữ nguyên cho register
+    forgot-password-otp-max-attempts: 10  # Nới lỏng cho forgot password
     otp-expire-minutes: 10
+    otp-lockout-minutes: 60  # Lockout 1 tiếng cho OTP
 
   
 
@@ -115,6 +124,8 @@ vnpay:
 logging:
   level:
     com.badat.study1: INFO
+    com.badat.study1.service.UserActivityLogService: INFO
+    com.badat.study1.service.ApiCallLogService: INFO
     org.springframework.web: WARN
     org.hibernate: WARN
 server:
