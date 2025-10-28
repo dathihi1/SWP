@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -30,19 +31,26 @@ public class AuditLogService {
     private final Logger fileLogger = LoggerFactory.getLogger("com.badat.study1.audit");
 
     @Async("auditExecutor")
-    public void logRoleChange(User adminUser, User targetUser, User.Role oldRole, User.Role newRole, String reason) {
+    public void logRoleChange(User adminUser, User targetUser, User.Role oldRole, User.Role newRole, String reason, String endpoint, String method) {
+        logRoleChange(adminUser, targetUser, oldRole, newRole, reason, endpoint, method, "127.0.0.1");
+    }
+    
+    @Async("auditExecutor")
+    public void logRoleChange(User adminUser, User targetUser, User.Role oldRole, User.Role newRole, String reason, String endpoint, String method, String ipAddress) {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(adminUser.getId())
                     .action("ROLE_CHANGE")
-                    .category(AuditLog.Category.SYSTEM_EVENT)
+                    .category(AuditLog.Category.ADMIN_ACTION)
                     .details(String.format("Admin %s đã thay đổi vai trò của user %s từ %s thành %s. Lý do: %s", 
                         adminUser.getUsername(), targetUser.getUsername(), oldRole.name(), newRole.name(), 
                         reason != null ? reason : "Không có lý do"))
-                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .ipAddress(ipAddress != null ? ipAddress : "127.0.0.1")
                     .success(true)
                     .failureReason(null)
                     .deviceInfo("Admin Panel")
+                    .endpoint(endpoint)
+                    .method(method)
                     .build();
             
             auditLogRepository.save(auditLog);
@@ -57,7 +65,12 @@ public class AuditLogService {
     }
 
     @Async("auditExecutor")
-    public void logUserEdit(User adminUser, User targetUser, Map<String, String> changes) {
+    public void logUserEdit(User adminUser, User targetUser, Map<String, String> changes, String endpoint, String method) {
+        logUserEdit(adminUser, targetUser, changes, endpoint, method, "127.0.0.1");
+    }
+    
+    @Async("auditExecutor")
+    public void logUserEdit(User adminUser, User targetUser, Map<String, String> changes, String endpoint, String method, String ipAddress) {
         try {
             StringBuilder details = new StringBuilder();
             details.append("Admin ").append(adminUser.getUsername())
@@ -82,10 +95,12 @@ public class AuditLogService {
                     .action("USER_EDIT")
                     .category(AuditLog.Category.ADMIN_ACTION)
                     .details(details.toString())
-                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .ipAddress(ipAddress != null ? ipAddress : "127.0.0.1")
                     .success(true)
                     .failureReason(null)
                     .deviceInfo("Admin Panel")
+                    .endpoint(endpoint)
+                    .method(method)
                     .build();
             
             auditLogRepository.save(auditLog);
@@ -100,7 +115,12 @@ public class AuditLogService {
     }
 
     @Async("auditExecutor")
-    public void logUserCreation(User adminUser, User newUser) {
+    public void logUserCreation(User adminUser, User newUser, String endpoint, String method) {
+        logUserCreation(adminUser, newUser, endpoint, method, "127.0.0.1");
+    }
+    
+    @Async("auditExecutor")
+    public void logUserCreation(User adminUser, User newUser, String endpoint, String method, String ipAddress) {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(adminUser.getId())
@@ -108,10 +128,12 @@ public class AuditLogService {
                     .category(AuditLog.Category.ADMIN_ACTION)
                     .details(String.format("Admin %s đã tạo tài khoản mới cho user %s (Email: %s)", 
                         adminUser.getUsername(), newUser.getUsername(), newUser.getEmail()))
-                    .ipAddress("127.0.0.1") // You might want to get real IP
+                    .ipAddress(ipAddress != null ? ipAddress : "127.0.0.1")
                     .success(true)
                     .failureReason(null)
                     .deviceInfo("Admin Panel")
+                    .endpoint(endpoint)
+                    .method(method)
                     .build();
             
             auditLogRepository.save(auditLog);
@@ -125,37 +147,9 @@ public class AuditLogService {
         }
     }
 
-    @Async("auditExecutor")
-    public void logLoginAttempt(User user, String ipAddress, boolean success, String failureReason, String deviceInfo) {
-        try {
-            AuditLog auditLog = AuditLog.builder()
-                    .userId(user != null ? user.getId() : null)
-                    .action("LOGIN")
-                    .category(AuditLog.Category.USER_ACTION)
-                    .details(success ? 
-                        "User đăng nhập thành công từ IP: " + ipAddress + 
-                        (deviceInfo != null ? " với thiết bị: " + deviceInfo : "") :
-                        "User đăng nhập thất bại từ IP: " + ipAddress + 
-                        (failureReason != null ? " - Lý do: " + failureReason : "") +
-                        (deviceInfo != null ? " với thiết bị: " + deviceInfo : ""))
-                    .ipAddress(ipAddress)
-                    .success(success)
-                    .failureReason(failureReason)
-                    .deviceInfo(deviceInfo != null && !deviceInfo.isBlank() ? deviceInfo : "Unknown Device")
-                    .build();
-            
-            auditLogRepository.save(auditLog);
-            fileLogger.info("LOGIN userId={} ip={} success={} ua=\"{}\" reason={}",
-                    user != null ? user.getId() : null, ipAddress, success, deviceInfo, failureReason);
-            log.info("Audit log created for login attempt: user={}, ip={}, success={}, device={}", 
-                    user != null ? user.getUsername() : "unknown", ipAddress, success, deviceInfo);
-        } catch (Exception e) {
-            log.error("Failed to create audit log: {}", e.getMessage());
-        }
-    }
 
     @Async("auditExecutor")
-    public void logAccountLocked(User user, String ipAddress, String reason) {
+    public void logAccountLocked(User user, String ipAddress, String reason, String endpoint, String method) {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(user.getId())
@@ -163,8 +157,10 @@ public class AuditLogService {
                     .category(AuditLog.Category.SECURITY_EVENT)
                     .details("SECURITY EVENT: Tài khoản " + user.getUsername() + " bị khóa từ IP: " + ipAddress + " - Lý do: " + reason)
                     .ipAddress(ipAddress)
-                    .success(false)
-                    .failureReason(reason)
+                    .success(true)  // Lock action is successful
+                    .failureReason(null)  // No failure since lock succeeded
+                    .endpoint(endpoint)
+                    .method(method)
                     .build();
             
             auditLogRepository.save(auditLog);
@@ -177,7 +173,7 @@ public class AuditLogService {
     }
 
     @Async("auditExecutor")
-    public void logAccountUnlocked(User user, String ipAddress) {
+    public void logAccountUnlocked(User user, String ipAddress, String endpoint, String method) {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(user.getId())
@@ -186,6 +182,8 @@ public class AuditLogService {
                     .details("SECURITY EVENT: Tài khoản " + user.getUsername() + " được mở khóa từ IP: " + ipAddress)
                     .ipAddress(ipAddress)
                     .success(true)
+                    .endpoint(endpoint)
+                    .method(method)
                     .build();
             
             auditLogRepository.save(auditLog);
@@ -196,55 +194,9 @@ public class AuditLogService {
         }
     }
     
-    @Async("auditExecutor")
-    public void logProfileUpdate(User user, String ipAddress, String details) {
-        try {
-            AuditLog auditLog = AuditLog.builder()
-                    .userId(user.getId())
-                    .action("PROFILE_UPDATE")
-                    .category(AuditLog.Category.USER_ACTION)
-                    .details("USER ACTION: " + user.getUsername() + " cập nhật thông tin cá nhân từ IP: " + ipAddress + " - Chi tiết: " + details)
-                    .ipAddress(ipAddress)
-                    .success(true)
-                    .deviceInfo("Unknown Device")
-                    .build();
-            
-            auditLogRepository.save(auditLog);
-            fileLogger.info("PROFILE_UPDATE userId={} ip={} details=\"{}\"", user.getId(), ipAddress, details);
-            log.info("Audit log created for profile update: user={}, ip={}", user.getUsername(), ipAddress);
-        } catch (Exception e) {
-            log.error("Failed to create audit log for profile update: {}", e.getMessage());
-        }
-    }
-    
-    @Async("auditExecutor")
-    public void logLogout(User user, String ipAddress) {
-        try {
-            AuditLog auditLog = AuditLog.builder()
-                    .userId(user.getId())
-                    .action("LOGOUT")
-                    .category(AuditLog.Category.USER_ACTION)
-                    .details("USER ACTION: " + user.getUsername() + " đăng xuất thành công từ IP: " + ipAddress)
-                    .ipAddress(ipAddress)
-                    .success(true)
-                    .deviceInfo("Unknown Device")
-                    .build();
-            
-            auditLogRepository.save(auditLog);
-            log.info("Audit log created for logout: user={}, ip={}", user.getUsername(), ipAddress);
-            fileLogger.info("LOGOUT userId={} ip={} ua=\"{}\"", user.getId(), ipAddress, "Unknown Device");
-        } catch (Exception e) {
-            log.error("Failed to create audit log for logout: {}", e.getMessage());
-        }
-    }
 
     @Async("auditExecutor")
-    public void logAction(User user, String action, String details, String ipAddress, boolean success, String failureReason, String deviceInfo) {
-        logAction(user, action, details, ipAddress, success, failureReason, deviceInfo, AuditLog.Category.USER_ACTION);
-    }
-    
-    @Async("auditExecutor")
-    public void logAction(User user, String action, String details, String ipAddress, boolean success, String failureReason, String deviceInfo, AuditLog.Category category) {
+    public void logAction(User user, String action, String details, String ipAddress, boolean success, String failureReason, String deviceInfo, String endpoint, String method, AuditLog.Category category) {
         try {
             AuditLog auditLog = AuditLog.builder()
                     .userId(user != null ? user.getId() : null)
@@ -255,11 +207,13 @@ public class AuditLogService {
                     .success(success)
                     .failureReason(failureReason)
                     .deviceInfo(deviceInfo != null && !deviceInfo.isBlank() ? deviceInfo : "Unknown Device")
+                    .endpoint(endpoint)
+                    .method(method)
                     .build();
 
             auditLogRepository.save(auditLog);
-            fileLogger.info("{} userId={} ip={} success={} details=\"{}\" reason={} ua=\"{}\" category={}",
-                    action, auditLog.getUserId(), ipAddress, success, details, failureReason, auditLog.getDeviceInfo(), category);
+            fileLogger.info("{} userId={} ip={} success={} details=\"{}\" reason={} ua=\"{}\" category={} endpoint={} method={}",
+                    action, auditLog.getUserId(), ipAddress, success, details, failureReason, auditLog.getDeviceInfo(), category, endpoint, method);
         } catch (Exception e) {
             log.error("Failed to create generic audit log: {}", e.getMessage());
         }
@@ -437,29 +391,160 @@ public class AuditLogService {
             return List.of();
         }
     }
-    
+
     @Async("auditExecutor")
-    public void logPasswordChange(User user, String ipAddress, String details) {
+    public void logWithdrawApproved(User admin, Long withdrawId, BigDecimal amount, String endpoint, String method) {
         try {
             AuditLog auditLog = AuditLog.builder()
-                    .userId(user.getId())
-                    .action("PASSWORD_CHANGE")
-                    .category(AuditLog.Category.USER_ACTION)
-                    .details(details)
+                    .userId(admin.getId())
+                    .action("WITHDRAW_APPROVED")
+                    .category(AuditLog.Category.ADMIN_ACTION)
+                    .details(String.format("Admin %s đã duyệt yêu cầu rút tiền ID %d với số tiền %s", 
+                        admin.getUsername(), withdrawId, amount.toString()))
+                    .ipAddress("127.0.0.1")
+                    .success(true)
+                    .failureReason(null)
+                    .deviceInfo("Admin Panel")
+                    .endpoint(endpoint)
+                    .method(method)
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            fileLogger.info("WITHDRAW_APPROVED userId={} withdrawId={} amount={} endpoint={} method={}", 
+                admin.getId(), withdrawId, amount, endpoint, method);
+            
+        } catch (Exception e) {
+            log.error("Error logging withdraw approval for admin {}: {}", admin.getUsername(), e.getMessage());
+        }
+    }
+
+    @Async("auditExecutor")
+    public void logWithdrawRejected(User admin, Long withdrawId, BigDecimal amount, String reason, String endpoint, String method) {
+        try {
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(admin.getId())
+                    .action("WITHDRAW_REJECTED")
+                    .category(AuditLog.Category.ADMIN_ACTION)
+                    .details(String.format("Admin %s đã từ chối yêu cầu rút tiền ID %d với số tiền %s. Lý do: %s", 
+                        admin.getUsername(), withdrawId, amount.toString(), reason != null ? reason : "Không có lý do"))
+                    .ipAddress("127.0.0.1")
+                    .success(true)
+                    .failureReason(null)
+                    .deviceInfo("Admin Panel")
+                    .endpoint(endpoint)
+                    .method(method)
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            fileLogger.info("WITHDRAW_REJECTED userId={} withdrawId={} amount={} reason=\"{}\" endpoint={} method={}", 
+                admin.getId(), withdrawId, amount, reason, endpoint, method);
+            
+        } catch (Exception e) {
+            log.error("Error logging withdraw rejection for admin {}: {}", admin.getUsername(), e.getMessage());
+        }
+    }
+
+    @Async("auditExecutor")
+    public void logOrderApproved(User admin, Long orderId, String orderCode, String endpoint, String method) {
+        try {
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(admin.getId())
+                    .action("ORDER_APPROVED")
+                    .category(AuditLog.Category.ADMIN_ACTION)
+                    .details(String.format("Admin %s đã duyệt đơn hàng ID %d với mã đơn hàng %s", 
+                        admin.getUsername(), orderId, orderCode))
+                    .ipAddress("127.0.0.1")
+                    .success(true)
+                    .failureReason(null)
+                    .deviceInfo("Admin Panel")
+                    .endpoint(endpoint)
+                    .method(method)
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            fileLogger.info("ORDER_APPROVED userId={} orderId={} orderCode={} endpoint={} method={}", 
+                admin.getId(), orderId, orderCode, endpoint, method);
+            
+        } catch (Exception e) {
+            log.error("Error logging order approval for admin {}: {}", admin.getUsername(), e.getMessage());
+        }
+    }
+
+    @Async("auditExecutor")
+    public void logOrderRejected(User admin, Long orderId, String orderCode, String reason, String endpoint, String method) {
+        try {
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(admin.getId())
+                    .action("ORDER_REJECTED")
+                    .category(AuditLog.Category.ADMIN_ACTION)
+                    .details(String.format("Admin %s đã từ chối đơn hàng ID %d với mã đơn hàng %s. Lý do: %s", 
+                        admin.getUsername(), orderId, orderCode, reason != null ? reason : "Không có lý do"))
+                    .ipAddress("127.0.0.1")
+                    .success(true)
+                    .failureReason(null)
+                    .deviceInfo("Admin Panel")
+                    .endpoint(endpoint)
+                    .method(method)
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            fileLogger.info("ORDER_REJECTED userId={} orderId={} orderCode={} reason=\"{}\" endpoint={} method={}", 
+                admin.getId(), orderId, orderCode, reason, endpoint, method);
+            
+        } catch (Exception e) {
+            log.error("Error logging order rejection for admin {}: {}", admin.getUsername(), e.getMessage());
+        }
+    }
+
+    @Async("auditExecutor")
+    public void logFailedLoginAttempt(String username, String ipAddress, String reason, String endpoint, String method) {
+        try {
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(null) // No user ID for failed attempts on non-existent users
+                    .action("FAILED_LOGIN_ATTEMPT")
+                    .category(AuditLog.Category.SECURITY_EVENT)
+                    .details(String.format("Cố gắng đăng nhập thất bại cho username '%s'. Lý do: %s", 
+                        username, reason != null ? reason : "Mật khẩu không đúng"))
+                    .ipAddress(ipAddress)
+                    .success(false)
+                    .failureReason(reason)
+                    .deviceInfo("Unknown Device")
+                    .endpoint(endpoint)
+                    .method(method)
+                    .build();
+            
+            auditLogRepository.save(auditLog);
+            fileLogger.info("FAILED_LOGIN_ATTEMPT username=\"{}\" ip={} reason=\"{}\" endpoint={} method={}", 
+                username, ipAddress, reason, endpoint, method);
+            
+        } catch (Exception e) {
+            log.error("Error logging failed login attempt for username {}: {}", username, e.getMessage());
+        }
+    }
+
+    @Async("auditExecutor")
+    public void logPasswordResetRequested(String email, String ipAddress, String endpoint, String method) {
+        try {
+            AuditLog auditLog = AuditLog.builder()
+                    .userId(null) // No user ID for password reset requests
+                    .action("PASSWORD_RESET_REQUESTED")
+                    .category(AuditLog.Category.SECURITY_EVENT)
+                    .details(String.format("Yêu cầu khôi phục mật khẩu cho email '%s'", email))
                     .ipAddress(ipAddress)
                     .success(true)
                     .failureReason(null)
-                    .deviceInfo("Web Browser")
+                    .deviceInfo("Unknown Device")
+                    .endpoint(endpoint)
+                    .method(method)
                     .build();
-
+            
             auditLogRepository.save(auditLog);
-
-            // Log to file
-            fileLogger.info("PASSWORD_CHANGE: User {} changed password successfully. IP: {}", 
-                user.getUsername(), ipAddress);
-
+            fileLogger.info("PASSWORD_RESET_REQUESTED email=\"{}\" ip={} endpoint={} method={}", 
+                email, ipAddress, endpoint, method);
+            
         } catch (Exception e) {
-            log.error("Error logging password change: {}", e.getMessage(), e);
+            log.error("Error logging password reset request for email {}: {}", email, e.getMessage());
         }
     }
+    
 }

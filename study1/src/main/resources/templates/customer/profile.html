@@ -190,9 +190,9 @@
         </button>
         <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
             <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
-                <form role="search">
+                <form role="search" th:action="@{/products}" method="get">
                     <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
+                        <input type="text" class="form-control" name="q" placeholder="Tìm kiếm tên gian hàng...">
                         <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
                     </div>
                 </form>
@@ -425,8 +425,11 @@
                             
                             <!-- Chi tiết -->
                             <div class="col-4">
-                                <span class="text-muted small" th:text="${activity.details}">Chi tiết</span>
-                                <div th:if="${!activity.success}" class="mt-1">
+                                <span class="text-muted small">
+                                    <span th:if="${activity.success}" class="text-success">Thành công</span>
+                                    <span th:unless="${activity.success}" class="text-danger">Thất bại</span>
+                                </span>
+                                <div th:if="${!activity.success and activity.failureReason}" class="mt-1">
                                     <span class="badge bg-danger" style="font-size: 0.7rem;" th:text="${activity.failureReason}">Lỗi</span>
                                 </div>
                             </div>

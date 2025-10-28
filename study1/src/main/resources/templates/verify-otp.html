@@ -172,6 +172,9 @@
                     }
                 });
             }
+            
+            // Check lockout status
+            checkLockoutStatus();
         });
     </script>
 </head>
@@ -188,9 +191,9 @@
         </button>
         <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
             <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
-                <form role="search">
+                <form role="search" th:action="@{/products}" method="get">
                     <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Tìm kiếm...">
+                        <input type="text" class="form-control" name="q" placeholder="Tìm kiếm tên gian hàng...">
                         <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
                     </div>
                 </form>
@@ -239,6 +242,17 @@
                 <span id="successMessage"></span>
             </div>
             
+            <div id="lockoutAlert" class="alert alert-danger d-none" role="alert" style="border-left: 4px solid #dc3545;">
+                <div class="d-flex align-items-start">
+                    <i class="fa-solid fa-lock fa-2x me-3 text-danger"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="alert-heading mb-2"><strong>Tài khoản tạm thời bị khóa</strong></h6>
+                        <p class="mb-2">Bạn đã nhập sai mã OTP quá 5 lần.</p>
+                        <p class="mb-0">Vui lòng thử lại sau: <strong id="lockoutTimer" class="text-danger fs-5">--:--</strong></p>
+                    </div>
+                </div>
+            </div>
+            
             <form id="otpForm">
                 <p class="text-muted">Mã OTP đang được gửi tới email: <strong id="emailText"></strong></p>
                 <div class="alert alert-info" role="alert">
@@ -247,13 +261,13 @@
                 </div>
                 <div class="alert alert-warning" role="alert">
                     <i class="fa-solid fa-exclamation-triangle me-2"></i>
-                    <strong>Cảnh báo:</strong> Bạn chỉ có thể nhập sai OTP tối đa 5 lần. Sau đó email sẽ bị khóa trong 15 phút.
+                    <strong>Cảnh báo:</strong> Bạn chỉ có thể nhập sai OTP tối đa 5 lần. Sau đó email sẽ bị khóa trong 1 giờ.
                 </div>
                 <input type="hidden" id="emailHidden">
                 <div class="mb-3">
                     <label class="form-label">Email</label>
-                    <input type="text" class="form-control" id="emailVisible" readonly>
-                    <div class="form-text">Email dùng để nhận OTP</div>
+                    <input type="text" class="form-control" id="emailVisible" readonly style="background-color: #f8f9fa; cursor: not-allowed;">
+                    <div class="form-text">Email dùng để nhận OTP (không thể thay đổi)</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Mã OTP</label>
@@ -299,6 +313,69 @@ document.getElementById('otp').addEventListener('input', function(e) {
         }, 500);
     }
 });
+
+// Function check lockout khi load page
+async function checkLockoutStatus() {
+    try {
+        const email = document.getElementById('emailHidden').value.trim();
+        if (!email) return;
+        
+        // Get type from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get('type') || 'register';
+        const purpose = type === 'forgot_password' ? 'forgot_password' : 'register';
+        
+        const response = await fetch('/api/auth/check-otp-lockout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, purpose })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.locked) {
+                showLockout(data.remainingSeconds);
+                disableOtpForm();
+            }
+        }
+    } catch (error) {
+        console.error('Error checking lockout:', error);
+    }
+}
+
+// Function hiển thị lockout với countdown
+function showLockout(remainingSeconds) {
+    const lockoutAlert = document.getElementById('lockoutAlert');
+    const timer = document.getElementById('lockoutTimer');
+    const otpForm = document.getElementById('otpForm');
+    
+    lockoutAlert.classList.remove('d-none');
+    otpForm.classList.add('d-none'); // Ẩn form OTP
+    
+    let remaining = Math.max(0, remainingSeconds);
+    
+    const updateTimer = () => {
+        if (remaining <= 0) {
+            // Reload page khi hết thời gian
+            location.reload();
+            return;
+        }
+        
+        const minutes = Math.floor(remaining / 60);
+        const seconds = remaining % 60;
+        timer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        remaining--;
+    };
+    
+    updateTimer(); // Gọi ngay lần đầu
+    const interval = setInterval(updateTimer, 1000);
+}
+
+function disableOtpForm() {
+    document.getElementById('otp').disabled = true;
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+}
 </script>
 <script>
 document.getElementById('otpForm').addEventListener('submit', async function (event) {
@@ -315,6 +392,19 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
     alertBox.classList.add('d-none');
     successAlert.classList.add('d-none');
     
+    // Validate email input
+    if (!email) {
+        showError('Email không được để trống');
+        return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showError('Email không hợp lệ');
+        return;
+    }
+    
     // Validate OTP input
     if (!otp) {
         showError('Vui lòng nhập mã OTP');
@@ -326,12 +416,25 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
         return;
     }
     
+    // Validate OTP contains only numbers
+    if (!/^\d{6}$/.test(otp)) {
+        showError('Mã OTP chỉ được chứa số');
+        return;
+    }
+    
     // Disable submit button to prevent multiple submissions
     submitButton.disabled = true;
     submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang xác minh...';
 
     try {
-        const res = await fetch('/api/auth/verify-register-otp', {
+        // Get type from URL to determine endpoint
+        const urlParams = new URLSearchParams(window.location.search);
+        const type = urlParams.get('type') || 'register';
+        const endpoint = type === 'forgot_password' 
+            ? '/api/auth/verify-forgot-password-otp'
+            : '/api/auth/verify-register-otp';
+            
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, otp })
@@ -343,15 +446,32 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
             if (ct.includes('application/json')) {
                 result = await res.json();
             }
-            showSuccess('Đăng ký thành công! Đang chuyển hướng...');
+            // Update success message based on type
+            const successMessage = type === 'forgot_password' 
+                ? 'Mã OTP hợp lệ! Đang chuyển hướng...'
+                : 'Đăng ký thành công! Đang chuyển hướng...';
+            showSuccess(successMessage);
             setTimeout(() => {
-                // Chuyển sang trang login
+                // Redirect based on result
                 if (result && result.data && result.data.nextUrl) {
                     window.location.href = result.data.nextUrl;
                 } else {
-                    window.location.href = '/login';
+                    window.location.href = type === 'forgot_password' ? '/login' : '/login';
                 }
             }, 2000);
+        } else if (res.status === 429) {
+            // Lockout response
+            try {
+                const errorData = await res.json();
+                if (errorData.locked) {
+                    showLockout(60 * 60); // Default 1 hour if no remainingSeconds
+                    showError('Bạn đã nhập sai OTP quá 5 lần. Tài khoản đã bị khóa trong 1 tiếng.');
+                } else {
+                    showError(errorData.error || 'Quá nhiều yêu cầu');
+                }
+            } catch (_) {
+                showError('Bạn đã nhập sai OTP quá 5 lần. Vui lòng thử lại sau 1 tiếng.');
+            }
         } else {
             let errorMessage = 'Sai OTP, vui lòng thử lại';
             try {
@@ -364,9 +484,10 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
                 }
             } catch (_) {}
             
-            // Check if it's an attempt limit error
-            if (errorMessage.includes('vượt quá số lần thử') || errorMessage.includes('5 lần')) {
-                errorMessage = 'Bạn đã nhập sai OTP quá 5 lần. Email này đã bị khóa trong 15 phút. Vui lòng thử lại sau.';
+            // UPDATE: Thêm check cho lockout message
+            if (errorMessage.includes('nhập sai OTP quá 5 lần') || errorMessage.includes('5 lần')) {
+                // Check remaining time qua API
+                await checkLockoutStatus();
             }
             
             showError(errorMessage);
@@ -395,6 +516,34 @@ document.getElementById('otpForm').addEventListener('submit', async function (ev
         successAlert.classList.remove('d-none');
         alertBox.classList.add('d-none');
     }
+});
+
+// Call checkLockoutStatus khi page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Get email and type from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const email = urlParams.get('email');
+    const type = urlParams.get('type') || 'register';
+    
+    if (email) {
+        document.getElementById('emailHidden').value = email;
+        document.getElementById('emailVisible').value = email;
+        document.getElementById('emailText').textContent = email;
+    }
+    
+    // Update UI based on type
+    if (type === 'forgot_password') {
+        document.querySelector('.verify-title').textContent = 'Xác thực OTP - Quên mật khẩu';
+        document.querySelector('.verify-brand p').textContent = 'Xác thực để đặt lại mật khẩu';
+        document.querySelector('.alert-warning').innerHTML = `
+            <i class="fa-solid fa-exclamation-triangle me-2"></i>
+            <strong>Cảnh báo:</strong> Bạn chỉ có thể nhập sai OTP tối đa 10 lần. 
+            Sau đó email sẽ bị khóa trong 1 giờ.
+        `;
+    }
+    
+    // Check lockout status
+    checkLockoutStatus();
 });
 </script>
 </body>

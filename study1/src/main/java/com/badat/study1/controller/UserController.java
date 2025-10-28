@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,12 +26,22 @@ public class UserController {
     }
 
     @PostMapping("/users/verify")
-    public ResponseEntity<String> verifyUser(@RequestBody VerifyRequest request) {
+    public ResponseEntity<String> verifyUser(@RequestBody VerifyRequest request, HttpServletRequest httpRequest) {
         try {
-            userService.verify(request.getEmail(), request.getOtp());
+            String ipAddress = getClientIpAddress(httpRequest);
+            userService.verify(request.getEmail(), request.getOtp(), ipAddress);
             return ResponseEntity.ok("User verified successfully.");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
+        if (xForwardedForHeader == null) {
+            return request.getRemoteAddr();
+        } else {
+            return xForwardedForHeader.split(",")[0];
         }
     }
 }

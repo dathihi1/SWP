@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.redis.core.RedisTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.TimeUnit;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,17 +58,26 @@ public class UserService {
 
     @Transactional
     public void register(UserCreateRequest request) {
-        // Check if user already exists
+        // Check duplicate EMAIL - THROW EXCEPTION
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("User with this email already exists");
+            log.warn("Registration attempt with existing email: {}", request.getEmail());
+            throw new RuntimeException("EMAIL_EXISTS"); // Specific error code
         }
+        
+        // Check duplicate USERNAME - THROW EXCEPTION  
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already taken");
+            log.warn("Registration attempt with existing username: {}", request.getUsername());
+            throw new RuntimeException("USERNAME_EXISTS"); // Specific error code
         }
 
-        // Store pending registration data in Redis
+        // Store safe registration data in Redis (no password)
         String registrationKey = "pending_registration:" + request.getEmail();
-        redisTemplate.opsForValue().set(registrationKey, request, 10, java.util.concurrent.TimeUnit.MINUTES);
+        Map<String, Object> safeData = Map.of(
+            "email", request.getEmail(),
+            "username", request.getUsername(),
+            "passwordHash", passwordEncoder.encode(request.getPassword())
+        );
+        redisTemplate.opsForValue().set(registrationKey, safeData, 10, TimeUnit.MINUTES);
         
         // Use OtpService to send OTP with rate limiting
         otpService.sendOtp(request.getEmail(), "register");
@@ -75,11 +85,12 @@ public class UserService {
         log.info("Registration OTP queued for email: {}", request.getEmail());
     }
     
-    public void verify(String email, String otp) {
-        // Use OtpService to verify OTP with attempt tracking
-        boolean isValid = otpService.verifyOtp(email, otp, "register");
+    @Transactional
+    public void verify(String email, String otp, String ipAddress) {
+        // Use OtpService to verify OTP với ipAddress
+        boolean isValid = otpService.verifyOtp(email, otp, "register", ipAddress);
         if (!isValid) {
-            throw new RuntimeException("Mã OTP không hợp lệ, đã hết hạn hoặc đã vượt quá số lần thử (5 lần)");
+            throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn");
         }
         
         // Get pending registration data from Redis
@@ -92,16 +103,31 @@ public class UserService {
         log.info("Raw data type: {}", rawData.getClass().getName());
         log.info("Raw data content: {}", rawData);
         
-        UserCreateRequest request = convertToUserCreateRequest(rawData);
-        if (request == null) {
+        // Convert safe data
+        Map<String, Object> safeData = convertToSafeData(rawData);
+        if (safeData == null) {
             throw new RuntimeException("Dữ liệu đăng ký không hợp lệ");
+        }
+        
+        // SECURITY FIX: Verify that the email in the request matches the email used for OTP
+        if (!email.equals(safeData.get("email"))) {
+            log.error("Email tampering detected! OTP email: {}, Request email: {}", email, safeData.get("email"));
+            throw new RuntimeException("Email không khớp với email đã đăng ký");
+        }
+        
+        // Double-check that user doesn't already exist (race condition protection)
+        if (userRepository.findByEmail((String) safeData.get("email")).isPresent()) {
+            throw new RuntimeException("Tài khoản với email này đã tồn tại");
+        }
+        if (userRepository.findByUsername((String) safeData.get("username")).isPresent()) {
+            throw new RuntimeException("Tên đăng nhập đã được sử dụng");
         }
         
         // Create user with ACTIVE status
         User user = User.builder()
-                .email(request.getEmail())
-                .username(request.getUsername()) // Dùng username từ form
-                .password(passwordEncoder.encode(request.getPassword()))
+                .email((String) safeData.get("email"))
+                .username((String) safeData.get("username"))
+                .password((String) safeData.get("passwordHash")) // Use pre-hashed password
                 .role(User.Role.USER)
                 .status(User.Status.ACTIVE)
                 .provider("LOCAL") // Đánh dấu là đăng ký manual
@@ -132,6 +158,32 @@ public class UserService {
         redisTemplate.delete(registrationKey);
         
         log.info("User account activated for email: {}", email);
+    }
+    
+    public void forgotPassword(String email) {
+        // Check if user exists (but don't leak info)
+        if (userRepository.findByEmail(email).isPresent()) {
+            log.info("Password reset requested for existing email: {}", email);
+            // Send OTP for password reset
+            otpService.sendOtp(email, "forgot_password");
+        } else {
+            log.warn("Password reset requested for non-existing email: {}", email);
+            // Still proceed to prevent timing attacks
+        }
+    }
+    
+    private Map<String, Object> convertToSafeData(Object rawData) {
+        try {
+            if (rawData instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) rawData;
+                return map;
+            }
+            return null;
+        } catch (Exception e) {
+            log.error("Failed to convert safe data: {}", e.getMessage());
+            return null;
+        }
     }
     
     
@@ -275,15 +327,22 @@ public class UserService {
             throw new RuntimeException("Email không tồn tại trong hệ thống");
         }
         
+        User user = userOpt.get();
+        
+        // Check if user is registered via Google OAuth2
+        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+            throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
+        }
+        
         // Use OtpService to send OTP with rate limiting
         otpService.sendOtp(email, "forgot_password");
         
-        log.info("Forgot password OTP queued for email: {}", email);
+        log.info("Forgot password OTP queued for email: {} (provider: {})", email, user.getProvider());
     }
     
-    public void verifyForgotPasswordOtp(String email, String otp) {
+    public void verifyForgotPasswordOtp(String email, String otp, String ipAddress) {
         // Use OtpService to verify OTP with attempt tracking
-        boolean isValid = otpService.verifyOtp(email, otp, "forgot_password");
+        boolean isValid = otpService.verifyOtp(email, otp, "forgot_password", ipAddress);
         if (!isValid) {
             throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn");
         }
@@ -294,7 +353,14 @@ public class UserService {
             throw new RuntimeException("Email không tồn tại trong hệ thống");
         }
         
-        log.info("Forgot password OTP verified for email: {}", email);
+        User user = userOpt.get();
+        
+        // Double-check if user is registered via Google OAuth2
+        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+            throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
+        }
+        
+        log.info("Forgot password OTP verified for email: {} (provider: {})", email, user.getProvider());
     }
     
     public void resetPassword(String email, String resetToken, String newPassword) {
@@ -315,8 +381,14 @@ public class UserService {
             throw new RuntimeException("Email không tồn tại trong hệ thống");
         }
         
-        // Update password
         User user = userOpt.get();
+        
+        // Final check if user is registered via Google OAuth2
+        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+            throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
+        }
+        
+        // Update password
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         
@@ -324,6 +396,41 @@ public class UserService {
         otpService.invalidateResetToken(resetToken, email);
         
         log.info("Password reset successfully for email: {}", email);
+    }
+    
+    public void resetPasswordWithToken(String email, String resetToken, String newPassword) {
+        // Validate password strength
+        if (newPassword.length() < 6 || newPassword.length() > 100) {
+            throw new RuntimeException("Mật khẩu phải từ 6-100 ký tự");
+        }
+        
+        // Validate reset token
+        boolean isValidToken = otpService.validateResetToken(resetToken, email);
+        if (!isValidToken) {
+            throw new RuntimeException("Token không hợp lệ hoặc đã hết hạn");
+        }
+        
+        // Find user
+        Optional<User> userOpt = userRepository.findByEmailAndIsDeleteFalse(email);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("Email không tồn tại trong hệ thống");
+        }
+        
+        User user = userOpt.get();
+        
+        // Final check if user is registered via Google OAuth2
+        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+            throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
+        }
+        
+        // Reset password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        
+        // Invalidate reset token immediately (one-time use)
+        otpService.invalidateResetToken(resetToken, email);
+        
+        log.info("Password reset with token successfully for email: {} (provider: {})", email, user.getProvider());
     }
     
     // New method for updating profile with validation
@@ -368,9 +475,6 @@ public class UserService {
         }
     }
 
-    /**
-     * Gửi OTP email với file HTML đính kèm (async)
-     */
     @Async
     public void sendOTPWithHtmlAsync(String email, String otp, String purpose) {
         try {
@@ -445,6 +549,7 @@ public class UserService {
             sendOTPAsync(email, otp, purpose);
         }
     }
+
     
 
     // Avatar management methods

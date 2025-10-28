@@ -25,15 +25,13 @@ public class AuthenticationService {
     private final RedisTokenRepository redisTokenRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AuditLogService auditLogService;
     private final LoginAttemptService loginAttemptService;
 
     public LoginResponse login(LoginRequest request, String ipAddress, String deviceInfo){
-        // Find user by username
-        Optional<User> userOpt = userRepository.findByUsername(request.getUsername());
+        // Find user by username (only active, non-deleted users)
+        Optional<User> userOpt = userRepository.findByUsernameAndIsDeleteFalse(request.getUsername());
         if (userOpt.isEmpty()) {
-            // Log failed attempt for non-existent user
-            auditLogService.logLoginAttempt(null, ipAddress, false, "Tên đăng nhập không tồn tại", deviceInfo);
+            // Log failed attempt for non-existent user - this will be handled by UserActivityAspect
             throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
         }
         
@@ -41,12 +39,12 @@ public class AuthenticationService {
         
         // Check if account is locked
         if (loginAttemptService.isAccountLocked(user.getUsername())) {
-            auditLogService.logLoginAttempt(user, ipAddress, false, "Tài khoản đã bị khóa", deviceInfo);
+            // Log failed attempt - this will be handled by UserActivityAspect
             throw new RuntimeException("Tài khoản đã bị khóa do quá nhiều lần đăng nhập sai. Vui lòng thử lại sau 15 phút.");
         }
         
         if (user.getStatus() == User.Status.LOCKED) {
-            auditLogService.logLoginAttempt(user, ipAddress, false, "Tài khoản đã bị khóa", deviceInfo);
+            // Log failed attempt - this will be handled by UserActivityAspect
             throw new RuntimeException("Tài khoản đã bị khóa");
         }
         
@@ -54,13 +52,13 @@ public class AuthenticationService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             // Record failed attempt
             loginAttemptService.recordFailedLoginAttempt(user.getUsername(), ipAddress);
-            auditLogService.logLoginAttempt(user, ipAddress, false, "Mật khẩu không đúng", deviceInfo);
+            // Log failed attempt - this will be handled by UserActivityAspect
             throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
         }
         
         // Record successful login
         loginAttemptService.recordSuccessfulLogin(user.getUsername(), ipAddress);
-        auditLogService.logLoginAttempt(user, ipAddress, true, null, deviceInfo);
+        // Log successful login - this will be handled by UserActivityAspect
         
         // Generate tokens
         String accessToken = jwtService.generateAccessToken(user);
@@ -87,8 +85,8 @@ public class AuthenticationService {
         // Extract username from refresh token
         String username = jwtService.extractUsername(refreshToken);
         
-        // Find user by username
-        Optional<User> userOpt = userRepository.findByUsername(username);
+        // Find user by username (only active, non-deleted users)
+        Optional<User> userOpt = userRepository.findByUsernameAndIsDeleteFalse(username);
         if (userOpt.isEmpty()) {
             throw new RuntimeException("User không tồn tại");
         }
