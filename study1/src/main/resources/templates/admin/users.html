@@ -790,8 +790,8 @@
                 return;
             }
             
-            if (password.length < 6) {
-                alert('Mật khẩu phải có ít nhất 6 ký tự!');
+            if (password.length < 6 || password.length > 100) {
+                alert('Mật khẩu phải từ 6-100 ký tự!');
                 return;
             }
             

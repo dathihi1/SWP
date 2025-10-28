@@ -128,7 +128,10 @@ public class CaptchaService {
     
     // Validate simple captcha against stored answer
     public boolean validateSimpleCaptcha(String captchaId, String userInput) {
+        log.info("Validating simple captcha - ID: {}, User input: '{}'", captchaId, userInput);
+        
         if (captchaId == null || userInput == null) {
+            log.warn("Captcha validation failed - null input: captchaId={}, userInput={}", captchaId, userInput);
             return false;
         }
         
@@ -136,12 +139,15 @@ public class CaptchaService {
             String redisKey = CAPTCHA_PREFIX + "simple:" + captchaId;
             String storedAnswer = (String) redisTemplate.opsForValue().get(redisKey);
             
+            log.info("Captcha validation - Redis key: {}, Stored answer: '{}'", redisKey, storedAnswer);
+            
             if (storedAnswer == null) {
                 log.warn("Simple captcha not found or expired for ID: {}", captchaId);
                 return false;
             }
             
             boolean isValid = storedAnswer.equals(userInput.trim());
+            log.info("Captcha validation result: {} (stored: '{}' vs input: '{}')", isValid, storedAnswer, userInput.trim());
             
             if (isValid) {
                 // Remove captcha after successful validation

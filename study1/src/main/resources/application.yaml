@@ -99,12 +99,15 @@ security:
     max-attempts-per-ip: 5      # NEW
     lockout-minutes: 15          # NEW
   rate-limit:
-    ip-max-attempts: 10
-    ip-lockout-minutes: 30
+    ip-max-attempts: 15  # Tăng từ 10 lên 15 cho forgot password
+    ip-lockout-minutes: 60  # Giữ nguyên 1 giờ
+    forgot-password-ip-max-attempts: 20  # Riêng cho forgot password
     captcha-required-attempts: 3
     email-max-requests-per-hour: 3
-    otp-max-attempts: 5
+    otp-max-attempts: 5  # Giữ nguyên cho register
+    forgot-password-otp-max-attempts: 10  # Nới lỏng cho forgot password
     otp-expire-minutes: 10
+    otp-lockout-minutes: 60  # Lockout 1 tiếng cho OTP
 
   
 

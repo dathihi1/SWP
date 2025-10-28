@@ -30,9 +30,7 @@ public class UserCreateRequest {
     private String username;
     
     @NotBlank(message = "Mật khẩu không được để trống")
-    @Size(min = 8, max = 100, message = "Mật khẩu phải từ 8-100 ký tự")
-    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$", 
-             message = "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt")
+    @Size(min = 6, max = 100, message = "Mật khẩu phải từ 6-100 ký tự")
     private String password;
     
     // Captcha fields
