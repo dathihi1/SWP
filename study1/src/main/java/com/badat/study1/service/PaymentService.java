@@ -114,6 +114,24 @@ public class PaymentService {
             Wallet wallet = walletRepository.findByUserId(userId)
                     .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + userId));
             
+            // ANTI-SPAM: Check if this transaction has already been processed successfully
+            if (vnpTransactionNo != null && !vnpTransactionNo.trim().isEmpty()) {
+                boolean alreadyProcessed = walletHistoryService.existsByTransactionNoAndTypeAndStatus(
+                    vnpTransactionNo, WalletHistory.Type.DEPOSIT, WalletHistory.Status.SUCCESS);
+                if (alreadyProcessed) {
+                    System.out.println("Transaction already processed: " + vnpTransactionNo);
+                    return true; // Return true to avoid showing error to user
+                }
+            }
+            
+            // ANTI-SPAM: Check if this orderId has already been processed successfully
+            boolean orderAlreadyProcessed = walletHistoryService.existsByReferenceIdAndTypeAndStatus(
+                orderId, WalletHistory.Type.DEPOSIT, WalletHistory.Status.SUCCESS);
+            if (orderAlreadyProcessed) {
+                System.out.println("Order already processed: " + orderId);
+                return true; // Return true to avoid showing error to user
+            }
+            
             // Add amount to wallet balance
             BigDecimal currentBalance = wallet.getBalance();
             BigDecimal newBalance = currentBalance.add(BigDecimal.valueOf(amount));
