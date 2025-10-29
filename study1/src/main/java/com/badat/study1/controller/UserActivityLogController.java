@@ -33,7 +33,7 @@ public class UserActivityLogController {
     
     @GetMapping("/activity-history")
     public String getActivityHistory(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) Boolean success,
@@ -52,8 +52,11 @@ public class UserActivityLogController {
             User currentUser = (User) authentication.getPrincipal();
             log.info("Loading activity history for user: {}, page: {}", currentUser.getUsername(), page);
             
-            // Create pageable
-            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            // Validate and normalize pagination (1-based input -> 0-based Pageable)
+            int safeSize = com.badat.study1.util.PaginationValidator.validateSize(size);
+            int safePageOneBased = com.badat.study1.util.PaginationValidator.validateOneBasedPage(page);
+            int safePageIndex = com.badat.study1.util.PaginationValidator.toZeroBased(safePageOneBased);
+            Pageable pageable = PageRequest.of(safePageIndex, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
             
             // Parse dates
             LocalDate from = null;
@@ -74,6 +77,15 @@ public class UserActivityLogController {
             // Get user activities
             Page<UserActivityLog> activities = userActivityLogService.getUserActivities(
                 currentUser.getId(), normalizedAction, success, from, to, pageable);
+
+            // Clamp page if out of bounds, then re-query once with adjusted page
+            int totalPages = activities.getTotalPages();
+            int clampedIndex = com.badat.study1.util.PaginationValidator.validatePageAgainstTotal(safePageIndex, totalPages);
+            if (clampedIndex != safePageIndex) {
+                pageable = PageRequest.of(clampedIndex, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+                activities = userActivityLogService.getUserActivities(
+                    currentUser.getId(), normalizedAction, success, from, to, pageable);
+            }
             
             log.info("Found {} activities for user {} (total: {}, page: {})", 
                 activities.getNumberOfElements(), currentUser.getUsername(), 
@@ -97,7 +109,7 @@ public class UserActivityLogController {
             model.addAttribute("selectedSuccess", success);
             model.addAttribute("selectedFromDate", fromDate);
             model.addAttribute("selectedToDate", toDate);
-            model.addAttribute("selectedSize", size);
+            model.addAttribute("selectedSize", safeSize);
             
             // Add user info for navbar
             model.addAttribute("isAuthenticated", true);
@@ -135,6 +147,11 @@ public class UserActivityLogController {
             
         } catch (Exception e) {
             log.error("Error loading activity history: {}", e.getMessage(), e);
+            // Always provide a safe empty page to avoid template nulls
+            Pageable fallbackPageable = PageRequest.of(0, com.badat.study1.util.PaginationValidator.getDefaultSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+            Page<UserActivityLogResponse> emptyPage = new org.springframework.data.domain.PageImpl<>(java.util.List.of(), fallbackPageable, 0);
+            model.addAttribute("activities", emptyPage);
+            model.addAttribute("selectedSize", com.badat.study1.util.PaginationValidator.getDefaultSize());
             model.addAttribute("error", "Có lỗi xảy ra khi tải lịch sử hoạt động");
             return "customer/activity-history";
         }

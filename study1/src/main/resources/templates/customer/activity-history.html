@@ -9,13 +9,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
         .activity-card {
-            border: 1px solid #e9ecef;
-            border-radius: 0.75rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: box-shadow 0.2s;
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,.08);
+            transition: transform .2s, box-shadow .2s;
         }
         .activity-card:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(0,0,0,.12);
         }
         .activity-item {
             border-bottom: 1px solid #e9ecef;
@@ -118,74 +119,127 @@
             padding: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        
+        /* Removed sidebar styles */
+        
+        /* Enhanced box-shadow for cards */
+        .activity-card {
+            border: 1px solid #e9ecef;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .activity-card:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        /* Filter card with home.html styling */
+        .filter-card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,.08);
+            transition: transform .2s, box-shadow .2s;
+        }
+        .filter-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(0,0,0,.12);
+        }
+        
+        /* Dropdown styling */
+        .dropdown-menu {
+            z-index: 1050 !important;
+            box-shadow: 0 6px 20px rgba(0,0,0,.15) !important;
+            border: none !important;
+            border-radius: 0.75rem !important;
+        }
+        
+        /* Removed sidebar toggle styles */
+        
+        @media (max-width: 768px) {
+            .table-responsive {
+                font-size: 0.9rem;
+            }
+        }
     </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
-    <div class="container">
-        <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
-            <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
-            MMO Market
-        </a>
-        
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
-            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
-                <form role="search" th:action="@{/products}" method="get">
-                    <div class="input-group">
-                        <input type="text" class="form-control" name="q" placeholder="Tìm kiếm tên gian hàng...">
-                        <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+    <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/">
+                <i class="fa-solid fa-cart-shopping me-2 text-primary"></i>
+                MMO Market
+            </a>
+    
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
+                <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
+                    <form role="search" th:action="@{/products}" method="get">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="q" placeholder="Tìm kiếm tên gian hàng...">
+                            <button class="btn btn-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+                        </div>
+                    </form>
+                </div>
+    
+                <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
+                    <div th:if="${!isAuthenticated}" class="d-flex align-items-center gap-2">
+                        <a class="btn btn-outline-secondary d-flex align-items-center gap-2" th:href="@{/login}" href="/login">
+                            <i class="fa-regular fa-user"></i>
+                            <span>Đăng nhập</span>
+                        </a>
+                        <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span>Giỏ hàng</span>
+                        </a>
                     </div>
-                </form>
-            </div>
-            
-            <!-- Desktop navigation -->
-            <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
-                <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
-                    <!-- Current Balance (synced) -->
-                    <div class="btn btn-outline-success d-flex align-items-center gap-2">
-                        <i class="fa-solid fa-wallet"></i>
-                        <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
+    
+                    <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
+                        <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
+                            <i class="fa-solid fa-wallet"></i>
+                            <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
+                        </div>
+    
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <img th:src="@{/api/profile/avatar/me}" 
+                                     class="rounded-circle" 
+                                     style="width: 24px; height: 24px; object-fit: cover;"
+                                     alt="Avatar"
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                <i class="fa-solid fa-user" style="display: none;"></i>
+                                <span th:text="${username}">User</span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
+                                <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
+                                <li th:if="${userRole == 'ADMIN'}"><a class="dropdown-item" th:href="@{/admin}" href="/admin"><i class="fa-solid fa-cogs me-2"></i>Quản lý</a></li>
+                                <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                                <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
+                                <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
+                                <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                            </ul>
+                        </div>
+    
+                        <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
+                            <i class="fa-solid fa-message"></i>
+                            <span>Tin nhắn</span>
+                        </a>
+    
+                        <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span>Giỏ hàng</span>
+                        </a>
                     </div>
-                    
-                    <div class="dropdown">
-                        <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <img th:src="@{/api/profile/avatar/me}" 
-                                 class="rounded-circle" 
-                                 style="width: 24px; height: 24px; object-fit: cover;"
-                                 onerror="this.src='/images/default-avatar.svg';"
-                                 alt="Avatar">
-                            <span th:text="${username}">User</span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
-                            <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
-                            <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
-                            <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
-                        </ul>
-                    </div>
-
-                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
-                        <i class="fa-solid fa-message"></i>
-                        <span>Tin nhắn</span>
-                    </a>
-                    
-                    <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
-                        <i class="fa-solid fa-cart-shopping"></i>
-                        <span>Giỏ hàng</span>
-                    </a>
                 </div>
             </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
 <main class="container py-4 py-md-5">
     <!-- Header -->
@@ -194,7 +248,11 @@
             <h1 class="h4 mb-1">
                 <i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Lịch sử hoạt động
             </h1>
-            <p class="text-muted mb-0">Theo dõi các hoạt động đăng nhập và bảo mật của bạn</p>
+            <p class="text-muted mb-0">
+                <span th:if="${userRole == 'CUSTOMER'}">Theo dõi các hoạt động đăng nhập và bảo mật của bạn</span>
+                <span th:if="${userRole == 'SELLER'}">Theo dõi các hoạt động quản lý gian hàng và bảo mật của bạn</span>
+                <span th:if="${userRole == 'ADMIN'}">Theo dõi tất cả hoạt động hệ thống và bảo mật</span>
+            </p>
         </div>
         <div class="d-flex align-items-center gap-2">
             <a href="/profile" class="btn btn-outline-secondary">
@@ -203,10 +261,11 @@
         </div>
     </div>
 
+
     <!-- Filter Section -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card">
+            <div class="card filter-card">
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="fa-solid fa-filter me-2"></i>Bộ lọc
@@ -271,6 +330,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Activities List -->
     <div class="row">
@@ -398,7 +458,7 @@
                     <ul class="pagination justify-content-center mb-0">
                         <!-- First Page -->
                         <li class="page-item" th:classappend="${activities.first} ? 'disabled'">
-                            <a class="page-link" th:href="@{/activity-history(page=0, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.first}">
+                            <a class="page-link" th:href="@{/activity-history(page=1, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.first}">
                                 <i class="fa-solid fa-angles-left"></i> Đầu
                             </a>
                             <span class="page-link" th:if="${activities.first}">
@@ -408,7 +468,7 @@
                         
                         <!-- Previous Page -->
                         <li class="page-item" th:classappend="${activities.first} ? 'disabled'">
-                            <a class="page-link" th:href="@{/activity-history(page=${activities.number - 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.first}">
+                            <a class="page-link" th:href="@{/activity-history(page=${activities.number}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.first}">
                                 <i class="fa-solid fa-chevron-left"></i> Trước
                             </a>
                             <span class="page-link" th:if="${activities.first}">
@@ -419,12 +479,12 @@
                         <!-- Page Numbers -->
                         <li class="page-item" th:each="pageNum : ${#numbers.sequence(T(java.lang.Math).max(0, activities.number - 2), T(java.lang.Math).min(activities.totalPages - 1, activities.number + 2))}" 
                             th:classappend="${pageNum == activities.number} ? 'active'">
-                            <a class="page-link" th:href="@{/activity-history(page=${pageNum}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:text="${pageNum + 1}">1</a>
+                            <a class="page-link" th:href="@{/activity-history(page=${pageNum + 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:text="${pageNum + 1}">1</a>
                         </li>
                         
                         <!-- Next Page -->
                         <li class="page-item" th:classappend="${activities.last} ? 'disabled'">
-                            <a class="page-link" th:href="@{/activity-history(page=${activities.number + 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.last}">
+                            <a class="page-link" th:href="@{/activity-history(page=${activities.number + 2}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.last}">
                                 Sau <i class="fa-solid fa-chevron-right"></i>
                             </a>
                             <span class="page-link" th:if="${activities.last}">
@@ -434,7 +494,7 @@
                         
                         <!-- Last Page -->
                         <li class="page-item" th:classappend="${activities.last} ? 'disabled'">
-                            <a class="page-link" th:href="@{/activity-history(page=${activities.totalPages - 1}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.last}">
+                            <a class="page-link" th:href="@{/activity-history(page=${activities.totalPages}, action=${selectedAction}, success=${selectedSuccess}, fromDate=${selectedFromDate}, toDate=${selectedToDate}, size=${selectedSize})}" th:if="${!activities.last}">
                                 Cuối <i class="fa-solid fa-angles-right"></i>
                             </a>
                             <span class="page-link" th:if="${activities.last}">
@@ -446,7 +506,6 @@
             </div>
         </div>
     </div>
-</main>
 
 <footer class="border-top py-3 mt-5">
     <div class="container d-flex justify-content-between align-items-center small">
@@ -457,15 +516,15 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/auth.js"></script>
-<script>
+<script th:inline="javascript">
 document.addEventListener('DOMContentLoaded', function() {
     // Debug pagination info
     console.log('Pagination debug:', {
-        currentPage: /*[[${activities.number}]]*/ 0,
-        totalPages: /*[[${activities.totalPages}]]*/ 1,
-        totalElements: /*[[${activities.totalElements}]]*/ 0,
-        first: /*[[${activities.first}]]*/ true,
-        last: /*[[${activities.last}]]*/ true
+        currentPage: /*[[${activities != null}]]*/ false ? /*[[${activities.number}]]*/ 0 : null,
+        totalPages: /*[[${activities != null}]]*/ false ? /*[[${activities.totalPages}]]*/ 1 : null,
+        totalElements: /*[[${activities != null}]]*/ false ? /*[[${activities.totalElements}]]*/ 0 : null,
+        first: /*[[${activities != null}]]*/ false ? /*[[${activities.first}]]*/ true : null,
+        last: /*[[${activities != null}]]*/ false ? /*[[${activities.last}]]*/ true : null
     });
     
     // Debug filter options
@@ -489,15 +548,20 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Pagination link clicked:', this.href);
         });
     });
+    
+    // Initialize Bootstrap dropdowns
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait for Bootstrap to load
+        setTimeout(function() {
+            const dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+            const dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+                return new bootstrap.Dropdown(dropdownToggleEl);
+            });
+            console.log('Dropdowns initialized:', dropdownList.length);
+        }, 500);
+    });
     });
 </script>
-
-<footer class="border-top py-3 mt-5">
-    <div class="container d-flex justify-content-between align-items-center small">
-        <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO Market</div>
-        <div class="text-muted">Liên hệ: support@example.com</div>
-    </div>
-</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

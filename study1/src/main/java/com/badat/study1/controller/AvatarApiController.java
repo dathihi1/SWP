@@ -29,7 +29,7 @@ public class AvatarApiController {
                 String contentType = detectContentType(avatarData);
                 headers.setContentType(MediaType.valueOf(contentType));
                 headers.setContentLength(avatarData.length);
-                headers.setCacheControl("public, max-age=3600");
+                headers.setCacheControl("no-cache, no-store, must-revalidate"); // Disable caching for avatar updates
                 
                 return ResponseEntity.ok()
                         .headers(headers)
@@ -69,7 +69,7 @@ public class AvatarApiController {
                     String contentType = detectContentType(avatarData);
                     headers.setContentType(MediaType.valueOf(contentType));
                     headers.setContentLength(avatarData.length);
-                    headers.setCacheControl("public, max-age=3600");
+                    headers.setCacheControl("no-cache, no-store, must-revalidate"); // Disable caching for avatar updates
                     return ResponseEntity.ok().headers(headers).body(avatarData);
                 }
             }
@@ -87,7 +87,7 @@ public class AvatarApiController {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.valueOf("image/svg+xml"));
             headers.setContentLength(defaultAvatar.length);
-            headers.setCacheControl("public, max-age=3600");
+            headers.setCacheControl("no-cache, no-store, must-revalidate"); // Disable caching for avatar updates
             return ResponseEntity.ok().headers(headers).body(defaultAvatar);
         } catch (Exception e) {
             log.error("Error getting default avatar: {}", e.getMessage());
