@@ -5,9 +5,9 @@ package com.badat.study1.util;
  */
 public class PaginationValidator {
     
-    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_PAGE = 0; // zero-based default
     private static final int MIN_PAGE = 0;
-    private static final int DEFAULT_SIZE = 20;
+    private static final int DEFAULT_SIZE = 10;
     private static final int MIN_SIZE = 1;
     private static final int MAX_SIZE = 100;
     
@@ -21,6 +21,23 @@ public class PaginationValidator {
             return DEFAULT_PAGE;
         }
         return page;
+    }
+
+    /**
+     * Validate 1-based page coming from UI; returns a 1-based page >= 1
+     */
+    public static int validateOneBasedPage(int pageOneBased) {
+        if (pageOneBased < 1) {
+            return 1;
+        }
+        return pageOneBased;
+    }
+
+    /**
+     * Convert 1-based page to zero-based index
+     */
+    public static int toZeroBased(int pageOneBased) {
+        return Math.max(0, pageOneBased - 1);
     }
     
     /**
@@ -59,6 +76,22 @@ public class PaginationValidator {
         
         return page;
     }
+
+    /**
+     * Clamp a 1-based page to [1..totalPages], returns 1 if totalPages == 0
+     */
+    public static int clampOneBased(int pageOneBased, int totalPages) {
+        if (totalPages <= 0) {
+            return 1;
+        }
+        if (pageOneBased < 1) {
+            return 1;
+        }
+        if (pageOneBased > totalPages) {
+            return totalPages;
+        }
+        return pageOneBased;
+    }
     
     /**
      * Get default page number
@@ -95,6 +128,8 @@ public class PaginationValidator {
         return MAX_SIZE;
     }
 }
+
+
 
 
 

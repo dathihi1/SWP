@@ -982,17 +982,21 @@
             if (result.success) {
                 showSuccess('Avatar đã được cập nhật thành công!');
                 
-                // Update avatar display immediately
+                // Update avatar display immediately with cache busting
                 const timestamp = Date.now();
                 const avatarImg = document.getElementById('profileAvatar');
                 if (avatarImg) {
-                    avatarImg.src = `/api/profile/avatar/me?t=${timestamp}`;
+                    avatarImg.src = `/api/profile/avatar/me?t=${timestamp}&v=${Math.random()}`;
+                    // Force reload by setting src again
+                    setTimeout(() => {
+                        avatarImg.src = `/api/profile/avatar/me?t=${Date.now()}&v=${Math.random()}`;
+                    }, 100);
                 }
                 
                 // Update preview in modal
                 const previewImg = document.getElementById('avatarPreview');
                 if (previewImg) {
-                    previewImg.src = `/api/profile/avatar/me?t=${timestamp}`;
+                    previewImg.src = `/api/profile/avatar/me?t=${timestamp}&v=${Math.random()}`;
                 }
                 
                 // Close modal
@@ -1003,10 +1007,13 @@
                 document.getElementById('avatarForm').reset();
                 document.getElementById('avatarPreview').src = '/images/default-avatar.svg';
                 
-                // Reload page after a short delay to ensure avatar is saved
+                // Force refresh avatar display after a short delay
                 setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                    const avatarImg = document.getElementById('profileAvatar');
+                    if (avatarImg) {
+                        avatarImg.src = `/api/profile/avatar/me?t=${Date.now()}&v=${Math.random()}`;
+                    }
+                }, 1000);
             } else {
                 throw new Error(result.error || 'Failed to upload avatar');
             }
@@ -1067,11 +1074,15 @@
             if (result.success) {
                 showSuccess('Avatar đã được xóa thành công!');
                 
-                // Update avatar display to default
+                // Update avatar display to default with cache busting
                 const avatarImg = document.getElementById('profileAvatar');
                 if (avatarImg) {
                     const timestamp = Date.now();
-                    avatarImg.src = `/api/profile/avatar/me?t=${timestamp}`;
+                    avatarImg.src = `/api/profile/avatar/me?t=${timestamp}&v=${Math.random()}`;
+                    // Force reload by setting src again
+                    setTimeout(() => {
+                        avatarImg.src = `/api/profile/avatar/me?t=${Date.now()}&v=${Math.random()}`;
+                    }, 100);
                 }
                 
                 // Update preview
@@ -1084,10 +1095,13 @@
                 // Reset form
                 document.getElementById('avatarForm').reset();
                 
-                // Reload page after a short delay
+                // Force refresh avatar display after a short delay
                 setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                    const avatarImg = document.getElementById('profileAvatar');
+                    if (avatarImg) {
+                        avatarImg.src = `/api/profile/avatar/me?t=${Date.now()}&v=${Math.random()}`;
+                    }
+                }, 1000);
             } else {
                 throw new Error(result.error || 'Failed to delete avatar');
             }
