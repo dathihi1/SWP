@@ -550,17 +550,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Initialize Bootstrap dropdowns
-    document.addEventListener('DOMContentLoaded', function() {
-        // Wait for Bootstrap to load
-        setTimeout(function() {
-            const dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
-            const dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
-                return new bootstrap.Dropdown(dropdownToggleEl);
-            });
-            console.log('Dropdowns initialized:', dropdownList.length);
-        }, 500);
-    });
-    });
+    // Wait for Bootstrap to load
+    setTimeout(function() {
+        const dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+        const dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+            return new bootstrap.Dropdown(dropdownToggleEl);
+        });
+        console.log('Dropdowns initialized:', dropdownList.length);
+    }, 500);
+});
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
