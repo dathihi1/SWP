@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -57,8 +58,11 @@ public class ReviewController {
                 ));
             }
             
-            // Check if review already exists for this order
-            if (reviewRepository.existsByOrderIdAndBuyerIdAndIsDeleteFalse(orderId, user.getId())) {
+            // Check if review already exists for this order by current user
+            List<Review> existingReviews = reviewRepository.findByOrderIdAndIsDeleteFalse(orderId);
+            boolean alreadyReviewedByUser = existingReviews.stream()
+                .anyMatch(r -> r.getBuyerId().equals(user.getId()));
+            if (alreadyReviewedByUser) {
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", "Bạn đã đánh giá đơn hàng này rồi"

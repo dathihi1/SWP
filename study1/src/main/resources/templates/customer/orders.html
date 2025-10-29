@@ -59,17 +59,19 @@
     <script src="/js/auth.js"></script>
     <script>
         let orders = [];
+        let currentPage = 1;
+        let pageSize = 6;
         let refreshInterval;
 
         async function loadOrders(filterParams = {}) {
             try {
-                console.log('Loading orders...', filterParams);
+                console.log('Đang tải đơn hàng...', filterParams);
                 
-                // Build query string from filter parameters
+                // Tạo query string từ các tham số lọc (chỉ gửi khi có giá trị)
                 const queryParams = new URLSearchParams();
-                if (filterParams.startDate) queryParams.append('startDate', filterParams.startDate);
-                if (filterParams.endDate) queryParams.append('endDate', filterParams.endDate);
-                if (filterParams.searchStall) queryParams.append('searchStall', filterParams.searchStall);
+                // Không gửi tham số ngày lên API để tránh lỗi 500; lọc ngày sẽ làm ở client
+                // searchStall của API hiểu là username người bán → ánh xạ từ sellerUsername
+                if (filterParams.sellerUsername) queryParams.append('searchStall', filterParams.sellerUsername);
                 if (filterParams.searchProduct) queryParams.append('searchProduct', filterParams.searchProduct);
                 if (filterParams.sortBy) queryParams.append('sortBy', filterParams.sortBy);
                 
@@ -91,16 +93,38 @@
                 
                 if (!res.ok) {
                     const errorText = await res.text();
-                    throw new Error(`API Error: ${res.status} - ${errorText}`);
+                    throw new Error(`Lỗi API: ${res.status} - ${errorText}`);
                 }
                 
                 const response = await res.json();
-                orders = response || [];
+                orders = (response || []).filter(o => {
+                    // client-side filters for fields API chưa hỗ trợ
+                    if (filterParams.orderCode && !(o.orderCode || '').toLowerCase().includes(filterParams.orderCode.toLowerCase())) return false;
+                    // Lọc theo ngày ở client (bao gồm Hôm nay/Tuần này/Tháng này...)
+                    if (filterParams.startDate || filterParams.endDate) {
+                        const created = new Date(o.createdAt);
+                        if (isNaN(created.getTime())) return false;
+                        if (filterParams.startDate) {
+                            const s = new Date(filterParams.startDate + 'T00:00:00');
+                            if (created < s) return false;
+                        }
+                        if (filterParams.endDate) {
+                            const e = new Date(filterParams.endDate + 'T23:59:59');
+                            if (created > e) return false;
+                        }
+                    }
+                    // Lọc theo tên gian hàng (trên client): khớp bất kỳ item có stallName phù hợp
+                    if (filterParams.searchStall) {
+                        const ok = (o.orderItems || []).some(it => (it.stallName || '').toLowerCase().includes(filterParams.searchStall.toLowerCase()));
+                        if (!ok) return false;
+                    }
+                    return true;
+                });
                 
                 renderOrders();
                 
             } catch(e) {
-                console.error('Error loading orders:', e);
+                console.error('Lỗi tải đơn hàng:', e);
                 showErrorState(e.message);
             }
         }
@@ -123,8 +147,12 @@
             
             emptyEl.classList.add('d-none');
             
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const pageOrders = orders.slice(startIndex, endIndex);
+
             let html = '';
-            orders.forEach(order => {
+            pageOrders.forEach(order => {
                 const statusClass = order.status === 'COMPLETED' ? 'completed' : 
                                   order.status === 'CANCELLED' ? 'cancelled' : 
                                   order.status === 'REFUNDED' ? 'cancelled' : '';
@@ -167,7 +195,7 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- Order Details (Hidden by default) -->
+                        <!-- Chi tiết đơn hàng (ẩn mặc định) -->
                         <div id="order${order.id}-details" class="card-body border-top" style="display: none;">
                             <div class="row mb-3">
                                 <div class="col-md-6">
@@ -189,35 +217,45 @@
                                     <div class="card-body">
                                         <div class="row align-items-center">
                                             <div class="col-md-6">
-                                                <h6 class="mb-1">${item.productName || 'Sản phẩm'}</h6>
-                                                <small class="text-muted">ID: ${item.productId}</small>
+                                                <div class="mb-1">
+                                                    <span class="fw-semibold">Gian hàng:</span>
+                                                    <span class="text-muted">${item.stallName || ('#' + (item.stallId ?? 'N/A'))}</span>
+                                                </div>
+                                                <div class="mb-1">
+                                                    <span class="fw-semibold">Mặt hàng:</span>
+                                                    <span class="text-muted">${item.productName || 'Sản phẩm'}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="fw-semibold">Người bán:</span>
+                                                    <span class="text-muted">${item.warehouse && item.warehouse.sellerName ? item.warehouse.sellerName : 'N/A'}</span>
+                                                </div>
                                             </div>
                                             <div class="col-md-2 text-center">
-                                                <small class="text-muted">Số lượng</small>
+                                                <small class="fw-semibold text-dark">Số lượng</small>
                                                 <div class="fw-bold">${item.quantity}</div>
                                             </div>
                                             <div class="col-md-2 text-center">
-                                                <small class="text-muted">Đơn giá</small>
+                                                <small class="fw-semibold text-dark">Đơn giá</small>
                                                 <div class="fw-bold text-success">${formatMoney(item.unitPrice)} ₫</div>
                                             </div>
                                             <div class="col-md-2 text-center">
-                                                <small class="text-muted">Thành tiền</small>
+                                                <small class="fw-semibold text-dark">Thành tiền</small>
                                                 <div class="fw-bold text-primary">${formatMoney(item.totalAmount)} ₫</div>
                                             </div>
                                         </div>
                                         ${item.warehouse && item.warehouse.itemData ? `
                                             <div class="mt-3">
-                                                <div class="item-data-container">
+                                                <button class="btn btn-outline-secondary btn-sm" onclick="toggleItemData('itemdata-${order.id}-${item.warehouseId}', this)">
+                                                    <i class="fa-solid fa-code me-1"></i>Dữ liệu chi tiết sản phẩm
+                                                </button>
+                                                <div id="itemdata-${order.id}-${item.warehouseId}" class="item-data-container mt-2" style="display: none;">
                                                     <div class="p-3">
                                                         <div class="item-data-content">${item.warehouse.itemData}</div>
-                                                        <div class="mt-3 d-flex align-items-center justify-content-between">
+                                                        <div class="mt-3 d-flex align-items-center justify-content-start">
                                                             <small class="text-muted">
                                                                 <i class="fa-solid fa-info-circle me-1"></i>
                                                                 Đây là dữ liệu chi tiết về sản phẩm bạn đã mua
                                                             </small>
-                                                            <button class="btn btn-outline-primary btn-sm" onclick="copyItemData('${item.warehouseId}')">
-                                                                <i class="fa-solid fa-copy me-1"></i>Copy
-                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -270,6 +308,8 @@
             });
             
             container.innerHTML = html;
+            renderPageSize();
+            renderPagination();
         }
 
         function showErrorState(message) {
@@ -325,11 +365,16 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Thiết lập max date = hôm nay để không cho chọn tương lai
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').setAttribute('max', today);
+            document.getElementById('endDate').setAttribute('max', today);
+            
             loadAll();
             // startAutoRefresh(); // Tắt auto-refresh, chỉ refresh khi người dùng click nút
         });
 
-        // Stop auto refresh when page is hidden
+        // Ngừng tự làm mới khi tab bị ẩn
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 stopAutoRefresh();
@@ -338,7 +383,7 @@
             }
         });
 
-        // Toggle order details
+        // Bật/tắt phần chi tiết đơn hàng
         function toggleOrderDetails(orderId) {
             const detailsElement = document.getElementById(orderId + '-details');
             const button = event.target.closest('button');
@@ -352,30 +397,80 @@
             }
         }
 
-        // Copy item data to clipboard
-        function copyItemData(warehouseId) {
-            // Find the item data content for this warehouse ID
-            const itemDataElements = document.querySelectorAll('.item-data-content');
-            let itemData = '';
-            
-            for (let element of itemDataElements) {
-                const container = element.closest('.item-data-container');
-                if (container && container.textContent.includes(`ID: ${warehouseId}`)) {
-                    itemData = element.textContent;
-                    break;
-                }
+        // Bật/tắt hiển thị dữ liệu chi tiết sản phẩm
+        function toggleItemData(elementId, btn) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const isHidden = el.style.display === 'none' || el.style.display === '';
+            el.style.display = isHidden ? 'block' : 'none';
+            if (btn) {
+                btn.innerHTML = isHidden
+                    ? '<i class="fa-solid fa-eye-slash me-1"></i>Ẩn dữ liệu'
+                    : '<i class="fa-solid fa-code me-1"></i>Dữ liệu chi tiết sản phẩm';
             }
-            
-            if (itemData) {
-                navigator.clipboard.writeText(itemData).then(() => {
-                    showNotification('Đã copy thông tin sản phẩm vào clipboard!', 'success');
-                }).catch(err => {
-                    console.error('Failed to copy: ', err);
-                    showNotification('Không thể copy thông tin. Vui lòng thử lại.', 'danger');
-                });
-            } else {
-                showNotification('Không tìm thấy thông tin sản phẩm để copy.', 'danger');
+        }
+
+        // Hàm hỗ trợ phân trang
+        function setPageSize(newSize) {
+            pageSize = Number(newSize);
+            currentPage = 1;
+            renderOrders();
+        }
+
+        function gotoPage(page) {
+            const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+            currentPage = Math.min(Math.max(1, page), totalPages);
+            renderOrders();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+            const paginationEl = document.getElementById('orders-pagination');
+            if (!paginationEl) return;
+
+            let pagesHtml = '';
+            const maxButtons = 5;
+            let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let end = Math.min(totalPages, start + maxButtons - 1);
+            start = Math.max(1, end - maxButtons + 1);
+
+            pagesHtml += `<button class="btn btn-outline-secondary btn-sm me-1" ${currentPage===1?'disabled':''} onclick="gotoPage(${currentPage-1})">Trước</button>`;
+            for (let i = start; i <= end; i++) {
+                pagesHtml += `<button class="btn btn-${i===currentPage?'primary':'outline-secondary'} btn-sm me-1" onclick="gotoPage(${i})">${i}</button>`;
             }
+            pagesHtml += `<button class="btn btn-outline-secondary btn-sm" ${currentPage===totalPages?'disabled':''} onclick="gotoPage(${currentPage+1})">Sau</button>`;
+
+            // Hide if only one page
+            if (totalPages <= 1) {
+                paginationEl.innerHTML = '';
+                paginationEl.style.display = 'none';
+                return;
+            }
+            paginationEl.style.display = 'block';
+
+            paginationEl.innerHTML = `
+                <div class="d-flex align-items-center justify-content-end">
+                    ${pagesHtml}
+                </div>
+            `;
+        }
+        
+        // Render page-size selector below filter card
+        function renderPageSize() {
+            const topEl = document.getElementById('orders-page-size');
+            if (!topEl) return;
+            const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+            topEl.innerHTML = `
+                <div class="d-flex align-items-center justify-content-end">
+                    <div class="text-muted small me-3">Tổng: ${orders.length} đơn hàng • Trang ${currentPage}/${totalPages}</div>
+                    <label class="me-2 small">Hiển thị:</label>
+                    <select class="form-select form-select-sm d-inline-block" style="width: auto;" onchange="setPageSize(this.value)">
+                        <option value="6" ${pageSize===6?'selected':''}>6</option>
+                        <option value="12" ${pageSize===12?'selected':''}>12</option>
+                        <option value="24" ${pageSize===24?'selected':''}>24</option>
+                    </select>
+                </div>
+            `;
         }
 
         // Apply filters
@@ -383,12 +478,43 @@
             const form = document.getElementById('filterForm');
             const formData = new FormData(form);
             
+            // Chuẩn hóa chuỗi ngày: chấp nhận cả dd/MM/yyyy và yyyy-MM-dd
+            function normalizeDate(value) {
+                if (!value) return '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value; // yyyy-MM-dd
+                const m = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); // dd/MM/yyyy
+                if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+                return '';
+            }
+
+            // Validate và điều chỉnh ngày tháng
+            const today = new Date().toISOString().split('T')[0];
+            let startDate = normalizeDate(formData.get('startDate'));
+            let endDate = normalizeDate(formData.get('endDate'));
+            
+            if (startDate && startDate > today) {
+                startDate = today;
+                document.getElementById('startDate').value = today;
+            }
+            if (endDate) {
+                if (endDate > today) {
+                    endDate = today;
+                    document.getElementById('endDate').value = today;
+                }
+                if (startDate && endDate < startDate) {
+                    endDate = startDate;
+                    document.getElementById('endDate').value = startDate;
+                }
+            }
+            
             const filterParams = {
-                startDate: formData.get('startDate'),
-                endDate: formData.get('endDate'),
-                searchStall: formData.get('searchStall'),
+                startDate: startDate,
+                endDate: endDate,
+                searchStall: formData.get('searchStall'), // tên gian hàng (lọc client)
+                sellerUsername: formData.get('sellerUsername'), // người bán (gửi API)
                 searchProduct: formData.get('searchProduct'),
-                sortBy: formData.get('sortBy')
+                sortBy: formData.get('sortBy'),
+                orderCode: formData.get('orderCode')
             };
             
             // Remove empty values
@@ -398,13 +524,61 @@
                 }
             });
             
+            currentPage = 1;
             loadOrders(filterParams);
         }
 
         // Clear filters
         function clearFilters() {
             document.getElementById('filterForm').reset();
+            currentPage = 1;
             loadOrders();
+        }
+
+        // Lọc nhanh - thiết lập khoảng ngày và áp dụng
+        function quickRange(type) {
+            const startInput = document.getElementById('startDate');
+            const endInput = document.getElementById('endDate');
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            function fmt(date) {
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                return `${date.getFullYear()}-${mm}-${dd}`;
+            }
+
+            let start, end;
+            if (type === 'today') {
+                start = new Date(today);
+                end = new Date(today);
+            } else if (type === 'week') {
+                const day = now.getDay() || 7; // 1..7 (T2..CN)
+                start = new Date(today);
+                start.setDate(start.getDate() - (day - 1));
+                end = new Date(today);
+            } else if (type === 'month') {
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(today);
+            } else if (type === 'lastMonth') {
+                start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                end = new Date(now.getFullYear(), now.getMonth(), 0);
+            }
+            
+            // Đảm bảo không vượt quá hôm nay
+            if (end > today) {
+                end = new Date(today);
+            }
+
+            startInput.value = fmt(start);
+            endInput.value = fmt(end);
+            applyFilters();
+        }
+
+        function clearDateRange() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            applyFilters();
         }
     </script>
 </head>
@@ -429,10 +603,10 @@
                 </form>
             </div>
             
-            <!-- Desktop navigation -->
+            <!-- Điều hướng trên desktop -->
             <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
                 <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
-                    <!-- Current Balance -->
+                    <!-- Số dư hiện tại -->
                     <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                         <i class="fa-solid fa-wallet"></i>
                         <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
@@ -483,10 +657,7 @@
             Đơn hàng của tôi
         </h3>
         <div>
-            <button class="btn btn-outline-primary" onclick="loadAll()">
-                <i class="fa-solid fa-refresh me-2"></i>Làm mới
-            </button>
-            <a href="/cart" class="btn btn-primary">
+            <a href="/products" class="btn btn-primary">
                 <i class="fa-solid fa-cart-shopping me-2"></i>Mua sắm
             </a>
         </div>
@@ -494,10 +665,10 @@
 
     <div class="alert alert-info">
         <i class="fa-solid fa-info-circle me-2"></i>
-        <strong>Thông tin đơn hàng:</strong> Hiển thị chi tiết các sản phẩm đã mua, bao gồm thông tin warehouse (item_data) - đây là dữ liệu chi tiết về sản phẩm game mà bạn đã mua. Bạn có thể copy thông tin này để sử dụng.
+        <strong>Đơn hàng của bạn:</strong> Xem lại lịch sử mua và bấm "Chi tiết" để hiển thị dữ liệu sử dụng cùng thông tin gian hàng, mặt hàng và người bán. 
     </div>
 
-    <!-- Filter Form -->
+    <!-- Bộ lọc -->
     <div class="card card-shadow mb-4">
         <div class="card-header">
             <h5 class="mb-0">
@@ -506,31 +677,47 @@
             </h5>
         </div>
         <div class="card-body">
-            <form id="filterForm" class="row g-3">
+            <div class="mb-3">
+                <div class="small text-muted mb-2 fw-semibold">Lọc nhanh:</div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickRange('today')">Hôm nay</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickRange('week')">Tuần này</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickRange('month')">Tháng này</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickRange('lastMonth')">Tháng trước</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearDateRange()">Xóa</button>
+                </div>
+            </div>
+            <form id="filterForm" class="row g-3" onsubmit="event.preventDefault(); applyFilters();">
                 <div class="col-md-3">
-                    <label for="startDate" class="form-label">Từ ngày</label>
-                    <input type="date" class="form-control" id="startDate" name="startDate">
+                    <label for="startDate" class="form-label fw-semibold">Từ ngày</label>
+                    <input type="date" class="form-control" id="startDate" name="startDate" max="">
                 </div>
                 <div class="col-md-3">
-                    <label for="endDate" class="form-label">Đến ngày</label>
-                    <input type="date" class="form-control" id="endDate" name="endDate">
+                    <label for="endDate" class="form-label fw-semibold">Đến ngày</label>
+                    <input type="date" class="form-control" id="endDate" name="endDate" max="">
                 </div>
                 <div class="col-md-3">
-                    <label for="searchStall" class="form-label">Tên gian hàng</label>
+                    <label for="searchStall" class="form-label fw-semibold">Tên gian hàng</label>
                     <input type="text" class="form-control" id="searchStall" name="searchStall" placeholder="Nhập tên gian hàng...">
                 </div>
                 <div class="col-md-3">
-                    <label for="searchProduct" class="form-label">Tên sản phẩm</label>
+                    <label for="sellerUsername" class="form-label fw-semibold">Người bán</label>
+                    <input type="text" class="form-control" id="sellerUsername" name="sellerUsername" placeholder="Nhập username người bán...">
+                </div>
+                <div class="col-md-3">
+                    <label for="searchProduct" class="form-label fw-semibold">Tên sản phẩm</label>
                     <input type="text" class="form-control" id="searchProduct" name="searchProduct" placeholder="Nhập tên sản phẩm...">
                 </div>
+                <div class="col-md-3">
+                    <label for="orderCode" class="form-label fw-semibold">Mã đơn hàng</label>
+                    <input type="text" class="form-control" id="orderCode" name="orderCode" placeholder="Nhập mã đơn...">
+                </div>
                 <div class="col-md-4">
-                    <label for="sortBy" class="form-label">Sắp xếp theo</label>
+                    <label for="sortBy" class="form-label fw-semibold">Sắp xếp theo</label>
                     <select class="form-select" id="sortBy" name="sortBy">
-                        <option value="createdAt_desc">Ngày tạo (mới nhất)</option>
-                        <option value="createdAt_asc">Ngày tạo (cũ nhất)</option>
+                        <option value="">Tất cả</option>
                         <option value="totalAmount_desc">Giá trị đơn hàng (cao nhất)</option>
                         <option value="totalAmount_asc">Giá trị đơn hàng (thấp nhất)</option>
-                        <option value="status">Trạng thái</option>
                     </select>
                 </div>
                 <div class="col-md-8 d-flex align-items-end">
@@ -545,6 +732,9 @@
         </div>
     </div>
 
+    <!-- Điều khiển số hiển thị (bên ngoài thẻ đơn hàng) -->
+    <div id="orders-page-size" class="d-flex justify-content-end align-items-center mb-2"></div>
+
     <div class="card card-shadow">
         <div class="card-body">
             <div id="orders-empty" class="text-center py-5 d-none">
@@ -553,17 +743,15 @@
                 <a href="/cart" class="btn btn-primary btn-sm">Mua sắm ngay</a>
             </div>
 
-            <div id="orders-container">
-                <!-- Orders will be rendered here -->
-            </div>
+            <div id="orders-container"></div>
         </div>
     </div>
+
+    <!-- Phân trang (bên ngoài thẻ đơn hàng) -->
+    <div id="orders-pagination" class="mt-3"></div>
 </main>
 
-<!-- Floating refresh button -->
-<button class="btn btn-primary rounded-circle refresh-btn" onclick="loadAll()" title="Làm mới">
-    <i class="fa-solid fa-refresh"></i>
-</button>
+
 
 <footer class="border-top py-3 mt-5">
     <div class="container d-flex justify-content-between align-items-center small">
