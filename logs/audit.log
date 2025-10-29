@@ -1,7 +1,7 @@
 2025-10-29 10:28:06.880 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=5 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dat2801zz@gmail.com"
 2025-10-29 10:28:38.322 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=5 ip=0:0:0:0:0:0:0:1
 2025-10-29 10:30:57.954 INFO  com.badat.study1.audit - USER_CREATE: Admin dat2801zz@gmail.com created new user dathihi200 (Email: dat2801z@gmail.com)
-2025-10-29 10:31:40.128 INFO  com.badat.study1.audit - USER_EDIT: Admin dat2801zz@gmail.com edited user dathihi200 information. Changes: Admin dat2801zz@gmail.com ?ã ch?nh s?a thông tin c?a user dathihi200. Các thay ??i: role=SELLER, status=ACTIVE
+2025-10-29 10:31:40.128 INFO  com.badat.study1.audit - USER_EDIT: Admin dat2801zz@gmail.com edited user dathihi200 information. Changes: Admin dat2801zz@gmail.com ?ï¿½ ch?nh s?a thï¿½ng tin c?a user dathihi200. Cï¿½c thay ??i: role=SELLER, status=ACTIVE
 2025-10-29 20:47:33.501 INFO  com.badat.study1.audit - ACCOUNT_LOCKED_LOGIN_ATTEMPTS userId=null ip=0:0:0:0:0:0:0:1 success=true details="IP locked for captcha failures: attempts=5" reason=null ua="System" category=SECURITY_EVENT endpoint=/api/auth/login method=POST
 2025-10-29 20:47:33.988 INFO  com.badat.study1.audit - ACCOUNT_LOCKED_LOGIN_ATTEMPTS userId=null ip=0:0:0:0:0:0:0:1 success=true details="IP locked for captcha failures: attempts=6" reason=null ua="System" category=SECURITY_EVENT endpoint=/api/auth/login method=POST
 2025-10-29 20:47:34.427 INFO  com.badat.study1.audit - ACCOUNT_LOCKED_LOGIN_ATTEMPTS userId=null ip=0:0:0:0:0:0:0:1 success=true details="IP locked for captcha failures: attempts=7" reason=null ua="System" category=SECURITY_EVENT endpoint=/api/auth/login method=POST
