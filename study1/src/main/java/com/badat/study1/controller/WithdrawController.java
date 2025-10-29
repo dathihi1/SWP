@@ -13,6 +13,7 @@ import com.badat.study1.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -187,19 +188,23 @@ public class WithdrawController {
     
     @PostMapping("/api/withdraw/request")
     @ResponseBody
-    public ResponseEntity<?> createWithdrawRequest(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> createWithdrawRequest(@RequestBody Map<String, Object> payload, HttpServletRequest httpRequest) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             User user = (User) auth.getPrincipal();
             
             // Verify OTP first
-            String otp = (String) request.get("otp");
+            String otp = (String) payload.get("otp");
             String email = user.getEmail();
             String purpose = "Yêu cầu rút tiền";
+            String ipAddress = httpRequest.getHeader("X-Forwarded-For");
+            if (ipAddress == null || ipAddress.isBlank()) {
+                ipAddress = httpRequest.getRemoteAddr();
+            }
             
             log.info("Verifying OTP for withdraw - email: {}, purpose: {}, otp: {}", email, purpose, otp);
             
-            boolean isValid = otpService.verifyOtp(email, otp, purpose);
+            boolean isValid = otpService.verifyOtp(email, otp, purpose, ipAddress);
             
             if (!isValid) {
                 log.warn("OTP verification failed for email: {}, purpose: {}", email, purpose);
@@ -212,11 +217,11 @@ public class WithdrawController {
             
             // Create withdraw request DTO
             WithdrawRequestDto requestDto = WithdrawRequestDto.builder()
-                    .amount(new BigDecimal(request.get("amount").toString()))
-                    .bankAccountNumber((String) request.get("bankAccountNumber"))
-                    .bankAccountName((String) request.get("bankAccountName"))
-                    .bankName((String) request.get("bankName"))
-                    .note((String) request.get("note"))
+                    .amount(new BigDecimal(payload.get("amount").toString()))
+                    .bankAccountNumber((String) payload.get("bankAccountNumber"))
+                    .bankAccountName((String) payload.get("bankAccountName"))
+                    .bankName((String) payload.get("bankName"))
+                    .note((String) payload.get("note"))
                     .build();
             
             WithdrawRequestResponse response = withdrawService.createWithdrawRequest(requestDto);
