@@ -15,6 +15,8 @@ public class CaptchaRateLimitService {
     
     private final RedisTemplate<String, Object> redisTemplate;
     private final SecurityEventService securityEventService;
+    private final AuditLogService auditLogService;
+    private final IpLockoutService ipLockoutService;
     
     @Value("${security.captcha.max-attempts-per-ip:5}")
     private int maxCaptchaAttempts;
@@ -70,6 +72,23 @@ public class CaptchaRateLimitService {
                 ipAddress, 
                 "IP locked due to excessive captcha failures: " + attempts + " attempts"
             );
+            try {
+                auditLogService.logAction(
+                        null,
+                        "ACCOUNT_LOCKED_LOGIN_ATTEMPTS",
+                        "IP locked for captcha failures: attempts=" + attempts,
+                        ipAddress,
+                        true,
+                        null,
+                        "System",
+                        "/api/auth/login",
+                        "POST",
+                        com.badat.study1.model.AuditLog.Category.SECURITY_EVENT
+                );
+            } catch (Exception ignore) {}
+            // Persist a DB record so Admin can see the active lock
+            ipLockoutService.createCaptchaLockoutRecord(ipAddress,
+                    "CAPTCHA rate limit reached: attempts=" + attempts + ", lock=" + captchaLockoutMinutes + "m");
             
             log.error("IP LOCKED for captcha failures: {} for {} minutes. Attempts: {}", 
                     ipAddress, captchaLockoutMinutes, attempts);
@@ -91,6 +110,9 @@ public class CaptchaRateLimitService {
         return ttl != null ? ttl : 0L;
     }
 }
+
+
+
 
 
 

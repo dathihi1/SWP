@@ -47,6 +47,7 @@ public class AdminController {
     private final OrderItemRepository orderItemRepository;
     private final WithdrawRequestRepository withdrawRequestRepository;
     private final AuditLogRepository auditLogRepository;
+    private final com.badat.study1.service.IpLockoutService ipLockoutService;
     
     @GetMapping("/admin")
     public String adminDashboard(Model model, @RequestParam(value = "range", required = false) String range) {
@@ -195,6 +196,20 @@ public class AdminController {
         return "admin/dashboard";
     }
     
+    @PostMapping("/api/admin/ip/unlock")
+    public ResponseEntity<?> adminUnlockIp(@RequestParam("ip") String ip) {
+        try {
+            ipLockoutService.adminUnlockIp(ip);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Đã mở khóa IP và xóa các khóa rate-limit: " + ip
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Không thể mở khóa IP: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/admin/stalls")
     public String adminStalls(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

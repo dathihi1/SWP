@@ -29,6 +29,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 import java.text.ParseException;
@@ -54,7 +55,7 @@ public class AuthenticationController {
 
     @PostMapping("/login")
     @UserActivity(action = "LOGIN", category = UserActivityLog.Category.ACCOUNT)
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
             String ipAddress = getClientIpAddress(request);
             String userAgent = request.getHeader("User-Agent");
@@ -62,7 +63,7 @@ public class AuthenticationController {
             
             log.info("Login attempt for username: {} from IP: {}", username, ipAddress);
             
-            // 🔒 1. Check IP lockout
+            //  1. Check IP lockout
             if (ipLockoutService.isIpLocked(ipAddress)) {
                 log.warn("Login blocked - IP locked: {}", ipAddress);
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.IP_LOCKED, ipAddress, 
@@ -73,7 +74,7 @@ public class AuthenticationController {
                 ));
             }
             
-            // 🔒 1.5. Check if IP is rate limited for captcha failures
+            //  1.5. Check if IP is rate limited for captcha failures
             if (captchaRateLimitService.isCaptchaRateLimited(ipAddress)) {
                 log.warn("Captcha rate limited - IP: {}", ipAddress);
                 return ResponseEntity.status(429).body(Map.of(
@@ -82,11 +83,10 @@ public class AuthenticationController {
                 ));
             }
             
-            // 🔒 2. Check captcha FIRST (validate correctness)
+            //  2. Check captcha FIRST (validate correctness) - captchaId from HttpOnly cookie
             String captchaCode = loginRequest.getCaptchaCode();
-            String captchaId = loginRequest.getCaptchaId();
             
-            // If captchaCode is null, try to get from simple captcha field (for frontend compatibility)
+            // Fallback to simple captcha field for backward compatibility
             if (captchaCode == null || captchaCode.trim().isEmpty()) {
                 captchaCode = loginRequest.getCaptcha();
             }
@@ -101,47 +101,42 @@ public class AuthenticationController {
                 ));
             }
             
-            // Validate captcha correctness
-            boolean captchaValid = false;
-            if (captchaId != null && !captchaId.trim().isEmpty()) {
-                if (captchaId.startsWith("frontend-")) {
-                    // Frontend captcha not allowed for security reasons
-                    log.warn("Frontend captcha not allowed from IP: {}", ipAddress);
-                    securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
-                            "Frontend captcha attempt blocked");
-                    return ResponseEntity.status(400).body(Map.of(
-                        "error", "Captcha không hợp lệ, vui lòng làm mới trang",
-                        "message", "frontend captcha not allowed",
-                        "captchaRequired", true
-                    ));
-                } else {
-                    // Backend captcha with Redis validation
-                    captchaValid = captchaService.validateSimpleCaptcha(captchaId, captchaCode);
-                    log.info("Backend captcha validation: {}", captchaValid ? "valid" : "invalid");
-                }
-            } else {
-                // No captcha ID provided
-                log.warn("Login attempt without captchaId from IP: {}", ipAddress);
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
-                        "Login attempt without captcha ID");
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Mã xác thực không hợp lệ, vui lòng làm mới trang",
-                    "message", "invalid captcha",
-                    "captchaRequired", true
-                ));
-            }
+            // Validate captcha using ID from HttpOnly cookie (IMAGE captcha)
+            boolean captchaValid = captchaService.validateCaptcha(request, captchaCode);
+            log.info("Captcha validation (from cookie): {}", captchaValid ? "valid" : "invalid");
             
             // If captcha is invalid, return immediately without checking credentials
             if (!captchaValid) {
                 captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
                 securityEventService.logCaptchaRequired(ipAddress, username);
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Mã xác thực không đúng, vui lòng nhập lại",
-                    "message", "captcha incorrect",
-                    "captchaRequired", true,
-                    "captcha", captchaService.generateSimpleCaptcha()
-                ));
+                // Generate new captcha with new cookie
+                Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
+                ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                        .httpOnly(true)
+                        .secure(false)
+                        .sameSite("Lax")
+                        .path("/")
+                        .maxAge(0)
+                        .build();
+                return ResponseEntity.status(400)
+                        .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                        .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
+                        .body(Map.of(
+                            "error", "Mã xác thực không đúng, vui lòng nhập lại",
+                            "message", "captcha incorrect",
+                            "captchaRequired", true,
+                            "captcha", newCaptchaResult.getKey()
+                        ));
             }
+            
+            // Clear cookie after successful validation (one-time use)
+            ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(0)
+                    .build();
             
             // 🔒 3. Only if captcha is valid, then check username/password
             try {
@@ -163,7 +158,8 @@ public class AuthenticationController {
                         .build();
 
                 return ResponseEntity.ok()
-                        .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                        .header(HttpHeaders.SET_COOKIE, clearCookie.toString()) // Clear captcha cookie
+                        .header(HttpHeaders.SET_COOKIE, accessCookie.toString()) // Set access token cookie
                         .body(loginResponse);
                         
             } catch (Exception e) {
@@ -171,31 +167,52 @@ public class AuthenticationController {
                 ipLockoutService.recordFailedAttempt(ipAddress, username);
                 securityEventService.logLoginAttempt(ipAddress, username, false, e.getMessage(), userAgent);
                 
-                Map<String, Object> response = new HashMap<>();
+                Map<String, Object> errorResponse = new HashMap<>();
                 
                 // Determine error type based on exception message
                 String errorMessage = e.getMessage();
                 if (errorMessage != null && errorMessage.contains("User not found")) {
-                    response.put("error", "Tên đăng nhập không đúng");
+                    errorResponse.put("error", "Tên đăng nhập không đúng");
                 } else if (errorMessage != null && errorMessage.contains("Invalid password")) {
-                    response.put("error", "Mật khẩu không đúng");
+                    errorResponse.put("error", "Mật khẩu không đúng");
                 } else {
-                    response.put("error", "Tên đăng nhập hoặc mật khẩu không đúng");
+                    errorResponse.put("error", "Tên đăng nhập hoặc mật khẩu không đúng");
                 }
                 
-                // Always generate new captcha after failed attempt
-                response.put("captchaRequired", true);
-                response.put("message", "captcha required");
-                response.put("captcha", captchaService.generateSimpleCaptcha());
+                // Always generate new captcha (image) after failed attempt
+                Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
+                errorResponse.put("captchaRequired", true);
+                errorResponse.put("message", "captcha required");
+                errorResponse.put("captcha", newCaptchaResult.getKey());
                 
                 log.info("Generated new captcha after failed login attempt for user: {} from IP: {}", username, ipAddress);
                 
-                return ResponseEntity.status(401).body(response);
+                return ResponseEntity.status(401)
+                        .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
+                        .body(errorResponse);
             }
             
         } catch (Exception e) {
             log.error("Login error: {}", e.getMessage());
             return ResponseEntity.status(500).body(Map.of("error", "Lỗi hệ thống"));
+        }
+    }
+    
+    @GetMapping("/captcha")
+    public ResponseEntity<?> getCaptcha() {
+        try {
+            log.info("Generating image captcha with HttpOnly cookie...");
+            Map.Entry<CaptchaResponse, String> result = captchaService.generateCaptchaWithCookie();
+            CaptchaResponse captcha = result.getKey();
+            String cookieHeader = result.getValue();
+            
+            log.info("Image captcha generated successfully (ID stored in cookie)");
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookieHeader)
+                    .body(captcha);
+        } catch (Exception e) {
+            log.error("Failed to generate captcha: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", "Không thể tạo captcha"));
         }
     }
     
@@ -205,7 +222,18 @@ public class AuthenticationController {
             log.info("Generating simple captcha...");
             Map<String, String> captchaData = captchaService.generateSimpleCaptcha();
             log.info("Simple captcha generated successfully: {}", captchaData.get("captchaId"));
-            return ResponseEntity.ok(captchaData);
+            // Set HttpOnly cookie with captcha_id so server-side validation works the same
+            String captchaId = captchaData.get("captchaId");
+            ResponseCookie cookie = ResponseCookie.from("captcha_id", captchaId)
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(5 * 60)
+                    .build();
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(captchaData);
         } catch (Exception e) {
             log.error("Error generating simple captcha: {}", e.getMessage(), e);
             // Return a fallback captcha without Redis
@@ -216,21 +244,10 @@ public class AuthenticationController {
         }
     }
 
-    @GetMapping("/captcha")
-    public ResponseEntity<?> getCaptcha() {
-        try {
-            CaptchaResponse captcha = captchaService.generateCaptcha();
-            return ResponseEntity.ok(captcha);
-        } catch (Exception e) {
-            log.error("Failed to generate captcha: {}", e.getMessage());
-            return ResponseEntity.status(500).body(Map.of("error", "Không thể tạo captcha"));
-        }
-    }
-
     // Registration flow: FE validates, BE validates again, send OTP async, immediately respond with nextUrl
     @PostMapping("/register")
     @UserActivity(action = "REGISTER", category = UserActivityLog.Category.ACCOUNT)
-    public ResponseEntity<?> register(@RequestBody @Valid UserCreateRequest request, HttpServletRequest http) {
+    public ResponseEntity<?> register(@RequestBody @Valid UserCreateRequest request, HttpServletRequest http, HttpServletResponse httpResponse) {
         try {
             String ipAddress = getClientIpAddress(http);
             
@@ -263,7 +280,7 @@ public class AuthenticationController {
                 ));
             }
             
-            // Validate captcha
+            // Validate captcha - captchaId from HttpOnly cookie
             if (request.getCaptchaCode() == null || request.getCaptchaCode().trim().isEmpty()) {
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_REQUIRED, ipAddress, 
                         "Registration without captcha");
@@ -273,27 +290,40 @@ public class AuthenticationController {
                 ));
             }
             
-            if (request.getCaptchaId() == null || request.getCaptchaId().trim().isEmpty()) {
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
-                        "Registration without captcha ID");
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Mã xác thực không hợp lệ, vui lòng làm mới trang",
-                    "captchaRequired", true
-                ));
-            }
+            // Validate captcha using ID from HttpOnly cookie (IMAGE captcha)
+            boolean captchaValid = captchaService.validateCaptcha(http, request.getCaptchaCode());
             
-            // Validate captcha correctness
-            boolean captchaValid = captchaService.validateSimpleCaptcha(request.getCaptchaId(), request.getCaptchaCode());
             if (!captchaValid) {
                 captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
                         "Registration with invalid captcha");
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Mã xác thực không đúng, vui lòng nhập lại",
-                    "captchaRequired", true,
-                    "captcha", captchaService.generateSimpleCaptcha()
-                ));
+                // Generate new captcha with new cookie
+                Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
+                ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                        .httpOnly(true)
+                        .secure(false)
+                        .sameSite("Lax")
+                        .path("/")
+                        .maxAge(0)
+                        .build();
+                return ResponseEntity.status(400)
+                        .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                        .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
+                        .body(Map.of(
+                            "error", "Mã xác thực không đúng, vui lòng nhập lại",
+                            "captchaRequired", true,
+                            "captcha", newCaptchaResult.getKey()
+                        ));
             }
+            
+            // Clear cookie after successful validation
+            ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(0)
+                    .build();
             
             // Add delay to prevent timing attacks
             Thread.sleep(500 + new Random().nextInt(500));
@@ -327,18 +357,29 @@ public class AuthenticationController {
             );
             
             // Always return success to prevent email enumeration
-            return ResponseEntity.ok(ApiResponse.success(
-                "Nếu email hợp lệ, chúng tôi đã gửi mã OTP",
-                Map.of("nextUrl", "/verify-otp?email=" + request.getEmail())
-            ));
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                    .body(ApiResponse.success(
+                        "Nếu email hợp lệ, chúng tôi đã gửi mã OTP",
+                        Map.of("nextUrl", "/verify-otp?email=" + request.getEmail())
+                    ));
             
         } catch (Exception e) {
             log.error("Registration error: {}", e.getMessage());
             // Don't leak information
-            return ResponseEntity.ok(ApiResponse.success(
-                "Nếu email hợp lệ, chúng tôi đã gửi mã OTP",
-                Map.of("nextUrl", "/verify-otp?email=" + request.getEmail())
-            ));
+            ResponseCookie clearCookieForError = ResponseCookie.from("captcha_id", "")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(0)
+                    .build();
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, clearCookieForError.toString())
+                    .body(ApiResponse.success(
+                        "Nếu email hợp lệ, chúng tôi đã gửi mã OTP",
+                        Map.of("nextUrl", "/verify-otp?email=" + request.getEmail())
+                    ));
         }
     }
 
@@ -438,7 +479,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             String ipAddress = getClientIpAddress(httpRequest);
             
@@ -471,7 +512,7 @@ public class AuthenticationController {
                 ));
             }
             
-            // Validate captcha
+            // Validate captcha - captchaId from HttpOnly cookie
             if (request.getCaptchaCode() == null || request.getCaptchaCode().trim().isEmpty()) {
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_REQUIRED, ipAddress, 
                         "Forgot password without captcha");
@@ -481,29 +522,42 @@ public class AuthenticationController {
                 ));
             }
             
-            if (request.getCaptchaId() == null || request.getCaptchaId().trim().isEmpty()) {
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
-                        "Forgot password without captcha ID");
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Mã xác thực không hợp lệ, vui lòng làm mới trang",
-                    "captchaRequired", true
-                ));
-            }
-            
-            // Validate captcha correctness
-            log.info("Forgot password captcha validation - ID: {}, User input: {}", request.getCaptchaId(), request.getCaptchaCode());
-            boolean captchaValid = captchaService.validateSimpleCaptcha(request.getCaptchaId(), request.getCaptchaCode());
+            // Validate captcha using ID from HttpOnly cookie (IMAGE captcha)
+            log.info("Forgot password captcha validation - User input: {}", request.getCaptchaCode());
+            boolean captchaValid = captchaService.validateCaptcha(httpRequest, request.getCaptchaCode());
             log.info("Forgot password captcha validation result: {}", captchaValid);
+            
             if (!captchaValid) {
                 captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
                         "Forgot password with invalid captcha");
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Mã xác thực không đúng, vui lòng nhập lại",
-                    "captchaRequired", true,
-                    "captcha", captchaService.generateSimpleCaptcha()
-                ));
+                // Generate new captcha with new cookie
+                Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
+                ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                        .httpOnly(true)
+                        .secure(false)
+                        .sameSite("Lax")
+                        .path("/")
+                        .maxAge(0)
+                        .build();
+                return ResponseEntity.status(400)
+                        .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                        .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
+                        .body(Map.of(
+                            "error", "Mã xác thực không đúng, vui lòng nhập lại",
+                            "captchaRequired", true,
+                            "captcha", newCaptchaResult.getKey()
+                        ));
             }
+            
+            // Clear cookie after successful validation
+            ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(0)
+                    .build();
             
             // Add delay to prevent timing attacks
             Thread.sleep(500 + new Random().nextInt(500));
@@ -521,20 +575,31 @@ public class AuthenticationController {
             );
             
             // Always return success to prevent email enumeration
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Mã OTP đã được gửi đến email của bạn",
-                "nextUrl", "/verify-otp?email=" + request.getEmail() + "&type=forgot_password"
-            ));
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                    .body(Map.of(
+                        "success", true,
+                        "message", "Mã OTP đã được gửi đến email của bạn",
+                        "nextUrl", "/verify-otp?email=" + request.getEmail() + "&type=forgot_password"
+                    ));
             
         } catch (Exception e) {
             log.error("Forgot password error: {}", e.getMessage(), e);
             // Always return success to prevent email enumeration
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu",
-                "nextUrl", "/verify-otp?email=" + request.getEmail() + "&type=forgot_password"
-            ));
+            ResponseCookie clearCookieForError = ResponseCookie.from("captcha_id", "")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(0)
+                    .build();
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, clearCookieForError.toString())
+                    .body(Map.of(
+                        "success", true,
+                        "message", "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu",
+                        "nextUrl", "/verify-otp?email=" + request.getEmail() + "&type=forgot_password"
+                    ));
         }
     }
 
