@@ -27,10 +27,6 @@ public class UserActivityLog extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     Long userId;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    User user;
-    
     @Column(name = "action", nullable = false, length = 100)
     String action;
     

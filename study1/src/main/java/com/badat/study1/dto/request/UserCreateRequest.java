@@ -33,7 +33,6 @@ public class UserCreateRequest {
     @Size(min = 6, max = 100, message = "Mật khẩu phải từ 6-100 ký tự")
     private String password;
     
-    // Captcha fields
-    private String captchaId;
+    // Captcha fields - captchaId is now read from HttpOnly cookie
     private String captchaCode;
 }

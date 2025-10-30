@@ -567,9 +567,11 @@ public class UserService {
         
         // Update user with byte data
         user.setAvatarData(avatarBytes);
-        userRepository.save(user);
+        User savedUser = userRepository.saveAndFlush(user); // Use saveAndFlush to ensure immediate persistence
         
-        log.info("Avatar uploaded for user ID: {} as byte array ({} bytes)", userId, avatarBytes.length);
+        log.info("Avatar uploaded for user ID: {} as byte array ({} bytes). Saved user ID: {}, Avatar data length after save: {}", 
+                userId, avatarBytes.length, savedUser.getId(), 
+                savedUser.getAvatarData() != null ? savedUser.getAvatarData().length : 0);
     }
     
     public byte[] getAvatar(Long userId) {
@@ -610,9 +612,11 @@ public class UserService {
         
         // Clear database references (byte data only)
         user.setAvatarData(null);
-        userRepository.save(user);
+        User savedUser = userRepository.saveAndFlush(user); // Use saveAndFlush to ensure immediate persistence
         
-        log.info("Avatar deleted for user ID: {} (byte data cleared)", userId);
+        log.info("Avatar deleted for user ID: {} (byte data cleared). Saved user ID: {}, Avatar data length after save: {}", 
+                userId, savedUser.getId(), 
+                savedUser.getAvatarData() != null ? savedUser.getAvatarData().length : 0);
     }
     
     private UserCreateRequest convertToUserCreateRequest(Object rawData) {

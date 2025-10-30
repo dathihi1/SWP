@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CaptchaResponse {
-    private String captchaId;
+    // captchaId is now stored in HttpOnly cookie, not in response body
     private String captchaImage; // Base64 encoded image
     private int expiresIn; // Seconds
 }

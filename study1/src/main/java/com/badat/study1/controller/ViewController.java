@@ -26,6 +26,7 @@ import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import java.time.LocalDateTime;
 import com.badat.study1.dto.response.AuditLogResponse;
+import com.badat.study1.dto.response.UserActivityLogResponse;
 import com.badat.study1.util.PaginationValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,6 +80,7 @@ public class ViewController {
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
     private final UserService userService;
+    private final com.badat.study1.service.UserActivityLogService userActivityLogService;
 
     // Inject common attributes (auth info and wallet balance) for all views
     @ModelAttribute
@@ -580,8 +582,19 @@ public class ViewController {
         // Thêm thông tin đơn hàng (tạm thời set 0, có thể cập nhật sau)
         model.addAttribute("totalOrders", 0);
 
-        // Lấy lịch sử hoạt động gần đây (5 hoạt động mới nhất)
-        model.addAttribute("recentActivities", auditLogService.getRecentUserAuditLogs(freshUser.getId(), 5));
+        // Lấy lịch sử hoạt động người dùng (user_activity_log) gần đây tối đa 5 bản ghi
+        try {
+            Pageable p = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createdAt"));
+            Page<UserActivityLog> activities = userActivityLogService.getUserActivities(
+                freshUser.getId(), null, null, null, null, p);
+            java.util.List<UserActivityLogResponse> recent = activities.getContent().stream()
+                .map(UserActivityLogResponse::fromEntity)
+                .collect(Collectors.toList());
+            model.addAttribute("recentActivities", recent);
+        } catch (Exception e) {
+            log.warn("Could not load recent user activities for user {}: {}", freshUser.getId(), e.getMessage());
+            model.addAttribute("recentActivities", java.util.List.of());
+        }
 
         return "customer/profile";
     }
@@ -1910,5 +1923,103 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             model.addAttribute("error", "Có lỗi xảy ra khi tải dữ liệu user activity logs");
             return "admin/user-activity-logs";
         }
+    }
+
+    @GetMapping("/user/activity-history")
+    public String userActivityHistory(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) Boolean success,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            Model model) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getName())) {
+                return "redirect:/login";
+            }
+
+            User currentUser = (User) authentication.getPrincipal();
+            int safeSize = com.badat.study1.util.PaginationValidator.validateSize(size);
+            int safePageOneBased = com.badat.study1.util.PaginationValidator.validateOneBasedPage(page);
+            int safePageIndex = com.badat.study1.util.PaginationValidator.toZeroBased(safePageOneBased);
+            Pageable pageable = PageRequest.of(safePageIndex, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+            LocalDate from = null;
+            LocalDate to = null;
+            if (fromDate != null && !fromDate.isEmpty()) {
+                from = LocalDate.parse(fromDate, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+            }
+            if (toDate != null && !toDate.isEmpty()) {
+                to = LocalDate.parse(toDate, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+            }
+            String normalizedAction = (action != null && action.trim().isEmpty()) ? null : action;
+            Page<UserActivityLog> activities = userActivityLogService.getUserActivities(
+                currentUser.getId(), normalizedAction, success, from, to, pageable);
+
+            int totalPages = activities.getTotalPages();
+            int clampedIndex = com.badat.study1.util.PaginationValidator.validatePageAgainstTotal(safePageIndex, totalPages);
+            if (clampedIndex != safePageIndex) {
+                pageable = PageRequest.of(clampedIndex, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+                activities = userActivityLogService.getUserActivities(
+                    currentUser.getId(), normalizedAction, success, from, to, pageable);
+            }
+
+            List<com.badat.study1.dto.response.UserActivityLogResponse> activityResponses = activities.getContent().stream()
+                .map(com.badat.study1.dto.response.UserActivityLogResponse::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+            Page<com.badat.study1.dto.response.UserActivityLogResponse> activityPage = new org.springframework.data.domain.PageImpl<>(
+                activityResponses,
+                pageable,
+                activities.getTotalElements()
+            );
+            model.addAttribute("activities", activityPage);
+            model.addAttribute("selectedAction", action);
+            model.addAttribute("selectedSuccess", success);
+            model.addAttribute("selectedFromDate", fromDate);
+            model.addAttribute("selectedToDate", toDate);
+            model.addAttribute("selectedSize", safeSize);
+            model.addAttribute("isAuthenticated", true);
+            model.addAttribute("username", currentUser.getUsername());
+            model.addAttribute("userRole", currentUser.getRole().name());
+            model.addAttribute("walletBalance", java.math.BigDecimal.ZERO);
+            java.util.Map<String, String> actionMappings = new java.util.HashMap<>();
+            actionMappings.put("LOGIN", "Đăng nhập");
+            actionMappings.put("LOGOUT", "Đăng xuất");
+            actionMappings.put("REGISTER", "Đăng ký tài khoản");
+            actionMappings.put("OTP_VERIFY", "Xác minh OTP");
+            actionMappings.put("PROFILE_UPDATE", "Cập nhật thông tin");
+            actionMappings.put("PASSWORD_CHANGE", "Đổi mật khẩu");
+            actionMappings.put("ADD_TO_CART", "Thêm vào giỏ hàng");
+            actionMappings.put("UPDATE_CART", "Cập nhật giỏ hàng");
+            actionMappings.put("REMOVE_FROM_CART", "Xóa khỏi giỏ hàng");
+            actionMappings.put("CLEAR_CART", "Xóa giỏ hàng");
+            actionMappings.put("VIEW_PRODUCT", "Xem sản phẩm");
+            actionMappings.put("CREATE_ORDER", "Tạo đơn hàng");
+            actionMappings.put("CANCEL_ORDER", "Hủy đơn hàng");
+            actionMappings.put("PAYMENT_SUCCESS", "Thanh toán thành công");
+            actionMappings.put("PAYMENT_FAILED", "Thanh toán thất bại");
+            actionMappings.put("CREATE_REVIEW", "Tạo đánh giá");
+            actionMappings.put("UPDATE_REVIEW", "Cập nhật đánh giá");
+            actionMappings.put("DELETE_REVIEW", "Xóa đánh giá");
+            model.addAttribute("actionMappings", actionMappings);
+            model.addAttribute("availableActions", actionMappings.keySet());
+            return "customer/activity-history";
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(getClass()).error("Error loading activity history: {}", e.getMessage(), e);
+            Pageable fallbackPageable = PageRequest.of(0, com.badat.study1.util.PaginationValidator.getDefaultSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+            Page<com.badat.study1.dto.response.UserActivityLogResponse> emptyPage = new org.springframework.data.domain.PageImpl<>(java.util.List.of(), fallbackPageable, 0);
+            model.addAttribute("activities", emptyPage);
+            model.addAttribute("selectedSize", com.badat.study1.util.PaginationValidator.getDefaultSize());
+            model.addAttribute("error", "Có lỗi xảy ra khi tải lịch sử hoạt động");
+            return "customer/activity-history";
+        }
+    }
+
+    @GetMapping("/activity-history")
+    public String redirectActivityHistory() {
+        return "redirect:/user/activity-history";
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -85,4 +86,14 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
      * Tìm OrderItem theo Warehouse ID và trạng thái
      */
     List<OrderItem> findByWarehouseIdAndStatusOrderByCreatedAtDesc(Long warehouseId, OrderItem.Status status);
+
+    /**
+     * Find completed OrderItems within a date range (inclusive) ordered by createdAt asc
+     */
+    List<OrderItem> findByStatusAndCreatedAtBetweenOrderByCreatedAtAsc(OrderItem.Status status, LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Find completed OrderItems after a start date (inclusive) ordered by createdAt asc
+     */
+    List<OrderItem> findByStatusAndCreatedAtAfterOrderByCreatedAtAsc(OrderItem.Status status, LocalDateTime start);
 }

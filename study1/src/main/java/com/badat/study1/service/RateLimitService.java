@@ -16,6 +16,7 @@ public class RateLimitService {
     
     private final RedisTemplate<String, Object> redisTemplate;
     private final SecurityEventService securityEventService;
+    private final AuditLogService auditLogService;
     
     @Value("${security.rate-limit.email-max-requests-per-hour:3}")
     private int emailMaxRequestsPerHour;
@@ -26,7 +27,7 @@ public class RateLimitService {
     @Value("${security.rate-limit.register-max-requests-per-hour:5}")
     private int registerMaxRequestsPerHour;
     
-    @Value("${security.rate-limit.forgot-password-ip-max-attempts:20}")
+    @Value("${security.rate-limit.forgot-password-ip-max-attempts:30}")
     private int forgotPasswordIpMaxAttempts;
     
     @Value("${security.rate-limit.ip-lockout-minutes:60}")
@@ -55,12 +56,28 @@ public class RateLimitService {
             
             // Log email rate limit when approaching or reaching limit
             if (attempts >= emailMaxRequestsPerHour) {
+                String details = "Email rate limited for forgot password (attempts: " + attempts + "/" + emailMaxRequestsPerHour + ")";
                 securityEventService.logSecurityEvent(
                     SecurityEvent.EventType.EMAIL_RATE_LIMIT,
                     null,
                     email,
-                    "Email rate limited for forgot password (attempts: " + attempts + "/" + emailMaxRequestsPerHour + ")"
+                    details
                 );
+                try {
+                    auditLogService.logAction(
+                        null,
+                        "ACCOUNT_BLOCKED_EMAIL_RATE_LIMIT",
+                        details,
+                        null,
+                        false,
+                        "RATE_LIMIT_REACHED",
+                        "System",
+                        "/api/otp/send",
+                        "POST",
+                        com.badat.study1.model.AuditLog.Category.SECURITY_EVENT
+                    );
+                } catch (Exception ignore) {
+                }
             }
         }
     }

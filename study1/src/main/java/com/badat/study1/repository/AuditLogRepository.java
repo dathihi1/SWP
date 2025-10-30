@@ -125,4 +125,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     long countByCreatedAtAfter(LocalDateTime dateTime);
     long countByActionAndSuccess(String action, Boolean success);
     long countByCategory(AuditLog.Category category);
+
+    // Latest recent activities
+    List<AuditLog> findTop10ByOrderByCreatedAtDesc();
 }

@@ -14,7 +14,7 @@ import lombok.Setter;
 public class LoginRequest {
     private String username;
     private String password;
-    private String captchaId;      // Optional - required after 3 failed attempts
+    // captchaId is now read from HttpOnly cookie, not from request body
     private String captchaCode;    // Optional - required after 3 failed attempts
-    private String captcha;        // Simple captcha from frontend
+    private String captcha;        // Simple captcha from frontend (for backward compatibility)
 }

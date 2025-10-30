@@ -120,9 +120,15 @@ public class AuthenticationService {
             return;
         }
         
+        // Store TTL in SECONDS for Redis @TimeToLive
+        long ttlSeconds = (expireTime.getTime() - issueTime.getTime()) / 1000;
+        if (ttlSeconds <= 0) {
+            return;
+        }
+
         RedisToken redisToken = RedisToken.builder()
                 .jwtID(jwtId)
-                .expirationTime(expireTime.getTime() - issueTime.getTime())
+                .expirationTime(ttlSeconds)
                 .build();
         
         try {
