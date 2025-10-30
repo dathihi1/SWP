@@ -5,7 +5,7 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: root
+    password: 123456789
     hikari:
       maximum-pool-size: 100
       minimum-idle: 20

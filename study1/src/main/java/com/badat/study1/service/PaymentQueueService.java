@@ -186,9 +186,11 @@ public class PaymentQueueService {
     public void processPaymentQueue() {
         String lockKey = "payment-queue:process";
         Lock lock = redisLockRegistry.obtain(lockKey);
+        boolean lockAcquired = false;
         
         try {
             if (lock.tryLock(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                lockAcquired = true;
                 log.info("Processing payment queue with distributed lock...");
                 
                 try {
@@ -209,7 +211,9 @@ public class PaymentQueueService {
             Thread.currentThread().interrupt();
             log.error("Interrupted while waiting for payment queue lock", e);
         } finally {
-            lock.unlock();
+            if (lockAcquired) {
+                lock.unlock();
+            }
         }
     }
     
