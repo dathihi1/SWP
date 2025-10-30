@@ -52,6 +52,8 @@ public class AuthenticationController {
     private final RateLimitService rateLimitService;
     private final OtpLockoutService otpLockoutService;
     private final OtpService otpService;
+    private final com.badat.study1.service.UserActivityLogService userActivityLogService;
+    private final com.badat.study1.repository.UserRepository userRepository;
 
     @PostMapping("/login")
     @UserActivity(action = "LOGIN", category = UserActivityLog.Category.ACCOUNT)
@@ -146,6 +148,13 @@ public class AuthenticationController {
                 ipLockoutService.recordSuccessfulAttempt(ipAddress);
                 captchaRateLimitService.clearCaptchaAttempts(ipAddress);
                 securityEventService.logLoginAttempt(ipAddress, username, true, "Login successful", userAgent);
+
+                // Explicit user activity log for LOGIN success (ensure it's recorded even before security context is set)
+                try {
+                    userRepository.findByUsername(username).ifPresent(u -> {
+                        userActivityLogService.logLogin(u, ipAddress, userAgent, request.getRequestURI(), request.getMethod(), true, null);
+                    });
+                } catch (Exception ignore) {}
                 
                 // Set HttpOnly access token cookie for browser navigation
                 boolean secure = request.isSecure();
@@ -187,6 +196,8 @@ public class AuthenticationController {
                 
                 log.info("Generated new captcha after failed login attempt for user: {} from IP: {}", username, ipAddress);
                 
+                // Optionally record failed login in audit/security logs already handled above
+
                 return ResponseEntity.status(401)
                         .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
                         .body(errorResponse);
@@ -346,6 +357,14 @@ public class AuthenticationController {
                 throw e; // Re-throw other exceptions
             }
             
+            // Explicit user activity for successful registration
+            try {
+                String userAgent = http.getHeader("User-Agent");
+                userRepository.findByEmail(request.getEmail()).ifPresent(u -> {
+                    userActivityLogService.logRegister(u, ipAddress, userAgent, http.getRequestURI(), http.getMethod(), true, null);
+                });
+            } catch (Exception ignore) {}
+
             // Record IP request
             rateLimitService.recordIpRequest(ipAddress, "register");
             
