@@ -3,3 +3,14 @@
 2025-10-30 13:03:30.294 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=6 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
 2025-10-30 17:01:03.180 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=1 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
 2025-10-30 17:01:12.089 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=1 ip=0:0:0:0:0:0:0:1
+2025-10-30 19:55:40.366 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=1 ip=127.0.0.1 reason="Locked by admin: dathihi2005"
+2025-10-30 19:55:55.049 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=1 ip=0:0:0:0:0:0:0:1
+2025-10-30 19:56:17.063 INFO  com.badat.study1.audit - USER_CREATE: Admin dathihi2005 created new user dathihi2005zz (Email: dat2801zz@gmail.comz)
+2025-10-30 19:56:39.386 INFO  com.badat.study1.audit - USER_CREATE: Admin dathihi2005 created new user dathihi2005z (Email: dat2801zz55@gmail.com)
+2025-10-30 19:57:29.013 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=1 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
+2025-10-30 20:03:09.681 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=7 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
+2025-10-30 20:03:21.690 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=7 ip=0:0:0:0:0:0:0:1
+2025-10-30 20:04:47.505 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=1 ip=0:0:0:0:0:0:0:1
+2025-10-30 20:04:53.173 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=1 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
+2025-10-30 20:14:26.223 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=1 ip=0:0:0:0:0:0:0:1
+2025-10-30 20:14:45.122 INFO  com.badat.study1.audit - USER_EDIT: Admin dathihi2005 edited user seller1 information. Changes: Admin dathihi2005 ?ã ch?nh s?a thông tin c?a user seller1. Các thay ??i: role=ADMIN, status=ACTIVE
