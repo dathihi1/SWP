@@ -425,19 +425,33 @@
     </div>
 </nav>
 
-<!-- Running ticker line + Back to products button -->
+<!-- Running ticker line full-width (button moved OUTSIDE this block) -->
 <div class="bg-light border-bottom">
-    <div class="container py-2 d-flex align-items-center gap-3">
-        <a class="btn btn-outline-primary btn-sm" href="/products">
-            <i class="fa-solid fa-arrow-left me-1"></i>
-            Quay về sản phẩm
-        </a>
-        <div class="flex-grow-1">
-            <marquee behavior="scroll" direction="left" scrollamount="6">
-                Ưu đãi hôm nay: Giao dịch an toàn • Nạp ví nhanh • Hỗ trợ 24/7 • Nhiều gian hàng uy tín
-            </marquee>
-        </div>
+    <div class="container-fluid py-2 px-0">
+        <marquee behavior="scroll" direction="left" scrollamount="7" class="w-100 d-block">
+            <span class="text-primary fw-semibold">
+                <i class="fa-solid fa-bolt me-1"></i>Ưu đãi hot hôm nay: giảm giá phí giao dịch 10% cho đơn đầu tiên!
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-shield-halved me-1"></i>Giao dịch an toàn, bảo mật nhiều lớp
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-wallet me-1"></i>Nạp ví trong vài giây, thanh toán tức thì
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-headset me-1"></i>Hỗ trợ 24/7 qua chat và email
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-store me-1"></i>Hàng nghìn gian hàng uy tín được kiểm duyệt
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-gift me-1"></i>Voucher và ưu đãi mới mỗi ngày
+            </span>
+        </marquee>
     </div>
+</div>
+
+<!-- Back button placed clearly below ticker, outside its frame -->
+<div class="container py-2">
+    <a class="btn btn-outline-primary btn-sm" href="/products">
+        <i class="fa-solid fa-arrow-left me-1"></i>
+        Quay về gian hàng
+    </a>
     
 </div>
 
@@ -531,10 +545,16 @@
                         <i class="fa-solid fa-star" th:if="${avgRating > 4}"></i>
                         <i class="fa-regular fa-star" th:if="${avgRating <= 4}"></i>
                     </div>
-                    <span class="text-muted" th:if="${reviews.size() > 0}" 
-                          th:text="${reviews.size()} + ' review - ' + ${#numbers.formatDecimal(avgRating, 1, 1)} + ' sao trên thang 5 sao | Đã bán: ' + ${products.size()}">0 review</span>
-                    <span class="text-muted" th:if="${reviews.size() == 0}" 
-                          th:text="'0 review - 0 sao trên thang 5 sao | Đã bán: ' + ${products.size()}">0 review</span>
+                    <span class="text-muted d-inline-flex align-items-center" th:if="${reviews.size() > 0}">
+                        <span th:text="${reviews.size()} + ' review - ' + ${#numbers.formatDecimal(avgRating, 1, 1)}"></span>
+                        <i class="fa-solid fa-star text-warning ms-1 me-1"></i>
+                        <span th:text="'| Đã bán: ' + ${products.size()}"></span>
+                    </span>
+                    <span class="text-muted d-inline-flex align-items-center" th:if="${reviews.size() == 0}">
+                        <span>0 review - 0</span>
+                        <i class="fa-solid fa-star text-warning ms-1 me-1"></i>
+                        <span th:text="'| Đã bán: ' + ${products.size()}"></span>
+                    </span>
                 </div>
             </div>
             
@@ -637,8 +657,34 @@
                         
                         <div id="reviews-content" style="display: none;">
                             <h5 class="mb-3 fw-bold">Đánh giá từ khách hàng</h5>
-                            <div class="text-muted">
-                                Các đánh giá và nhận xét từ khách hàng sẽ được hiển thị tại đây...
+                            <div th:if="${#lists.isEmpty(reviews)}" class="text-muted">
+                                Chưa có đánh giá cho gian hàng này.
+                            </div>
+                            <div th:if="${!#lists.isEmpty(reviews)}" class="vstack gap-3">
+                                <div class="border rounded-3 p-3" th:each="rv : ${reviews}">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="text-warning">
+                                                <i class="fa-solid fa-star" th:each="i : ${#numbers.sequence(1, 5)}"></i>
+                                            </div>
+                                            <small class="text-muted" th:text="${#temporals.format(rv.createdAt,'dd/MM/yyyy HH:mm')}">--/--/----</small>
+                                        </div>
+                                        <small class="text-muted" th:if="${rv.product != null}">
+                                            Sản phẩm: <span class="fw-semibold" th:text="${rv.product.name}">Tên SP</span>
+                                        </small>
+                                    </div>
+                                    <div class="mb-1">
+                                        <strong th:text="${rv.title}" th:if="${rv.title != null}"></strong>
+                                    </div>
+                                    <div class="mb-2" th:text="${rv.content}">Nội dung đánh giá</div>
+                                    <div class="bg-light rounded p-2" th:if="${rv.replyContent != null}">
+                                        <div class="small text-primary fw-semibold mb-1">
+                                            Phản hồi từ người bán
+                                        </div>
+                                        <div class="small" th:text="${rv.replyContent}">Nội dung phản hồi</div>
+                                        <div class="text-muted small mt-1" th:if="${rv.replyAt != null}" th:text="'Lúc: ' + ${#temporals.format(rv.replyAt,'dd/MM/yyyy HH:mm')}"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
