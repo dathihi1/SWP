@@ -21,7 +21,7 @@ public class IpLockoutService {
     private final IpLockoutRepository ipLockoutRepository;
     private final SecurityEventService securityEventService;
     
-    @Value("${security.rate-limit.ip-max-attempts:10}")
+    @Value("${security.rate-limit.ip-max-attempts:30}")
     private int maxAttemptsPerIp;
     
     @Value("${security.rate-limit.ip-lockout-minutes:30}")
@@ -32,6 +32,9 @@ public class IpLockoutService {
     
     private static final String IP_ATTEMPTS_PREFIX = "ip_attempts:";
     private static final String IP_LOCKED_PREFIX = "ip_locked:";
+    private static final String CAPTCHA_LOCKED_PREFIX = "captcha_locked:";
+    private static final String CAPTCHA_ATTEMPTS_PREFIX = "captcha_attempts:";
+    private static final String FORGOT_PASSWORD_IP_PREFIX = "forgot_password_ip:";
     
     public boolean isIpLocked(String ipAddress) {
         // Check Redis first for quick response
@@ -84,7 +87,7 @@ public class IpLockoutService {
         log.info("Successful login from IP: {}, attempts cleared", ipAddress);
     }
     
-    private void lockIp(String ipAddress, String reason) {
+    public void lockIp(String ipAddress, String reason) {
         try {
             // Lock in Redis for immediate effect
             String lockKey = IP_LOCKED_PREFIX + ipAddress;
@@ -125,6 +128,47 @@ public class IpLockoutService {
             
         } catch (Exception e) {
             log.error("Failed to unlock IP {}: {}", ipAddress, e.getMessage());
+        }
+    }
+
+    /**
+     * Admin unlocks an IP: clear all related Redis keys (ip, captcha, attempts) and deactivate DB lockouts.
+     */
+    public void adminUnlockIp(String ipAddress) {
+        try {
+            // Core ip lock
+            redisTemplate.delete(IP_LOCKED_PREFIX + ipAddress);
+            redisTemplate.delete(IP_ATTEMPTS_PREFIX + ipAddress);
+            // Captcha lock & attempts
+            redisTemplate.delete(CAPTCHA_LOCKED_PREFIX + ipAddress);
+            redisTemplate.delete(CAPTCHA_ATTEMPTS_PREFIX + ipAddress);
+            // Forgot password IP rate limit
+            redisTemplate.delete(FORGOT_PASSWORD_IP_PREFIX + ipAddress);
+            // Deactivate DB lockouts
+            ipLockoutRepository.deactivateLockoutsByIpAddress(ipAddress, LocalDateTime.now());
+            log.info("Admin unlocked IP and cleared rate-limit keys: {}", ipAddress);
+        } catch (Exception e) {
+            log.error("Failed adminUnlockIp for {}: {}", ipAddress, e.getMessage());
+        }
+    }
+
+    /**
+     * Persist a lockout record for captcha failures so Admin can see active lockouts.
+     */
+    public void createCaptchaLockoutRecord(String ipAddress, String reason) {
+        try {
+            LocalDateTime lockedUntil = LocalDateTime.now().plusMinutes(ipLockoutMinutes);
+            IpLockout ipLockout = IpLockout.builder()
+                    .ipAddress(ipAddress)
+                    .reason(reason)
+                    .attemptCount(maxAttemptsPerIp)
+                    .isActive(true)
+                    .lockedUntil(lockedUntil)
+                    .build();
+            ipLockoutRepository.save(ipLockout);
+            log.info("Created captcha lockout record for IP: {}", ipAddress);
+        } catch (Exception e) {
+            log.error("Failed to create captcha lockout record for {}: {}", ipAddress, e.getMessage());
         }
     }
     

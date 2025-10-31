@@ -90,4 +90,37 @@ public class UserActivityLogResponse {
         
         return builder.build();
     }
+
+    // Computed fields for UI compatibility
+    public String getActionDisplayName() {
+        if (action == null) return "";
+        return switch (action) {
+            case "LOGIN" -> "Đăng nhập";
+            case "LOGOUT" -> "Đăng xuất";
+            case "REGISTER" -> "Đăng ký tài khoản";
+            case "OTP_VERIFY" -> "Xác minh OTP";
+            case "PROFILE_UPDATE" -> "Cập nhật thông tin";
+            case "PASSWORD_CHANGE" -> "Đổi mật khẩu";
+            case "ADD_TO_CART" -> "Thêm vào giỏ hàng";
+            case "UPDATE_CART" -> "Cập nhật giỏ hàng";
+            case "REMOVE_FROM_CART" -> "Xóa khỏi giỏ hàng";
+            case "CLEAR_CART" -> "Xóa giỏ hàng";
+            case "VIEW_PRODUCT" -> "Xem sản phẩm";
+            case "CREATE_ORDER" -> "Tạo đơn hàng";
+            case "CANCEL_ORDER" -> "Hủy đơn hàng";
+            case "PAYMENT_SUCCESS" -> "Thanh toán thành công";
+            case "PAYMENT_FAILED" -> "Thanh toán thất bại";
+            case "CREATE_REVIEW" -> "Tạo đánh giá";
+            case "UPDATE_REVIEW" -> "Cập nhật đánh giá";
+            case "DELETE_REVIEW" -> "Xóa đánh giá";
+            default -> action;
+        };
+    }
+
+    public String getSuccessIcon() {
+        if (Boolean.TRUE.equals(success)) {
+            return "fa-solid fa-check";
+        }
+        return "fa-solid fa-times";
+    }
 }

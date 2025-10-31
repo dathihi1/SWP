@@ -21,10 +21,6 @@ public class AuditLog extends BaseEntity {
     @Column(name = "user_id")
     Long userId;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    User user;
-    
     @Column(name = "action", nullable = false)
     String action;
     

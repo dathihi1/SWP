@@ -25,6 +25,7 @@ public class OtpService {
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
     private final OtpLockoutService otpLockoutService;
+    private final AuditLogService auditLogService;
     
     @Value("${security.rate-limit.otp-expire-minutes:10}")
     private int otpExpireMinutes;
@@ -38,6 +39,20 @@ public class OtpService {
     public void sendOtp(String email, String purpose) {
         // Check rate limiting (skip for forgot password)
         if (!"forgot_password".equals(purpose) && rateLimitService.isEmailRateLimited(email)) {
+            try {
+                auditLogService.logAction(
+                        null,
+                        "EMAIL_BLOCKED_RATE_LIMIT_ACTIVE",
+                        "Blocked email send due to active rate limit for " + email,
+                        null,
+                        false,
+                        "RATE_LIMIT_ACTIVE",
+                        "System",
+                        "/api/otp/send",
+                        "POST",
+                        com.badat.study1.model.AuditLog.Category.SECURITY_EVENT
+                );
+            } catch (Exception ignore) {}
             throw new RuntimeException("Quá nhiều yêu cầu. Vui lòng thử lại sau 1 giờ.");
         }
         

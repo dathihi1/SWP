@@ -21,7 +21,6 @@ public class ForgotPasswordRequest {
     @Email(message = "Email không hợp lệ")
     private String email;
     
-    // Captcha fields
-    private String captchaId;
+    // Captcha fields - captchaId is now read from HttpOnly cookie
     private String captchaCode;
 }

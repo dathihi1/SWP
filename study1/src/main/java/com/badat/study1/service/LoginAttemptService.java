@@ -30,6 +30,23 @@ public class LoginAttemptService {
     }
 
     public void recordFailedLoginAttempt(String username, String ipAddress) {
+        // If account is already locked, log a blocked attempt audit entry
+        if (isAccountLocked(username)) {
+            try {
+                auditLogService.logAction(
+                        null,
+                        "ACCOUNT_BLOCKED_LOGIN_LOCK_ACTIVE",
+                        "Blocked login attempt while account locked for username=" + username,
+                        ipAddress,
+                        false,
+                        "ACCOUNT_LOCK_ACTIVE",
+                        "System",
+                        "/api/auth/login",
+                        "POST",
+                        com.badat.study1.model.AuditLog.Category.SECURITY_EVENT
+                );
+            } catch (Exception ignore) {}
+        }
         String attemptsKey = LOGIN_ATTEMPTS_KEY_PREFIX + username;
         
         // Increment failed attempts

@@ -17,6 +17,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 
 @Slf4j
 @Service
@@ -30,8 +35,13 @@ public class CaptchaService {
     private int captchaExpireMinutes;
     
     private static final String CAPTCHA_PREFIX = "captcha:";
+    private static final String CAPTCHA_COOKIE_NAME = "captcha_id";
     
-    public CaptchaResponse generateCaptcha() {
+    /**
+     * Generate captcha image and return cookie header value
+     * @return Pair of CaptchaResponse and cookie header string
+     */
+    public Map.Entry<CaptchaResponse, String> generateCaptchaWithCookie() {
         try {
             // Generate captcha text
             String captchaText = kaptcha.createText();
@@ -45,52 +55,148 @@ public class CaptchaService {
             BufferedImage captchaImage = kaptcha.createImage(captchaText);
             String captchaImageBase64 = convertImageToBase64(captchaImage);
             
-            log.info("Captcha generated with ID: {}", captchaId);
+            // Create HttpOnly cookie header
+            ResponseCookie cookie = ResponseCookie.from(CAPTCHA_COOKIE_NAME, captchaId)
+                    .httpOnly(true)
+                    .secure(false) // Set to true in production with HTTPS
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(captchaExpireMinutes * 60)
+                    .build();
             
-            return CaptchaResponse.builder()
-                    .captchaId(captchaId)
+            log.info("Captcha generated with ID: {} (will be stored in cookie)", captchaId);
+            log.debug("Captcha text: {} for ID: {}", captchaText, captchaId);
+            
+            // Return response and cookie header
+            CaptchaResponse captchaResponse = CaptchaResponse.builder()
                     .captchaImage(captchaImageBase64)
                     .expiresIn(captchaExpireMinutes * 60) // Convert to seconds
                     .build();
+            
+            return Map.entry(captchaResponse, cookie.toString());
                     
         } catch (Exception e) {
-            log.error("Failed to generate captcha: {}", e.getMessage());
+            log.error("Failed to generate captcha: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to generate captcha", e);
         }
     }
     
-    public boolean validateCaptcha(String captchaId, String userInput) {
-        if (captchaId == null || userInput == null) {
+    /**
+     * @deprecated Use generateCaptchaWithCookie() instead
+     */
+    @Deprecated
+    public CaptchaResponse generateCaptcha(HttpServletResponse response) {
+        Map.Entry<CaptchaResponse, String> result = generateCaptchaWithCookie();
+        response.addHeader(HttpHeaders.SET_COOKIE, result.getValue());
+        return result.getKey();
+    }
+    
+    /**
+     * Validate captcha using ID from HttpOnly cookie
+     */
+    public boolean validateCaptcha(HttpServletRequest request, String userInput) {
+        if (userInput == null || userInput.trim().isEmpty()) {
+            log.warn("Captcha validation failed: userInput is null or empty");
             return false;
         }
+        
+        // Read captchaId from cookie
+        String captchaId = getCaptchaIdFromCookie(request);
+        if (captchaId == null) {
+            log.warn("No captcha_id cookie found - listing all cookies:");
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                    log.warn("  Cookie: {} = {}", cookie.getName(), cookie.getValue());
+                }
+            } else {
+                log.warn("  No cookies at all in request");
+            }
+            return false;
+        }
+        
+        log.info("Found captcha_id cookie: {}", captchaId);
+        log.debug("User input (trimmed): '{}'", userInput.trim());
         
         try {
             String redisKey = CAPTCHA_PREFIX + captchaId;
             String storedCaptcha = (String) redisTemplate.opsForValue().get(redisKey);
             
             if (storedCaptcha == null) {
-                log.warn("Captcha not found or expired for ID: {}", captchaId);
+                log.warn("Captcha not found or expired for ID: {} (Redis key: {})", captchaId, redisKey);
                 return false;
             }
             
-            boolean isValid = storedCaptcha.equals(userInput.trim());
+            log.debug("Stored captcha text: '{}'", storedCaptcha);
+            
+            String trimmedInput = userInput.trim();
+            boolean isValid = storedCaptcha.equals(trimmedInput);
+            
+            log.info("Captcha comparison - stored: '{}' vs input: '{}' -> {}", 
+                    storedCaptcha, trimmedInput, isValid);
+            
+            // Always delete captcha after validation (one-time use)
+            redisTemplate.delete(redisKey);
             
             if (isValid) {
-                // Remove captcha after successful validation
-                redisTemplate.delete(redisKey);
                 log.info("Captcha validated successfully for ID: {}", captchaId);
             } else {
-                log.warn("Captcha validation failed for ID: {}", captchaId);
+                log.warn("Captcha validation failed for ID: {} - stored: '{}' vs input: '{}'", 
+                        captchaId, storedCaptcha, trimmedInput);
             }
             
             return isValid;
             
         } catch (Exception e) {
-            log.error("Failed to validate captcha: {}", e.getMessage());
+            log.error("Failed to validate captcha: {}", e.getMessage(), e);
             return false;
         }
     }
     
+    /**
+     * Clear captcha cookie after use
+     */
+    public void clearCaptchaCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from(CAPTCHA_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+    
+    /**
+     * Extract captchaId from HttpOnly cookie
+     */
+    private String getCaptchaIdFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (CAPTCHA_COOKIE_NAME.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Legacy method - kept for backward compatibility (deprecated)
+     */
+    @Deprecated
+    public CaptchaResponse generateCaptcha() {
+        throw new UnsupportedOperationException("Use generateCaptcha(HttpServletResponse) instead");
+    }
+    
+    /**
+     * Legacy method - kept for backward compatibility (deprecated)
+     */
+    @Deprecated
+    public boolean validateCaptcha(String captchaId, String userInput) {
+        throw new UnsupportedOperationException("Use validateCaptcha(HttpServletRequest, String) instead");
+    }
     
     // Generate simple captcha with answer stored in Redis
     public Map<String, String> generateSimpleCaptcha() {
@@ -107,8 +213,11 @@ public class CaptchaService {
             
             // Try to store captcha answer in Redis, but don't fail if Redis is down
             try {
-                String redisKey = CAPTCHA_PREFIX + "simple:" + captchaId;
-                redisTemplate.opsForValue().set(redisKey, captchaAnswer, captchaExpireMinutes, TimeUnit.MINUTES);
+                String simpleKey = CAPTCHA_PREFIX + "simple:" + captchaId;
+                String normalKey = CAPTCHA_PREFIX + captchaId;
+                redisTemplate.opsForValue().set(simpleKey, captchaAnswer, captchaExpireMinutes, TimeUnit.MINUTES);
+                // Also store under normal key to be compatible with cookie-based validation
+                redisTemplate.opsForValue().set(normalKey, captchaAnswer, captchaExpireMinutes, TimeUnit.MINUTES);
                 log.info("Simple captcha generated with ID: {} and answer: {} (stored in Redis)", captchaId, captchaAnswer);
             } catch (Exception redisError) {
                 log.warn("Failed to store captcha in Redis: {}, but continuing with fallback", redisError.getMessage());

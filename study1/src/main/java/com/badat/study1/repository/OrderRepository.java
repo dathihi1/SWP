@@ -71,4 +71,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                          @Param("searchStall") String searchStall, 
                                          @Param("searchProduct") String searchProduct, 
                                          @Param("sortBy") String sortBy);
+
+    /**
+     * Find orders by status within a date range (inclusive)
+     */
+    List<Order> findByStatusAndCreatedAtBetween(Order.Status status, LocalDateTime start, LocalDateTime end);
 }

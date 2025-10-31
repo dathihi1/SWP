@@ -23,6 +23,7 @@ public class ProductDTO {
     private String status;
     private String uniqueKey;
     private Long shopId;
+    private String shopName; // tên shop hiển thị ở giỏ hàng
     private Long stallId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -42,6 +43,7 @@ public class ProductDTO {
             .status(product.getStatus() != null ? product.getStatus().name() : null)
             .uniqueKey(product.getUniqueKey())
             .shopId(product.getShop() != null ? product.getShop().getId() : null)
+            .shopName(product.getShop() != null ? product.getShop().getShopName() : null)
             .stallId(product.getStall() != null ? product.getStall().getId() : null)
             .createdAt(product.getCreatedAt())
             .updatedAt(product.getUpdatedAt())

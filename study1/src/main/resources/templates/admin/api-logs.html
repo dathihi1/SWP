@@ -289,7 +289,7 @@
                 <!-- Profile Dropdown -->
                 <div class="dropdown">
                     <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                        <img th:src="@{/api/profile/avatar/me}" 
+                        <img th:src="@{/api/user/avatar/me}" 
                              class="rounded-circle" 
                              style="width: 24px; height: 24px; object-fit: cover;"
                              onerror="this.src='/images/default-avatar.svg';"
@@ -411,8 +411,8 @@
                                 <td th:text="${log.userId != null ? log.userId : 'N/A'}">1</td>
                                 <td th:text="${log.endpoint}">/api/products</td>
                                 <td><span class="badge bg-info" th:text="${log.method}">GET</span></td>
-                                <td><span class="badge" 
-                                          th:class="'badge ' + ${log.statusCode >= 200 and log.statusCode < 300} ? 'bg-success' : (${log.statusCode >= 300 and log.statusCode < 400} ? 'bg-warning' : 'bg-danger')"
+                                <td><span class="badge rounded-pill" 
+                                          th:class="'badge rounded-pill ' + (${log.statusCode >= 200 and log.statusCode < 300} ? 'bg-success' : (${log.statusCode >= 300 and log.statusCode < 400} ? 'bg-warning' : 'bg-danger'))"
                                           th:text="${log.statusCode}">200</span></td>
                                 <td th:text="${log.durationMs}">120</td>
                                 <td><small th:text="${log.ipAddress}">192.168.1.1</small></td>
