@@ -50,6 +50,32 @@
             font-size: 0.875rem;
             font-weight: 500;
         }
+        /* Ticker styling */
+        .ticker-bar {
+            background: linear-gradient(90deg, #f8f9fa 0%, #eef5ff 50%, #f8f9fa 100%);
+        }
+        .ticker-content {
+            font-weight: 600;
+            color: #0d6efd;
+            letter-spacing: .2px;
+        }
+        .ticker-content .sep {
+            color: #6c757d;
+            margin: 0 .75rem;
+        }
+        /* Pagination styles giống trang Đơn hàng */
+        .pagination { margin: 0; }
+        .page-link {
+            color: #0d6efd;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem 0.75rem;
+            margin: 0 4px;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        .page-link:hover { color: #0b5ed7; background-color: #e9ecef; border-color: #adb5bd; }
+        .page-item.active .page-link { background-color: #0d6efd; border-color: #0d6efd; color: #fff; }
+        .page-item.disabled .page-link { color: #6c757d; background-color: #fff; border-color: #dee2e6; cursor: not-allowed; }
     </style>
     <script src="/js/auth.js"></script>
     <script>
@@ -203,11 +229,23 @@
     </div>
 </nav>
 
-<!-- Running ticker line -->
+<!-- Running ticker line full-width (same as stall detail) -->
 <div class="bg-light border-bottom">
-    <div class="container py-2">
-        <marquee behavior="scroll" direction="left" scrollamount="6">
-            Ưu đãi hôm nay: Giao dịch an toàn • Nạp ví nhanh • Hỗ trợ 24/7 • Nhiều gian hàng uy tín
+    <div class="container-fluid py-2 px-0">
+        <marquee behavior="scroll" direction="left" scrollamount="7" class="w-100 d-block">
+            <span class="text-primary fw-semibold">
+                <i class="fa-solid fa-bolt me-1"></i>Ưu đãi hot hôm nay: giảm giá phí giao dịch 10% cho đơn đầu tiên!
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-shield-halved me-1"></i>Giao dịch an toàn, bảo mật nhiều lớp
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-wallet me-1"></i>Nạp ví trong vài giây, thanh toán tức thì
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-headset me-1"></i>Hỗ trợ 24/7 qua chat và email
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-store me-1"></i>Hàng nghìn gian hàng uy tín được kiểm duyệt
+                &nbsp;•&nbsp;
+                <i class="fa-solid fa-gift me-1"></i>Voucher và ưu đãi mới mỗi ngày
+            </span>
         </marquee>
     </div>
     
@@ -392,27 +430,35 @@
 <div class="container mt-5" th:if="${totalPages > 1}">
     <div class="row">
         <div class="col-12">
-            <nav aria-label="Pagination">
+            <nav aria-label="Pagination"
+                 th:with="maxButtons=${7},
+                          start=${(currentPage - 3) < 0 ? 0 : (currentPage - 3)},
+                          end=${(start + maxButtons - 1) > (totalPages - 1) ? (totalPages - 1) : (start + maxButtons - 1)},
+                          start=${(end - maxButtons + 1) < 0 ? 0 : (end - maxButtons + 1)}">
                 <ul class="pagination justify-content-center">
                     <!-- Previous button -->
                     <li class="page-item" th:classappend="${!hasPrev} ? 'disabled'">
-                        <a class="page-link" th:href="${hasPrev} ? @{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${currentPage - 1}, size=${pageSize})} : '#'" 
-                           th:if="${hasPrev}">&lt;</a>
-                        <span class="page-link" th:unless="${hasPrev}">&lt;</span>
+                        <a class="page-link" th:if="${hasPrev}"
+                           th:href="@{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${currentPage - 1}, size=${pageSize})}"
+                           aria-label="Previous">&laquo;</a>
+                        <span class="page-link" th:unless="${hasPrev}">&laquo;</span>
                     </li>
                     
                     <!-- Page numbers -->
-                    <li class="page-item" th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}" 
+                    <li class="page-item" th:each="pageNum : ${#numbers.sequence(start, end)}"
                         th:classappend="${pageNum == currentPage} ? 'active'">
-                        <a class="page-link" th:href="@{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${pageNum}, size=${pageSize})}" 
+                        <span class="page-link" th:if="${pageNum == currentPage}" th:text="${pageNum + 1}">1</span>
+                        <a class="page-link" th:unless="${pageNum == currentPage}"
+                           th:href="@{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${pageNum}, size=${pageSize})}"
                            th:text="${pageNum + 1}">1</a>
                     </li>
                     
                     <!-- Next button -->
                     <li class="page-item" th:classappend="${!hasNext} ? 'disabled'">
-                        <a class="page-link" th:href="${hasNext} ? @{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${currentPage + 1}, size=${pageSize})} : '#'" 
-                           th:if="${hasNext}">&gt;</a>
-                        <span class="page-link" th:unless="${hasNext}">&gt;</span>
+                        <a class="page-link" th:if="${hasNext}"
+                           th:href="@{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${currentPage + 1}, size=${pageSize})}"
+                           aria-label="Next">&raquo;</a>
+                        <span class="page-link" th:unless="${hasNext}">&raquo;</span>
                     </li>
                 </ul>
             </nav>
