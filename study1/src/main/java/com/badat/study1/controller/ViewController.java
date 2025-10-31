@@ -18,6 +18,7 @@ import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ReviewRepository;
+import com.badat.study1.repository.WarehouseRepository;
 import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.ApiCallLogRepository;
 import com.badat.study1.repository.UserActivityLogRepository;
@@ -81,6 +82,7 @@ public class ViewController {
     private final AuditLogService auditLogService;
     private final UserService userService;
     private final com.badat.study1.service.UserActivityLogService userActivityLogService;
+    private final WarehouseRepository warehouseRepository;
 
     // Inject common attributes (auth info and wallet balance) for all views
     @ModelAttribute
@@ -176,14 +178,12 @@ public class ViewController {
                 vm.put("stallName", stall.getStallName());
                 vm.put("stallCategory", stall.getStallCategory());
 
-                // Compute product count by summing quantities of products in the stall
-                var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
-                int totalStock = products.stream()
-                        .mapToInt(p -> p.getQuantity() != null ? p.getQuantity() : 0)
-                        .sum();
+                // Compute product count by counting warehouse items (not locked, not deleted)
+                int totalStock = (int) warehouseRepository.countAvailableItemsByStallId(stall.getId());
                 vm.put("productCount", totalStock);
                 
                 // Calculate price range from available products
+                var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
                 if (!products.isEmpty()) {
                     var availableProducts = products.stream()
                             .filter(product -> product.getQuantity() != null && product.getQuantity() > 0)
@@ -722,10 +722,8 @@ public class ViewController {
                 // Lấy tất cả sản phẩm trong gian hàng này
                 var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
 
-                // Tính tổng quantity của tất cả sản phẩm trong gian hàng
-                int totalStock = products.stream()
-                        .mapToInt(product -> product.getQuantity() != null ? product.getQuantity() : 0)
-                        .sum();
+                // Tính tổng kho theo Warehouse (không khóa, không xóa)
+                int totalStock = (int) warehouseRepository.countAvailableItemsByStallId(stall.getId());
 
                 stall.setProductCount(totalStock);
                 
@@ -897,8 +895,13 @@ public class ViewController {
 
         model.addAttribute("stall", stall);
 
-        // Lấy danh sách sản phẩm của gian hàng
+        // Lấy danh sách sản phẩm của gian hàng và đồng bộ tồn kho theo warehouse (isDelete=false, locked=false)
         var products = productRepository.findByStallIdAndIsDeleteFalse(stallId);
+        for (Product p : products) {
+            long stock = warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(p.getId());
+            p.setQuantity((int) stock);
+            p.setStatus(stock > 0 ? Product.Status.AVAILABLE : Product.Status.UNAVAILABLE);
+        }
         model.addAttribute("products", products);
 
         return "seller/product-management";
