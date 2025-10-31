@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lỗi hệ thống - TapHoa MMO</title>
+    <title>Lỗi hệ thống - MMO_MARKET</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
         :root { 
-            --brand-green: #28a745; 
-            --brand-blue: #007bff;
+            --brand-primary: #0d6efd; /* MMO_MARKET blue */
+            --brand-secondary: #0b5ed7;
             --brand-red: #dc3545;
         }
         
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
         .navbar-brand { 
-            color: var(--brand-green) !important; 
+            color: var(--brand-primary) !important; 
             font-weight: 700; 
             font-size: 1.5rem;
         }
@@ -35,7 +35,7 @@
         
         .error-icon {
             font-size: 5rem;
-            color: var(--brand-red);
+            color: var(--brand-primary);
             margin-bottom: 2rem;
         }
         
@@ -53,7 +53,7 @@
         }
         
         .btn-home {
-            background: var(--brand-green);
+            background: var(--brand-primary);
             color: white;
             padding: 12px 30px;
             border-radius: 8px;
@@ -63,7 +63,7 @@
         }
         
         .btn-home:hover {
-            background: #218838;
+            background: var(--brand-secondary);
             color: white;
             transform: translateY(-2px);
         }
@@ -71,11 +71,11 @@
 </head>
 <body>
 <!-- Header -->
-<nav class="navbar navbar-expand-lg" style="background: linear-gradient(90deg, #28a745 0%, #20c997 100%); color: white;">
+<nav class="navbar navbar-expand-lg" style="background: linear-gradient(90deg, #0d6efd 0%, #0b5ed7 100%); color: white;">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center me-2" th:href="@{/}" href="/" style="color: white !important;">
-            <i class="fa-solid fa-store me-2"></i>
-            TapHoa MMO
+            <i class="fa-solid fa-cart-shopping me-2"></i>
+            MMO_MARKET
         </a>
         
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" style="border-color: white;">
@@ -94,11 +94,11 @@
             <div class="d-none d-lg-flex align-items-center gap-3 ms-auto text-white">
                 <div class="d-flex align-items-center gap-2">
                     <i class="fa-solid fa-headset"></i>
-                    <span>Hỗ trợ trực tuyến: TapHoa MMO</span>
+                    <span>Hỗ trợ trực tuyến: MMO_MARKET</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <i class="fa-solid fa-envelope"></i>
-                    <span>support@taphoammo.net</span>
+                    <span>support@mmomarket.example</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <i class="fa-solid fa-clock"></i>
@@ -190,15 +190,15 @@
             <div class="col-12 col-lg-4">
                 <h4 class="fw-bold mb-3">Đăng ký bán hàng</h4>
                 <p>Tạo một gian hàng của bạn trên trang của chúng tôi. Đội ngũ hỗ trợ sẽ liên lạc để giúp bạn tối ưu khả năng bán hàng.</p>
-                <a class="btn btn-success" th:href="@{/seller/register}" href="/seller/register">Tham gia</a>
+            <a class="btn btn-primary" th:href="@{/seller/register}" href="/seller/register">Tham gia</a>
             </div>
         </div>
         <hr class="my-4">
         <div class="d-flex justify-content-between align-items-center small text-muted">
-            <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> TapHoa MMO</div>
+            <div>© <span th:text="${#temporals.format(#temporals.createNow(),'yyyy')}">2025</span> MMO_MARKET</div>
             <div>
-                <a href="https://www.facebook.com/taphoammo11" class="text-muted text-decoration-none">
-                    https://www.facebook.com/taphoammo11
+                <a href="#" class="text-muted text-decoration-none">
+                    MMO_MARKET
                 </a>
             </div>
         </div>

@@ -3,6 +3,7 @@ package com.badat.study1.controller;
 import com.badat.study1.model.Order;
 import com.badat.study1.model.User;
 import com.badat.study1.service.OrderService;
+import com.badat.study1.repository.StallRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 public class OrderController {
     
     private final OrderService orderService;
+    private final StallRepository stallRepository;
     
     /**
      * Lấy danh sách orders của user hiện tại với thông tin OrderItem
@@ -68,6 +70,15 @@ public class OrderController {
                         itemMap.put("commissionAmount", item.getCommissionAmount());
                         itemMap.put("sellerAmount", item.getSellerAmount());
                         itemMap.put("status", item.getStatus().name());
+                        // Stall info
+                        itemMap.put("stallId", item.getStallId());
+                        try {
+                            if (item.getStallId() != null) {
+                                itemMap.put("stallName", stallRepository.findById(item.getStallId()).map(s -> s.getStallName()).orElse("N/A"));
+                            }
+                        } catch (Exception ex) {
+                            itemMap.put("stallName", "N/A");
+                        }
                         
                         // Thêm thông tin warehouse với itemData
                         if (item.getWarehouse() != null) {
@@ -75,7 +86,15 @@ public class OrderController {
                             warehouseInfo.put("id", item.getWarehouse().getId());
                             warehouseInfo.put("itemData", item.getWarehouse().getItemData());
                             warehouseInfo.put("sellerId", item.getWarehouse().getUser() != null ? item.getWarehouse().getUser().getId() : null);
-                            warehouseInfo.put("sellerName", item.getWarehouse().getUser() != null ? item.getWarehouse().getUser().getUsername() : "N/A");
+                            if (item.getWarehouse().getUser() != null) {
+                                String username = item.getWarehouse().getUser().getUsername();
+                                String fullName = item.getWarehouse().getUser().getFullName();
+                                warehouseInfo.put("sellerName", username);
+                                warehouseInfo.put("sellerFullName", fullName);
+                            } else {
+                                warehouseInfo.put("sellerName", "N/A");
+                                warehouseInfo.put("sellerFullName", null);
+                            }
                             itemMap.put("warehouse", warehouseInfo);
                         } else {
                             itemMap.put("warehouse", null);
@@ -181,6 +200,15 @@ public class OrderController {
                     itemMap.put("sellerAmount", item.getSellerAmount());
                     itemMap.put("status", item.getStatus().name());
                     itemMap.put("notes", item.getNotes());
+                    // Stall info
+                    itemMap.put("stallId", item.getStallId());
+                    try {
+                        if (item.getStallId() != null) {
+                            itemMap.put("stallName", stallRepository.findById(item.getStallId()).map(s -> s.getStallName()).orElse("N/A"));
+                        }
+                    } catch (Exception ex) {
+                        itemMap.put("stallName", "N/A");
+                    }
                     
                     // Thêm thông tin warehouse nếu có
                     if (item.getWarehouse() != null) {
@@ -188,7 +216,15 @@ public class OrderController {
                         warehouseInfo.put("id", item.getWarehouse().getId());
                         warehouseInfo.put("itemData", item.getWarehouse().getItemData());
                         warehouseInfo.put("sellerId", item.getWarehouse().getUser() != null ? item.getWarehouse().getUser().getId() : null);
-                        warehouseInfo.put("sellerName", item.getWarehouse().getUser() != null ? item.getWarehouse().getUser().getUsername() : "N/A");
+                        if (item.getWarehouse().getUser() != null) {
+                            String username = item.getWarehouse().getUser().getUsername();
+                            String fullName = item.getWarehouse().getUser().getFullName();
+                            warehouseInfo.put("sellerName", username);
+                            warehouseInfo.put("sellerFullName", fullName);
+                        } else {
+                            warehouseInfo.put("sellerName", "N/A");
+                            warehouseInfo.put("sellerFullName", null);
+                        }
                         itemMap.put("warehouse", warehouseInfo);
                     }
                     

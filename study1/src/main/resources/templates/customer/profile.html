@@ -218,7 +218,7 @@
 
                     <div class="dropdown">
                         <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <img th:src="@{/api/profile/avatar/me}" 
+                            <img th:src="@{/api/user/avatar/me}" 
                                  class="rounded-circle" 
                                  style="width: 24px; height: 24px; object-fit: cover;"
                                  alt="Avatar"
@@ -351,13 +351,13 @@
                         </div>
                         <div class="info-value" th:text="${totalOrders} + ' đơn hàng'">Loading...</div>
                     </div>
-                    <div class="info-item" th:if="${userRole == 'ADMIN'}">
+                    <div class="info-item" th:if="${userRole == 'SELLER'}">
                         <div class="info-label">
                             <i class="fa-solid fa-store me-2 text-info"></i>Số gian hàng
                         </div>
                         <div class="info-value" id="profileTotalShops">Loading...</div>
                     </div>
-                    <div class="info-item" th:if="${userRole == 'ADMIN'}">
+                    <div class="info-item" th:if="${userRole == 'SELLER'}">
                         <div class="info-label">
                             <i class="fa-solid fa-chart-line me-2 text-success"></i>Đơn đã bán
                         </div>
@@ -373,7 +373,7 @@
                 <div class="card-body text-center">
                     <div class="mb-4">
                         <div class="position-relative d-inline-block mb-3">
-                            <img th:src="@{/api/profile/avatar/me}" 
+                            <img th:src="@{/api/user/avatar/me}" 
                                  class="rounded-circle border border-2 border-primary" 
                                  style="width: 100px; height: 100px; object-fit: cover;"
                                  alt="Avatar"
@@ -493,7 +493,7 @@
                     <div class="text-center mb-3">
                         <div class="circle-crop-frame" id="cropFrame">
                             <img id="avatarPreview" 
-                                 th:src="@{/api/profile/avatar/me}" 
+                                 th:src="@{/api/user/avatar/me}" 
                                  style="width: 100%; height: 100%; object-fit: cover; position: relative;"
                                  alt="Avatar Preview"
                                  onerror="this.src='/images/default-avatar.svg'">
@@ -710,7 +710,7 @@
                 phone: phone
             };
             
-            const response = await fetch('/api/profile', {
+            const response = await fetch('/api/user/profile', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -963,7 +963,7 @@
             const formData = new FormData();
             formData.append('file', file);
             
-            const response = await fetch('/api/profile/avatar', {
+            const response = await fetch('/api/user/avatar', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -982,17 +982,21 @@
             if (result.success) {
                 showSuccess('Avatar đã được cập nhật thành công!');
                 
-                // Update avatar display immediately
+                // Update avatar display immediately with cache busting
                 const timestamp = Date.now();
                 const avatarImg = document.getElementById('profileAvatar');
                 if (avatarImg) {
-                    avatarImg.src = `/api/profile/avatar/me?t=${timestamp}`;
+                    avatarImg.src = `/api/user/avatar/me?t=${timestamp}&v=${Math.random()}`;
+                    // Force reload by setting src again
+                    setTimeout(() => {
+                        avatarImg.src = `/api/user/avatar/me?t=${Date.now()}&v=${Math.random()}`;
+                    }, 100);
                 }
                 
                 // Update preview in modal
                 const previewImg = document.getElementById('avatarPreview');
                 if (previewImg) {
-                    previewImg.src = `/api/profile/avatar/me?t=${timestamp}`;
+                    previewImg.src = `/api/user/avatar/me?t=${timestamp}&v=${Math.random()}`;
                 }
                 
                 // Close modal
@@ -1003,10 +1007,13 @@
                 document.getElementById('avatarForm').reset();
                 document.getElementById('avatarPreview').src = '/images/default-avatar.svg';
                 
-                // Reload page after a short delay to ensure avatar is saved
+                // Force refresh avatar display after a short delay
                 setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                    const avatarImg = document.getElementById('profileAvatar');
+                    if (avatarImg) {
+                        avatarImg.src = `/api/user/avatar/me?t=${Date.now()}&v=${Math.random()}`;
+                    }
+                }, 1000);
             } else {
                 throw new Error(result.error || 'Failed to upload avatar');
             }
@@ -1049,7 +1056,7 @@
                 throw new Error('No access token found');
             }
             
-            const response = await fetch('/api/profile/avatar', {
+            const response = await fetch('/api/user/avatar', {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -1067,11 +1074,15 @@
             if (result.success) {
                 showSuccess('Avatar đã được xóa thành công!');
                 
-                // Update avatar display to default
+                // Update avatar display to default with cache busting
                 const avatarImg = document.getElementById('profileAvatar');
                 if (avatarImg) {
                     const timestamp = Date.now();
-                    avatarImg.src = `/api/profile/avatar/me?t=${timestamp}`;
+                    avatarImg.src = `/api/user/avatar/me?t=${timestamp}&v=${Math.random()}`;
+                    // Force reload by setting src again
+                    setTimeout(() => {
+                        avatarImg.src = `/api/user/avatar/me?t=${Date.now()}&v=${Math.random()}`;
+                    }, 100);
                 }
                 
                 // Update preview
@@ -1084,10 +1095,13 @@
                 // Reset form
                 document.getElementById('avatarForm').reset();
                 
-                // Reload page after a short delay
+                // Force refresh avatar display after a short delay
                 setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                    const avatarImg = document.getElementById('profileAvatar');
+                    if (avatarImg) {
+                        avatarImg.src = `/api/user/avatar/me?t=${Date.now()}&v=${Math.random()}`;
+                    }
+                }, 1000);
             } else {
                 throw new Error(result.error || 'Failed to delete avatar');
             }

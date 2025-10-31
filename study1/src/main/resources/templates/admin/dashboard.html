@@ -401,7 +401,7 @@
                 <!-- Profile Dropdown -->
                 <div class="dropdown">
                     <button class="btn btn-outline-primary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                        <img th:src="@{/api/profile/avatar/me}" 
+                        <img th:src="@{/api/user/avatar/me}" 
                              class="rounded-circle" 
                              style="width: 24px; height: 24px; object-fit: cover;"
                              onerror="this.src='/images/default-avatar.svg';"
@@ -439,6 +439,13 @@
                         <h1 class="page-title">Admin Dashboard</h1>
                         <small class="text-muted">Quản lý hệ thống MMO Market</small>
                     </div>
+                    <form method="get" action="/admin" class="d-flex align-items-center gap-2">
+                        <label class="text-muted me-2">Khoảng thời gian</label>
+                        <select name="range" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+                            <option th:selected="${range}=='7d'" value="7d">7 ngày</option>
+                            <option th:selected="${range}=='30d'" value="30d">30 ngày</option>
+                        </select>
+                    </form>
                 </div>
             </div>
             
@@ -573,15 +580,13 @@
                         </thead>
                         <tbody>
                             <tr th:each="activity : ${recentActivities}">
-                                <td th:text="${activity.type}">Loại hoạt động</td>
-                                <td th:text="${activity.description}">Mô tả</td>
+                                <td th:text="${activity.category}">Loại hoạt động</td>
+                                <td th:text="${activity.details ?: activity.action}">Mô tả</td>
                                 <td th:text="${#temporals.format(activity.createdAt, 'dd/MM/yyyy HH:mm')}">Thời gian</td>
                                 <td>
                                     <span class="status-badge" 
-                                          th:classappend="${activity.status == 'SUCCESS'} ? 'status-active' : 
-                                                         (${activity.status == 'PENDING'} ? 'status-pending' : 'status-inactive')"
-                                          th:text="${activity.status == 'SUCCESS'} ? 'Thành công' : 
-                                                  (${activity.status == 'PENDING'} ? 'Chờ duyệt' : 'Thất bại')">
+                                          th:classappend="${activity.success} ? 'status-active' : 'status-inactive'"
+                                          th:text="${activity.success} ? 'Thành công' : 'Thất bại'">
                                         Trạng thái
                                     </span>
                                 </td>
@@ -650,11 +655,92 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Analytics: Revenue and Orders -->
+            <div class="row mt-4">
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header"><i class="fas fa-sack-dollar me-2"></i>Doanh thu theo ngày</div>
+                        <div class="card-body">
+                            <canvas id="revenueChart" height="140"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header"><i class="fas fa-receipt me-2"></i>Đơn hàng theo ngày</div>
+                        <div class="card-body">
+                            <canvas id="ordersChart" height="140"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Lists -->
+            <div class="row mt-2">
+                <div class="col-md-6 mb-4">
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h5 class="table-title"><i class="fas fa-trophy me-2"></i>Top Sellers</h5>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Seller</th>
+                                        <th>Doanh thu</th>
+                                        <th>Đơn hàng</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="s : ${topSellers}">
+                                        <td th:text="${s.sellerName}">Seller</td>
+                                        <td th:text="${#numbers.formatCurrency(s.revenue)}">0</td>
+                                        <td th:text="${s.orders}">0</td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(topSellers)}">
+                                        <td colspan="3" class="text-center text-muted py-4">Không có dữ liệu</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="table-container">
+                        <div class="table-header">
+                            <h5 class="table-title"><i class="fas fa-ranking-star me-2"></i>Top Stalls</h5>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Gian hàng</th>
+                                        <th>Doanh thu</th>
+                                        <th>Đơn hàng</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="s : ${topStalls}">
+                                        <td th:text="${s.stallName}">Stall</td>
+                                        <td th:text="${#numbers.formatCurrency(s.revenue)}">0</td>
+                                        <td th:text="${s.orders}">0</td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(topStalls)}">
+                                        <td colspan="3" class="text-center text-muted py-4">Không có dữ liệu</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script th:inline="javascript">
         // Sidebar toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
             const sidebarToggle = document.getElementById('sidebarToggle');
@@ -684,6 +770,48 @@
                     item.classList.add('active');
                 }
             });
+
+            // Charts
+            const revenueSeries = /*[[${revenueSeries}]]*/ {};
+            const ordersSeries = /*[[${ordersSeries}]]*/ {};
+            const labels = Object.keys(revenueSeries);
+            const revenueData = labels.map(k => Number((revenueSeries[k] ?? 0)));
+            const ordersData = Object.keys(ordersSeries).map(k => Number((ordersSeries[k] ?? 0)));
+
+            const revCtx = document.getElementById('revenueChart');
+            if (revCtx && typeof Chart !== 'undefined') {
+                new Chart(revCtx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Doanh thu',
+                            data: revenueData,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13,110,253,0.15)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {responsive: true, scales: {y: {beginAtZero: true}}}
+                });
+            }
+
+            const ordCtx = document.getElementById('ordersChart');
+            if (ordCtx && typeof Chart !== 'undefined') {
+                new Chart(ordCtx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Đơn hàng',
+                            data: ordersData,
+                            backgroundColor: 'rgba(32,201,151,0.6)'
+                        }]
+                    },
+                    options: {responsive: true, scales: {y: {beginAtZero: true}}}
+                });
+            }
         });
     </script>
 </body>
