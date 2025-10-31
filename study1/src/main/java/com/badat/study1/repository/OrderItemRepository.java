@@ -44,6 +44,11 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<OrderItem> findByWarehouseIdOrderByCreatedAtDesc(Long warehouseId);
 
     /**
+     * Đếm số lượng OrderItem theo Warehouse ID
+     */
+    long countByWarehouseId(Long warehouseId);
+
+    /**
      * Đếm số lượng OrderItem theo Order ID
      */
     long countByOrderId(Long orderId);

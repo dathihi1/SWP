@@ -482,9 +482,7 @@
                                         <a th:href="@{/seller/add-quantity/{productId}(productId=${product.id})}" class="btn btn-action btn-add-quantity" title="Thêm số lượng">
                                             <i class="fas fa-plus"></i>
                                         </a>
-                                        <button class="btn btn-action btn-delete" title="Xóa mặt hàng" th:onclick="'deleteProduct(' + ${product.id} + ')'">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        
                                     </div>
                                 </td>
                             </tr>
@@ -615,17 +613,7 @@
             }
         }
         
-        function deleteProduct(productId) {
-            if (confirm('Bạn có chắc chắn muốn xóa mặt hàng này?')) {
-                // Create a form to submit the delete request
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/seller/delete-product/' + productId;
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
+        
         
         // Form validation
         document.getElementById('addProductForm').addEventListener('submit', function(e) {

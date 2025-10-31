@@ -77,11 +77,12 @@ public class ProductBrowseController {
             log.info("[Products] after type filter type='{}' -> {} stalls", filterType, stalls.size());
 		}
 
-		// preload shop map
-		Map<Long, Shop> shopMap = stalls.stream()
-				.map(Stall::getShopId)
-				.distinct()
-				.collect(Collectors.toMap(id -> id, id -> shopRepository.findById(id).orElse(null)));
+        // preload shop map (exclude null values)
+        java.util.Map<Long, Shop> shopMap = new java.util.HashMap<>();
+        stalls.stream()
+                .map(Stall::getShopId)
+                .distinct()
+                .forEach(id -> shopRepository.findById(id).ifPresent(shop -> shopMap.put(id, shop)));
 
 		// filter by shop name
 		if (shopName != null && !shopName.isBlank()) {
@@ -119,20 +120,27 @@ public class ProductBrowseController {
 		// compute stock counts (same as available items)
 		Map<Long, Integer> stockCounts = productCounts;
 
-		// compute price ranges (min/max of available product prices)
-		Map<Long, Map<String, BigDecimal>> priceRanges = stalls.stream().collect(Collectors.toMap(
-				Stall::getId,
-				s -> {
-					List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(s.getId())
-							.stream()
-							.filter(p -> p.getStatus() == Product.Status.AVAILABLE && p.getPrice() != null)
-							.toList();
-					if (products.isEmpty()) return Map.of("min", null, "max", null);
-					BigDecimal min = products.stream().map(Product::getPrice).min(BigDecimal::compareTo).orElse(null);
-					BigDecimal max = products.stream().map(Product::getPrice).max(BigDecimal::compareTo).orElse(null);
-					return Map.of("min", min, "max", max);
-				}
-		));
+        // compute price ranges (min/max of available product prices)
+        Map<Long, Map<String, BigDecimal>> priceRanges = stalls.stream().collect(Collectors.toMap(
+                Stall::getId,
+                s -> {
+                    List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(s.getId())
+                            .stream()
+                            .filter(p -> p.getStatus() == Product.Status.AVAILABLE && p.getPrice() != null)
+                            .toList();
+                    java.util.Map<String, BigDecimal> range = new java.util.HashMap<>();
+                    if (products.isEmpty()) {
+                        range.put("min", null);
+                        range.put("max", null);
+                        return range;
+                    }
+                    BigDecimal min = products.stream().map(Product::getPrice).min(BigDecimal::compareTo).orElse(null);
+                    BigDecimal max = products.stream().map(Product::getPrice).max(BigDecimal::compareTo).orElse(null);
+                    range.put("min", min);
+                    range.put("max", max);
+                    return range;
+                }
+        ));
 
 		// filter by rating
 		if (ratingMin != null) {
@@ -168,17 +176,17 @@ public class ProductBrowseController {
 		}
 
 		// sorting (name/products/rating/price)
-		Map<Long, BigDecimal> minPricePerStall = stalls.stream().collect(Collectors.toMap(
-				Stall::getId,
-				s -> {
-					List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(s.getId());
-					return products.stream()
-							.filter(p -> p.getStatus() == Product.Status.AVAILABLE && p.getPrice() != null)
-							.map(Product::getPrice)
-							.min(BigDecimal::compareTo)
-							.orElse(null);
-				}
-		));
+        Map<Long, BigDecimal> minPricePerStall = stalls.stream().collect(Collectors.toMap(
+                Stall::getId,
+                s -> {
+                    List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(s.getId());
+                    return products.stream()
+                            .filter(p -> p.getStatus() == Product.Status.AVAILABLE && p.getPrice() != null)
+                            .map(Product::getPrice)
+                            .min(BigDecimal::compareTo)
+                            .orElse(new BigDecimal("999999999"));
+                }
+        ));
 
 		if (sortBy != null && !sortBy.isBlank()) {
 			boolean asc = "asc".equalsIgnoreCase(order);
@@ -186,10 +194,7 @@ public class ProductBrowseController {
 			switch (sortBy.toLowerCase()) {
 				case "products" -> comparator = java.util.Comparator.comparing(s -> productCounts.getOrDefault(s.getId(), 0));
 				case "rating" -> comparator = java.util.Comparator.comparing(s -> stallRatings.getOrDefault(s.getId(), 0.0));
-				case "price" -> comparator = java.util.Comparator.comparing(s -> {
-					BigDecimal v = minPricePerStall.get(s.getId());
-					return v == null ? new BigDecimal("999999999") : v;
-				});
+                case "price" -> comparator = java.util.Comparator.comparing(s -> minPricePerStall.getOrDefault(s.getId(), new BigDecimal("999999999")));
 				case "name" -> comparator = java.util.Comparator.comparing(s -> s.getStallName() != null ? s.getStallName().toLowerCase() : "");
 				default -> comparator = null;
 			}

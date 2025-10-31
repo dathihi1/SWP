@@ -185,7 +185,7 @@
             <button id="prevPreview" class="btn btn-outline-secondary btn-sm" type="button"><i class="fa-solid fa-chevron-left"></i></button>
             <div id="previewTrack" class="preview-track flex-grow-1 mx-2">
                 <a th:if="${stalls}" th:each="s : ${stalls}"
-                   th:href="@{'/products?stallId=' + ${s.stallId}}"
+                   th:href="@{'/stall/' + ${s.stallId}}"
                    class="text-decoration-none text-dark">
                     <div class="preview-card me-2">
                         <div class="preview-img-frame">
@@ -447,23 +447,24 @@
         let type = '';
         switch(category) {
             case 'email':
-                type = 'EMAIL'; // Ánh xạ tới type='EMAIL' trong DB
+                type = 'Tài khoản Email';
                 break;
             case 'software':
-                type = 'BUFF'; // Ánh xạ 'Phần mềm' tới type='BUFF' (Dịch vụ hỗ trợ) trong DB
+                type = 'Thẻ cào (Điện thoại, Game)';
                 break;
             case 'account':
-                type = 'FACEBOOK'; // Ánh xạ 'Tài khoản' tới type='FACEBOOK' (Loại phổ biến) trong DB
+                type = 'Key Game';
                 break;
             case 'other':
-                type = 'COMBO'; // Ánh xạ 'Khác' tới type='COMBO' trong DB
-                break;
+                // Show all stalls
+                window.location.href = '/products';
+                return;
             default:
                 type = '';
         }
 
-    // Redirect to products page with category filter
-    window.location.href = `/products?type=${type}`;
+        // Redirect to products page with category filter (match stallCategory)
+        window.location.href = `/products?type=${encodeURIComponent(type)}`;
     }
 
     // Handle OAuth2 login success (no auto-reload to avoid loops)
