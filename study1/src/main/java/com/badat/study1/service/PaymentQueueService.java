@@ -1,10 +1,12 @@
 package com.badat.study1.service;
 
 import com.badat.study1.model.PaymentQueue;
+import com.badat.study1.model.Wallet;
 import com.badat.study1.model.Warehouse;
 import com.badat.study1.model.Order;
 import com.badat.study1.model.OrderItem;
 import com.badat.study1.repository.PaymentQueueRepository;
+import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.event.PaymentEvent;
 import org.springframework.integration.redis.util.RedisLockRegistry;
@@ -31,6 +33,7 @@ public class PaymentQueueService {
     
     private final PaymentQueueRepository paymentQueueRepository;
     private final WalletHoldService walletHoldService;
+    private final WalletRepository walletRepository;
     private final WarehouseLockService warehouseLockService;
     private final OrderService orderService;
     private final OrderItemRepository orderItemRepository;
@@ -161,21 +164,16 @@ public class PaymentQueueService {
      */
     private void validateUserBalance(Long userId, BigDecimal requiredAmount) {
         log.info("Validating balance for user {}: {} VND", userId, requiredAmount);
-        
-        // Sử dụng WalletHoldService để check balance với user-level lock
-        try {
-            // Tạm thời hold 0 VND để check balance (sẽ được release ngay)
-            String tempOrderId = "TEMP_CHECK_" + userId + "_" + System.currentTimeMillis();
-            walletHoldService.holdMoney(userId, BigDecimal.ZERO, tempOrderId);
-            
-            // Release ngay lập tức
-            walletHoldService.releaseHold(userId, tempOrderId);
-            
-            log.info("Balance validation passed for user {}", userId);
-        } catch (Exception e) {
-            log.warn("Balance validation failed for user {}: {}", userId, e.getMessage());
-            throw new RuntimeException("Số dư không đủ để thực hiện thanh toán: " + e.getMessage());
+
+        // Kiểm tra trực tiếp số dư ví, không tạo hold tạm (tránh log TEST TEMP_CHECK)
+        Wallet wallet = walletRepository.findByUserId(userId)
+            .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + userId));
+
+        if (wallet.getBalance() == null || wallet.getBalance().compareTo(requiredAmount) < 0) {
+            throw new RuntimeException("Số dư không đủ để thực hiện thanh toán");
         }
+
+        log.info("Balance validation passed for user {} with balance {} VND", userId, wallet.getBalance());
     }
     
     /**
