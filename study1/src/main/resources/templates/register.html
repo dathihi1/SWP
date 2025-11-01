@@ -186,14 +186,14 @@
                 <div class="form-text mt-1">Mật khẩu phải từ 6-100 ký tự.</div>
                 <div class="mb-3">
                     <label class="form-label">Mã xác thực <span class="text-danger">*</span></label>
-                    <div class="row g-2">
+                    <div class="row g-2 align-items-center">
                         <div class="col-8">
                             <input type="text" class="form-control" id="captchaCode" name="captchaCode" 
                                    placeholder="Nhập mã xác thực" required>
                         </div>
                         <div class="col-4">
-                            <div class="captcha-container">
-                                <canvas id="captchaCanvas" width="120" height="40" style="border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" title="Click để làm mới"></canvas>
+                            <div class="captcha-container d-flex align-items-center">
+                                <img id="captchaImage" src="" alt="Captcha" style="border: 1px solid #ddd; border-radius: 4px; cursor: pointer; width: 110px; height: 52px; object-fit: contain; display: block;" title="Click để làm mới">
                             </div>
                         </div>
                     </div>
@@ -201,7 +201,6 @@
                         <small class="text-muted">Click vào hình để làm mới mã xác thực</small>
                     </div>
                 </div>
-                <input type="hidden" id="captchaId" name="captchaId">
                 <div class="d-grid gap-2 mt-3">
                     <button type="submit" class="btn btn-success">
                         <i class="fa-solid fa-user-plus me-2"></i>Đăng ký
@@ -229,9 +228,9 @@
 <script>
     // Captcha functions
     function initializeCaptcha() {
-        const canvas = document.getElementById('captchaCanvas');
-        if (canvas) {
-            canvas.addEventListener('click', generateCaptcha);
+        const captchaImage = document.getElementById('captchaImage');
+        if (captchaImage) {
+            captchaImage.addEventListener('click', generateCaptcha);
             generateCaptcha();
         }
     }
@@ -239,7 +238,7 @@
     function generateCaptcha() {
         console.log('Generating captcha...');
         // Get captcha from backend
-        fetch('/api/auth/captcha/simple')
+        fetch('/api/auth/captcha')
             .then(response => {
                 console.log('Captcha response status:', response.status);
                 if (!response.ok) {
@@ -248,14 +247,14 @@
                 return response.json();
             })
             .then(data => {
-                console.log('Captcha data received:', data);
-                if (data.captchaId && data.captchaText) {
-                    // Store captcha data globally
-                    window.currentCaptchaId = data.captchaId;
-                    window.currentCaptchaAnswer = data.captchaText;
-                    
-                    // Draw captcha on canvas
-                    drawCaptchaOnCanvas(data.captchaText);
+                console.log('Captcha data received');
+                if (data.captchaImage) {
+                    // Display captcha image
+                    const captchaImage = document.getElementById('captchaImage');
+                    if (captchaImage) {
+                        captchaImage.src = data.captchaImage;
+                        captchaImage.style.display = 'block';
+                    }
                     console.log('Captcha generated successfully');
                 } else {
                     throw new Error('Invalid captcha response from server');
@@ -265,45 +264,6 @@
                 console.error('Error getting captcha from backend:', error);
                 alert('Không thể tải captcha. Vui lòng làm mới trang.');
             });
-    }
-
-    function drawCaptchaOnCanvas(captchaText) {
-        const canvas = document.getElementById('captchaCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw background
-        ctx.fillStyle = '#f0f0f0';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw text
-        ctx.font = '20px Arial';
-        ctx.fillStyle = '#333';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Add some distortion
-        for (let i = 0; i < captchaText.length; i++) {
-            const x = 20 + i * 20;
-            const y = 20 + Math.sin(i) * 5;
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(Math.sin(i) * 0.2);
-            ctx.fillText(captchaText[i], 0, 0);
-            ctx.restore();
-        }
-        
-        // Add some noise lines
-        ctx.strokeStyle = '#999';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 3; i++) {
-            ctx.beginPath();
-            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
-            ctx.stroke();
-        }
     }
 
     // Load captcha on page load
@@ -325,7 +285,6 @@
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm').value;
-        const captchaId = window.currentCaptchaId || document.getElementById('captchaId').value;
         const captchaCode = document.getElementById('captchaCode').value.trim();
         const alertBox = document.getElementById('alert');
         alertBox.classList.add('d-none');
@@ -359,7 +318,6 @@
                     username, 
                     email, 
                     password, 
-                    captchaId, 
                     captchaCode 
                 })
             });

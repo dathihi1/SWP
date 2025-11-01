@@ -55,21 +55,35 @@
             max-height: 300px;
             overflow-y: auto;
         }
+        /* Pagination styles to match payment-history */
+        .pagination { margin: 0; }
+        .page-link {
+            color: #0d6efd;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem 0.75rem;
+            margin: 0 4px;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        .page-link:hover { color: #0b5ed7; background-color: #e9ecef; border-color: #adb5bd; }
+        .page-item.active .page-link { background-color: #0d6efd; border-color: #0d6efd; color: #fff; }
+        .page-item.disabled .page-link { color: #6c757d; background-color: #fff; border-color: #dee2e6; cursor: not-allowed; }
     </style>
     <script src="/js/auth.js"></script>
     <script>
         let orders = [];
+        let currentPage = 1;
+        let pageSize = 6;
         let refreshInterval;
 
         async function loadOrders(filterParams = {}) {
             try {
-                console.log('Loading orders...', filterParams);
-                
-                // Build query string from filter parameters
+                // Gọi API lấy danh sách đơn hàng của tôi; các tham số lọc rỗng sẽ không gửi lên
+                // Tạo query string từ các tham số lọc (chỉ gửi khi có giá trị)
                 const queryParams = new URLSearchParams();
-                if (filterParams.startDate) queryParams.append('startDate', filterParams.startDate);
-                if (filterParams.endDate) queryParams.append('endDate', filterParams.endDate);
-                if (filterParams.searchStall) queryParams.append('searchStall', filterParams.searchStall);
+                // Không gửi tham số ngày lên API để tránh lỗi 500; lọc ngày sẽ làm ở client
+                // searchStall của API hiểu là username người bán → ánh xạ từ sellerUsername
+                if (filterParams.sellerUsername) queryParams.append('searchStall', filterParams.sellerUsername);
                 if (filterParams.searchProduct) queryParams.append('searchProduct', filterParams.searchProduct);
                 if (filterParams.sortBy) queryParams.append('sortBy', filterParams.sortBy);
                 
@@ -91,16 +105,37 @@
                 
                 if (!res.ok) {
                     const errorText = await res.text();
-                    throw new Error(`API Error: ${res.status} - ${errorText}`);
+                    throw new Error(`Lỗi API: ${res.status} - ${errorText}`);
                 }
                 
                 const response = await res.json();
-                orders = response || [];
+                orders = (response || []).filter(o => {
+                    // client-side filters for fields API chưa hỗ trợ
+                    if (filterParams.orderCode && !(o.orderCode || '').toLowerCase().includes(filterParams.orderCode.toLowerCase())) return false;
+                    // Lọc theo ngày ở client (bao gồm Hôm nay/Tuần này/Tháng này...)
+                    if (filterParams.startDate || filterParams.endDate) {
+                        const created = new Date(o.createdAt);
+                        if (isNaN(created.getTime())) return false;
+                        if (filterParams.startDate) {
+                            const s = new Date(filterParams.startDate + 'T00:00:00');
+                            if (created < s) return false;
+                        }
+                        if (filterParams.endDate) {
+                            const e = new Date(filterParams.endDate + 'T23:59:59');
+                            if (created > e) return false;
+                        }
+                    }
+                    // Lọc theo tên gian hàng (trên client): khớp bất kỳ item có stallName phù hợp
+                    if (filterParams.searchStall) {
+                        const ok = (o.orderItems || []).some(it => (it.stallName || '').toLowerCase().includes(filterParams.searchStall.toLowerCase()));
+                        if (!ok) return false;
+                    }
+                    return true;
+                });
                 
                 renderOrders();
                 
             } catch(e) {
-                console.error('Error loading orders:', e);
                 showErrorState(e.message);
             }
         }
@@ -123,8 +158,12 @@
             
             emptyEl.classList.add('d-none');
             
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const pageOrders = orders.slice(startIndex, endIndex);
+
             let html = '';
-            orders.forEach(order => {
+            pageOrders.forEach(order => {
                 const statusClass = order.status === 'COMPLETED' ? 'completed' : 
                                   order.status === 'CANCELLED' ? 'cancelled' : 
                                   order.status === 'REFUNDED' ? 'cancelled' : '';
@@ -167,7 +206,7 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- Order Details (Hidden by default) -->
+                        <!-- Chi tiết đơn hàng (ẩn mặc định) -->
                         <div id="order${order.id}-details" class="card-body border-top" style="display: none;">
                             <div class="row mb-3">
                                 <div class="col-md-6">
@@ -189,35 +228,52 @@
                                     <div class="card-body">
                                         <div class="row align-items-center">
                                             <div class="col-md-6">
-                                                <h6 class="mb-1">${item.productName || 'Sản phẩm'}</h6>
-                                                <small class="text-muted">ID: ${item.productId}</small>
+                                                <div class="mb-1">
+                                                    <span class="fw-semibold">Gian hàng:</span>
+                                                    <span class="text-muted">${item.stallName || ('#' + (item.stallId ?? 'N/A'))}</span>
+                                                </div>
+                                                <div class="mb-1">
+                                                    <span class="fw-semibold">Mặt hàng:</span>
+                                                    <span class="text-muted">${item.productName || 'Sản phẩm'}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="fw-semibold">Người bán:</span>
+                                                    <span class="text-muted">${item.warehouse && item.warehouse.sellerName ? item.warehouse.sellerName : 'N/A'}</span>
+                                                </div>
                                             </div>
                                             <div class="col-md-2 text-center">
-                                                <small class="text-muted">Số lượng</small>
+                                                <small class="fw-semibold text-dark">Số lượng</small>
                                                 <div class="fw-bold">${item.quantity}</div>
                                             </div>
                                             <div class="col-md-2 text-center">
-                                                <small class="text-muted">Đơn giá</small>
+                                                <small class="fw-semibold text-dark">Đơn giá</small>
                                                 <div class="fw-bold text-success">${formatMoney(item.unitPrice)} ₫</div>
                                             </div>
                                             <div class="col-md-2 text-center">
-                                                <small class="text-muted">Thành tiền</small>
+                                                <small class="fw-semibold text-dark">Thành tiền</small>
                                                 <div class="fw-bold text-primary">${formatMoney(item.totalAmount)} ₫</div>
                                             </div>
                                         </div>
+                                        ${order.status === 'COMPLETED' ? `
+                                        <div class="mt-3 d-flex justify-content-end">
+                                            <button class="btn btn-outline-success btn-sm" onclick="openReviewModal(${order.id}, ${item.productId ?? 'null'})" ${!item.productId ? 'disabled' : ''}>
+                                                <i class="fa-solid fa-star me-1"></i>Đánh giá
+                                            </button>
+                                        </div>
+                                        ` : ''}
                                         ${item.warehouse && item.warehouse.itemData ? `
                                             <div class="mt-3">
-                                                <div class="item-data-container">
+                                                <button class="btn btn-outline-secondary btn-sm" onclick="toggleItemData('itemdata-${order.id}-${item.warehouseId}', this)">
+                                                    <i class="fa-solid fa-code me-1"></i>Dữ liệu chi tiết sản phẩm
+                                                </button>
+                                                <div id="itemdata-${order.id}-${item.warehouseId}" class="item-data-container mt-2" style="display: none;">
                                                     <div class="p-3">
                                                         <div class="item-data-content">${item.warehouse.itemData}</div>
-                                                        <div class="mt-3 d-flex align-items-center justify-content-between">
+                                                        <div class="mt-3 d-flex align-items-center justify-content-start">
                                                             <small class="text-muted">
                                                                 <i class="fa-solid fa-info-circle me-1"></i>
                                                                 Đây là dữ liệu chi tiết về sản phẩm bạn đã mua
                                                             </small>
-                                                            <button class="btn btn-outline-primary btn-sm" onclick="copyItemData('${item.warehouseId}')">
-                                                                <i class="fa-solid fa-copy me-1"></i>Copy
-                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -270,6 +326,8 @@
             });
             
             container.innerHTML = html;
+            renderPageSize();
+            renderPagination();
         }
 
         function showErrorState(message) {
@@ -311,7 +369,8 @@
         }
 
         function startAutoRefresh() {
-            refreshInterval = setInterval(loadOrders, 30000); // Refresh every 30 seconds
+            // Thiết lập tự làm mới mỗi 30 giây (đang tắt mặc định)
+            refreshInterval = setInterval(loadOrders, 30000);
         }
 
         function stopAutoRefresh() {
@@ -325,20 +384,25 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Thiết lập max date = hôm nay để không cho chọn tương lai
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').setAttribute('max', today);
+            document.getElementById('endDate').setAttribute('max', today);
+            
             loadAll();
             // startAutoRefresh(); // Tắt auto-refresh, chỉ refresh khi người dùng click nút
         });
 
-        // Stop auto refresh when page is hidden
+        // Ngừng tự làm mới khi tab trình duyệt bị ẩn
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 stopAutoRefresh();
             } else {
-                // startAutoRefresh(); // Tắt auto-refresh khi page visible lại
+                // Có thể bật lại auto-refresh khi tab hiển thị trở lại nếu cần
             }
         });
 
-        // Toggle order details
+        // Bật/tắt phần chi tiết đơn hàng
         function toggleOrderDetails(orderId) {
             const detailsElement = document.getElementById(orderId + '-details');
             const button = event.target.closest('button');
@@ -352,59 +416,222 @@
             }
         }
 
-        // Copy item data to clipboard
-        function copyItemData(warehouseId) {
-            // Find the item data content for this warehouse ID
-            const itemDataElements = document.querySelectorAll('.item-data-content');
-            let itemData = '';
-            
-            for (let element of itemDataElements) {
-                const container = element.closest('.item-data-container');
-                if (container && container.textContent.includes(`ID: ${warehouseId}`)) {
-                    itemData = element.textContent;
-                    break;
-                }
-            }
-            
-            if (itemData) {
-                navigator.clipboard.writeText(itemData).then(() => {
-                    showNotification('Đã copy thông tin sản phẩm vào clipboard!', 'success');
-                }).catch(err => {
-                    console.error('Failed to copy: ', err);
-                    showNotification('Không thể copy thông tin. Vui lòng thử lại.', 'danger');
-                });
-            } else {
-                showNotification('Không tìm thấy thông tin sản phẩm để copy.', 'danger');
+        // Bật/tắt hiển thị dữ liệu chi tiết sản phẩm
+        function toggleItemData(elementId, btn) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const isHidden = el.style.display === 'none' || el.style.display === '';
+            el.style.display = isHidden ? 'block' : 'none';
+            if (btn) {
+                btn.innerHTML = isHidden
+                    ? '<i class="fa-solid fa-eye-slash me-1"></i>Ẩn dữ liệu'
+                    : '<i class="fa-solid fa-code me-1"></i>Dữ liệu chi tiết sản phẩm';
             }
         }
 
-        // Apply filters
+        // Hàm hỗ trợ phân trang (thay đổi kích thước trang, đi tới trang bất kỳ, vẽ thanh phân trang)
+        function setPageSize(newSize) {
+            pageSize = Number(newSize);
+            currentPage = 1;
+            renderOrders();
+        }
+
+        function gotoPage(page) {
+            const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+            currentPage = Math.min(Math.max(1, page), totalPages);
+            renderOrders();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+            const paginationEl = document.getElementById('orders-pagination');
+            if (!paginationEl) return;
+
+            // Ẩn phân trang khi chỉ có 1 trang
+            if (totalPages <= 1) {
+                paginationEl.innerHTML = '';
+                paginationEl.style.display = 'none';
+                return;
+            }
+            paginationEl.style.display = 'block';
+
+            const maxButtons = 7;
+            let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let end = Math.min(totalPages, start + maxButtons - 1);
+            start = Math.max(1, end - maxButtons + 1);
+
+            let pagesHtml = '';
+            if (currentPage === 1) {
+                pagesHtml += `
+                <li class="page-item disabled">
+                    <span class="page-link" aria-hidden="true">&laquo;</span>
+                </li>`;
+            } else {
+                pagesHtml += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="gotoPage(${currentPage-1}); return false;" aria-label="Previous">&laquo;</a>
+                </li>`;
+            }
+            for (let i = start; i <= end; i++) {
+                if (i === currentPage) {
+                    pagesHtml += `
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">${i}</span>
+                    </li>`;
+                } else {
+                    pagesHtml += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="gotoPage(${i}); return false;">${i}</a>
+                    </li>`;
+                }
+            }
+            if (currentPage === totalPages) {
+                pagesHtml += `
+                <li class="page-item disabled">
+                    <span class="page-link" aria-hidden="true">&raquo;</span>
+                </li>`;
+            } else {
+                pagesHtml += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="gotoPage(${currentPage+1}); return false;" aria-label="Next">&raquo;</a>
+                </li>`;
+            }
+
+            paginationEl.innerHTML = `
+                <div class="d-flex align-items-center justify-content-center">
+                    <nav aria-label="Orders pagination">
+                        <ul class="pagination mb-0">
+                    ${pagesHtml}
+                        </ul>
+                    </nav>
+                </div>
+            `;
+        }
+        
+        // Hiển thị bộ chọn số lượng mục mỗi trang (ngay dưới thẻ bộ lọc)
+        function renderPageSize() {
+            const topEl = document.getElementById('orders-page-size');
+            if (!topEl) return;
+            const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+            topEl.innerHTML = `
+                <div class="d-flex align-items-center justify-content-end">
+                    <div class="text-muted small me-3">Tổng: ${orders.length} đơn hàng • Trang ${currentPage}/${totalPages}</div>
+                    <label class="me-2 small">Hiển thị:</label>
+                    <select class="form-select form-select-sm d-inline-block" style="width: auto;" onchange="setPageSize(this.value)">
+                        <option value="6" ${pageSize===6?'selected':''}>6</option>
+                        <option value="12" ${pageSize===12?'selected':''}>12</option>
+                        <option value="24" ${pageSize===24?'selected':''}>24</option>
+                    </select>
+                </div>
+            `;
+        }
+
+        // Áp dụng bộ lọc từ form tìm kiếm
         function applyFilters() {
             const form = document.getElementById('filterForm');
             const formData = new FormData(form);
             
+            // Chuẩn hóa chuỗi ngày: chấp nhận cả dd/MM/yyyy và yyyy-MM-dd
+            function normalizeDate(value) {
+                if (!value) return '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value; // yyyy-MM-dd
+                const m = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); // dd/MM/yyyy
+                if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+                return '';
+            }
+
+            // Kiểm tra và điều chỉnh ngày tháng hợp lệ
+            const today = new Date().toISOString().split('T')[0];
+            let startDate = normalizeDate(formData.get('startDate'));
+            let endDate = normalizeDate(formData.get('endDate'));
+            
+            if (startDate && startDate > today) {
+                startDate = today;
+                document.getElementById('startDate').value = today;
+            }
+            if (endDate) {
+                if (endDate > today) {
+                    endDate = today;
+                    document.getElementById('endDate').value = today;
+                }
+                if (startDate && endDate < startDate) {
+                    endDate = startDate;
+                    document.getElementById('endDate').value = startDate;
+                }
+            }
+            
             const filterParams = {
-                startDate: formData.get('startDate'),
-                endDate: formData.get('endDate'),
-                searchStall: formData.get('searchStall'),
+                startDate: startDate,
+                endDate: endDate,
+                searchStall: formData.get('searchStall'), // tên gian hàng (lọc client)
+                sellerUsername: formData.get('sellerUsername'), // người bán (gửi API)
                 searchProduct: formData.get('searchProduct'),
-                sortBy: formData.get('sortBy')
+                sortBy: formData.get('sortBy'),
+                orderCode: formData.get('orderCode')
             };
             
-            // Remove empty values
+            // Loại bỏ các trường rỗng để không gửi lên API
             Object.keys(filterParams).forEach(key => {
                 if (!filterParams[key]) {
                     delete filterParams[key];
                 }
             });
             
+            currentPage = 1;
             loadOrders(filterParams);
         }
 
-        // Clear filters
+        // Xóa toàn bộ bộ lọc và tải lại đơn hàng
         function clearFilters() {
             document.getElementById('filterForm').reset();
+            currentPage = 1;
             loadOrders();
+        }
+
+        // Lọc nhanh theo khoảng ngày thường dùng và áp dụng ngay
+        function quickRange(type) {
+            const startInput = document.getElementById('startDate');
+            const endInput = document.getElementById('endDate');
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            function fmt(date) {
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                return `${date.getFullYear()}-${mm}-${dd}`;
+            }
+
+            let start, end;
+            if (type === 'today') {
+                start = new Date(today);
+                end = new Date(today);
+            } else if (type === 'week') {
+                const day = now.getDay() || 7; // 1..7 (T2..CN)
+                start = new Date(today);
+                start.setDate(start.getDate() - (day - 1));
+                end = new Date(today);
+            } else if (type === 'month') {
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(today);
+            } else if (type === 'lastMonth') {
+                start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                end = new Date(now.getFullYear(), now.getMonth(), 0);
+            }
+            
+            // Đảm bảo không vượt quá ngày hôm nay
+            if (end > today) {
+                end = new Date(today);
+            }
+
+            startInput.value = fmt(start);
+            endInput.value = fmt(end);
+            applyFilters();
+        }
+
+        function clearDateRange() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            applyFilters();
         }
     </script>
 </head>
@@ -429,10 +656,10 @@
                 </form>
             </div>
             
-            <!-- Desktop navigation -->
+            <!-- Điều hướng trên desktop -->
             <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
                 <div th:if="${isAuthenticated}" class="d-flex align-items-center gap-2">
-                    <!-- Current Balance -->
+                    <!-- Số dư hiện tại -->
                     <div class="btn btn-outline-success d-flex align-items-center gap-2" onclick="location.href='/payment'">
                         <i class="fa-solid fa-wallet"></i>
                         <span class="fw-bold" th:text="${#numbers.formatDecimal(walletBalance, 0, 'COMMA', 0, 'POINT')}">0</span>
@@ -483,10 +710,7 @@
             Đơn hàng của tôi
         </h3>
         <div>
-            <button class="btn btn-outline-primary" onclick="loadAll()">
-                <i class="fa-solid fa-refresh me-2"></i>Làm mới
-            </button>
-            <a href="/cart" class="btn btn-primary">
+            <a href="/products" class="btn btn-primary">
                 <i class="fa-solid fa-cart-shopping me-2"></i>Mua sắm
             </a>
         </div>
@@ -494,10 +718,10 @@
 
     <div class="alert alert-info">
         <i class="fa-solid fa-info-circle me-2"></i>
-        <strong>Thông tin đơn hàng:</strong> Hiển thị chi tiết các sản phẩm đã mua, bao gồm thông tin warehouse (item_data) - đây là dữ liệu chi tiết về sản phẩm game mà bạn đã mua. Bạn có thể copy thông tin này để sử dụng.
+        <strong>Đơn hàng của bạn:</strong> Xem lại lịch sử mua và bấm "Chi tiết" để hiển thị dữ liệu sử dụng cùng thông tin gian hàng, mặt hàng và người bán. 
     </div>
 
-    <!-- Filter Form -->
+    <!-- Bộ lọc -->
     <div class="card card-shadow mb-4">
         <div class="card-header">
             <h5 class="mb-0">
@@ -506,31 +730,47 @@
             </h5>
         </div>
         <div class="card-body">
-            <form id="filterForm" class="row g-3">
+            <div class="mb-3">
+                <div class="small text-muted mb-2 fw-semibold">Lọc nhanh:</div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickRange('today')">Hôm nay</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickRange('week')">Tuần này</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickRange('month')">Tháng này</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickRange('lastMonth')">Tháng trước</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearDateRange()">Xóa</button>
+                </div>
+            </div>
+            <form id="filterForm" class="row g-3" onsubmit="event.preventDefault(); applyFilters();">
                 <div class="col-md-3">
-                    <label for="startDate" class="form-label">Từ ngày</label>
-                    <input type="date" class="form-control" id="startDate" name="startDate">
+                    <label for="startDate" class="form-label fw-semibold">Từ ngày</label>
+                    <input type="date" class="form-control" id="startDate" name="startDate" max="">
                 </div>
                 <div class="col-md-3">
-                    <label for="endDate" class="form-label">Đến ngày</label>
-                    <input type="date" class="form-control" id="endDate" name="endDate">
+                    <label for="endDate" class="form-label fw-semibold">Đến ngày</label>
+                    <input type="date" class="form-control" id="endDate" name="endDate" max="">
                 </div>
                 <div class="col-md-3">
-                    <label for="searchStall" class="form-label">Tên gian hàng</label>
+                    <label for="searchStall" class="form-label fw-semibold">Tên gian hàng</label>
                     <input type="text" class="form-control" id="searchStall" name="searchStall" placeholder="Nhập tên gian hàng...">
                 </div>
                 <div class="col-md-3">
-                    <label for="searchProduct" class="form-label">Tên sản phẩm</label>
+                    <label for="sellerUsername" class="form-label fw-semibold">Người bán</label>
+                    <input type="text" class="form-control" id="sellerUsername" name="sellerUsername" placeholder="Nhập username người bán...">
+                </div>
+                <div class="col-md-3">
+                    <label for="searchProduct" class="form-label fw-semibold">Tên sản phẩm</label>
                     <input type="text" class="form-control" id="searchProduct" name="searchProduct" placeholder="Nhập tên sản phẩm...">
                 </div>
+                <div class="col-md-3">
+                    <label for="orderCode" class="form-label fw-semibold">Mã đơn hàng</label>
+                    <input type="text" class="form-control" id="orderCode" name="orderCode" placeholder="Nhập mã đơn...">
+                </div>
                 <div class="col-md-4">
-                    <label for="sortBy" class="form-label">Sắp xếp theo</label>
+                    <label for="sortBy" class="form-label fw-semibold">Sắp xếp theo</label>
                     <select class="form-select" id="sortBy" name="sortBy">
-                        <option value="createdAt_desc">Ngày tạo (mới nhất)</option>
-                        <option value="createdAt_asc">Ngày tạo (cũ nhất)</option>
+                        <option value="">Tất cả</option>
                         <option value="totalAmount_desc">Giá trị đơn hàng (cao nhất)</option>
                         <option value="totalAmount_asc">Giá trị đơn hàng (thấp nhất)</option>
-                        <option value="status">Trạng thái</option>
                     </select>
                 </div>
                 <div class="col-md-8 d-flex align-items-end">
@@ -545,6 +785,9 @@
         </div>
     </div>
 
+    <!-- Điều khiển số hiển thị (bên ngoài thẻ đơn hàng) -->
+    <div id="orders-page-size" class="d-flex justify-content-end align-items-center mb-2"></div>
+
     <div class="card card-shadow">
         <div class="card-body">
             <div id="orders-empty" class="text-center py-5 d-none">
@@ -553,17 +796,15 @@
                 <a href="/cart" class="btn btn-primary btn-sm">Mua sắm ngay</a>
             </div>
 
-            <div id="orders-container">
-                <!-- Orders will be rendered here -->
-            </div>
+            <div id="orders-container"></div>
         </div>
     </div>
+
+    <!-- Phân trang (bên ngoài thẻ đơn hàng) -->
+    <div id="orders-pagination" class="mt-3"></div>
 </main>
 
-<!-- Floating refresh button -->
-<button class="btn btn-primary rounded-circle refresh-btn" onclick="loadAll()" title="Làm mới">
-    <i class="fa-solid fa-refresh"></i>
-</button>
+
 
 <footer class="border-top py-3 mt-5">
     <div class="container d-flex justify-content-between align-items-center small">
@@ -571,6 +812,117 @@
         <div class="text-muted">Liên hệ: support@example.com</div>
     </div>
 </footer>
+
+<!-- Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-star text-warning me-2"></i>Gửi đánh giá</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <style>
+                    .rating-stars i { font-size: 1.5rem; color: #ffc107; cursor: pointer; margin-right: 4px; }
+                    .rating-stars i.inactive { color: #e9ecef; }
+                </style>
+                <form id="reviewForm" onsubmit="event.preventDefault(); submitReview();">
+                    <input type="hidden" id="reviewOrderId" />
+                    <input type="hidden" id="reviewProductId" />
+                    <div class="mb-3">
+                        <label class="form-label">Chấm điểm</label>
+                        <div id="ratingStars" class="rating-stars">
+                            <i class="fa-star far" data-value="1"></i>
+                            <i class="fa-star far" data-value="2"></i>
+                            <i class="fa-star far" data-value="3"></i>
+                            <i class="fa-star far" data-value="4"></i>
+                            <i class="fa-star far" data-value="5"></i>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nội dung</label>
+                        <textarea id="reviewContent" class="form-control" rows="4" placeholder="Chia sẻ thêm chi tiết..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button id="reviewSubmitBtn" type="button" class="btn btn-primary" onclick="submitReview()" disabled>Gửi đánh giá</button>
+            </div>
+        </div>
+    </div>
+ </div>
+
+<script>
+    let reviewModalInstance;
+    let selectedRating = 0;
+    function renderRatingStars(hoverValue = null) {
+        const stars = document.querySelectorAll('#ratingStars i');
+        const value = hoverValue ?? selectedRating;
+        stars.forEach(star => {
+            const val = Number(star.getAttribute('data-value'));
+            if (val <= value) {
+                star.classList.remove('far', 'inactive');
+                star.classList.add('fas');
+            } else {
+                star.classList.remove('fas');
+                star.classList.add('far', 'inactive');
+            }
+        });
+        const submitBtn = document.getElementById('reviewSubmitBtn');
+        if (submitBtn) submitBtn.disabled = selectedRating === 0;
+    }
+    function initRatingStars() {
+        const stars = document.querySelectorAll('#ratingStars i');
+        stars.forEach(star => {
+            star.addEventListener('mouseenter', () => { renderRatingStars(Number(star.getAttribute('data-value'))); });
+            star.addEventListener('mouseleave', () => { renderRatingStars(); });
+            star.addEventListener('click', () => { selectedRating = Number(star.getAttribute('data-value')); renderRatingStars(); });
+        });
+        renderRatingStars();
+    }
+    function openReviewModal(orderId, productId) {
+        if (!productId) {
+            showNotification('Không tìm thấy sản phẩm để đánh giá', 'error');
+            return;
+        }
+        document.getElementById('reviewOrderId').value = orderId;
+        document.getElementById('reviewProductId').value = productId;
+        selectedRating = 0;
+        document.getElementById('reviewContent').value = '';
+        const modalEl = document.getElementById('reviewModal');
+        reviewModalInstance = new bootstrap.Modal(modalEl);
+        reviewModalInstance.show();
+        initRatingStars();
+    }
+
+    async function submitReview() {
+        const orderId = document.getElementById('reviewOrderId').value;
+        const productId = document.getElementById('reviewProductId').value;
+        const rating = selectedRating;
+        if (!rating || rating < 1) {
+            showNotification('Vui lòng chọn số sao đánh giá', 'error');
+            return;
+        }
+        const content = document.getElementById('reviewContent').value;
+        try {
+            const res = await fetch('/api/reviews', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ orderId, productId, rating, content })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Gửi đánh giá thất bại');
+            }
+            showNotification('Đã gửi đánh giá thành công', 'success');
+            if (reviewModalInstance) reviewModalInstance.hide();
+        } catch (e) {
+            showNotification(e.message, 'error');
+        }
+    }
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

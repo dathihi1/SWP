@@ -1,2 +1,9 @@
-2025-10-31 11:33:41.180 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=1 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
-2025-10-31 11:33:43.853 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=1 ip=0:0:0:0:0:0:0:1
+2025-11-01 21:57:09.632 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=7 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
+2025-11-01 21:57:14.604 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=7 ip=0:0:0:0:0:0:0:1
+2025-11-01 22:00:07.284 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=3 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
+2025-11-01 22:00:11.627 INFO  com.badat.study1.audit - ACCOUNT_UNLOCKED userId=3 ip=0:0:0:0:0:0:0:1
+2025-11-01 22:01:51.048 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=3 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dathihi2005"
+2025-11-01 22:13:21.175 INFO  com.badat.study1.audit - ACCOUNT_LOCKED_LOGIN_ATTEMPTS userId=null ip=0:0:0:0:0:0:0:1 success=true details="IP locked for captcha failures: attempts=5" reason=null ua="System" category=SECURITY_EVENT endpoint=/api/auth/login method=POST
+2025-11-01 22:19:12.485 INFO  com.badat.study1.audit - ACCOUNT_LOCKED userId=8 ip=0:0:0:0:0:0:0:1 reason="Locked by admin: dat2801zz@gmail.com"
+2025-11-01 22:19:30.267 INFO  com.badat.study1.audit - USER_CREATE: Admin dat2801zz@gmail.com created new user dathihi2005zzz (Email: dat2801zz@gmail.comzz)
+2025-11-01 22:19:45.759 INFO  com.badat.study1.audit - USER_CREATE: Admin dat2801zz@gmail.com created new user dathihi2005a (Email: dat2801zzzz@gmail.com)

@@ -7,6 +7,7 @@ import com.badat.study1.model.UploadHistory;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Warehouse;
 import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
@@ -39,14 +40,16 @@ public class ShopController {
     private final ProductRepository productRepository;
     private final UploadHistoryRepository uploadHistoryRepository;
     private final WarehouseRepository warehouseRepository;
+    private final OrderItemRepository orderItemRepository;
     
 
-    public ShopController(ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WarehouseRepository warehouseRepository) {
+    public ShopController(ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WarehouseRepository warehouseRepository, OrderItemRepository orderItemRepository) {
         this.shopRepository = shopRepository;
         this.stallRepository = stallRepository;
         this.productRepository = productRepository;
         this.uploadHistoryRepository = uploadHistoryRepository;
         this.warehouseRepository = warehouseRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     @PostMapping("/seller/add-stall")
@@ -58,6 +61,7 @@ public class ShopController {
                           @RequestParam String detailedDescription,
                           @RequestParam(required = false) MultipartFile stallImageFile,
                           @RequestParam(required = false) Boolean uniqueProducts,
+                          @RequestParam(required = false) String isCropped,
                           RedirectAttributes redirectAttributes) {
         
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -76,6 +80,37 @@ public class ShopController {
         }
         
         
+        // Validate required text fields
+        if (stallName == null || stallName.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Tên gian hàng là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (businessType == null || businessType.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Loại hình kinh doanh là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (stallCategory == null || stallCategory.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Loại gian hàng là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (discount == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Chiết khấu cho sàn là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (shortDescription == null || shortDescription.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        if (detailedDescription == null || detailedDescription.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
         // Validate unique products checkbox
         if (uniqueProducts == null || !uniqueProducts) {
             redirectAttributes.addFlashAttribute("errorMessage", "Bạn phải đồng ý với cam kết 'Sản phẩm không trùng lặp' để tạo gian hàng!");
@@ -85,6 +120,12 @@ public class ShopController {
         // Validate stall image is required
         if (stallImageFile == null || stallImageFile.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Hình ảnh gian hàng là bắt buộc!");
+            return "redirect:/seller/add-stall";
+        }
+        
+        // Validate that image has been cropped
+        if (isCropped == null || !isCropped.equals("true")) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Bạn phải cắt ảnh trước khi tạo gian hàng!");
             return "redirect:/seller/add-stall";
         }
         
@@ -278,6 +319,17 @@ public class ShopController {
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
+        }
+        
+        // Validate required fields
+        if (productName == null || productName.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Tên mặt hàng là bắt buộc!");
+            return "redirect:/seller/product-management/" + stallId;
+        }
+        
+        if (productPrice == null || productPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Giá tiền phải lớn hơn 0!");
+            return "redirect:/seller/product-management/" + stallId;
         }
         
         try {
@@ -796,66 +848,6 @@ public class ShopController {
         }
     }
 
-    @PostMapping("/seller/delete-product/{productId}")
-    public String deleteProduct(@PathVariable Long productId,
-                              RedirectAttributes redirectAttributes) {
-        
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
-        if (!isAuthenticated) {
-            return "redirect:/login";
-        }
-        
-        User user = (User) authentication.getPrincipal();
-        
-        // Check if user has SELLER role
-        if (!user.getRole().equals(User.Role.SELLER)) {
-            return "redirect:/profile";
-        }
-        
-        try {
-            // Lấy thông tin sản phẩm
-            var productOptional = productRepository.findById(productId);
-            if (productOptional.isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/stall-management";
-            }
-            
-            Product product = productOptional.get();
-            
-            // Kiểm tra quyền sở hữu sản phẩm
-            var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền xóa sản phẩm này!");
-                return "redirect:/seller/stall-management";
-            }
-            
-            // Soft delete - chỉ cập nhật is_delete = true
-            product.setIsDelete(true);
-            product.setDeletedBy(user.getUsername());
-            product.setUpdatedAt(java.time.LocalDateTime.now());
-            
-            // Lưu vào database
-            productRepository.save(product);
-            
-            // Soft delete tất cả warehouse items liên quan đến product này
-            List<Warehouse> warehouseItems = warehouseRepository.findByProductIdOrderByCreatedAtDesc(productId);
-            for (Warehouse warehouseItem : warehouseItems) {
-                warehouseItem.setIsDelete(true);
-                warehouseItem.setDeletedBy(user.getUsername());
-                warehouseRepository.save(warehouseItem);
-            }
-            
-            redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được xóa thành công!");
-            
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi xóa sản phẩm. Vui lòng thử lại!");
-        }
-        
-        return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
-    }
 
     @PostMapping("/seller/restore-product/{productId}")
     public String restoreProduct(@PathVariable Long productId,
@@ -932,6 +924,17 @@ public class ShopController {
         // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
+        }
+        
+        // Validate required fields
+        if (productName == null || productName.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Tên mặt hàng là bắt buộc!");
+            return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
+        }
+        
+        if (productPrice == null || productPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Giá tiền phải lớn hơn 0!");
+            return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
         }
         
         try {

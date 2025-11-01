@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface ShopRepository extends JpaRepository<Shop, Long> {
     Optional<Shop> findByUserId(Long userId);
     Optional<Shop> findByCccd(String cccd);
+    Optional<Shop> findByShopName(String shopName);
     
     // Pagination methods
     Page<Shop> findByStatus(Shop.Status status, Pageable pageable);

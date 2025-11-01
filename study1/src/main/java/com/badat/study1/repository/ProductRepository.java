@@ -34,9 +34,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	Optional<Product> findByNameAndPriceAndShopIdAndIsDeleteTrue(String name, BigDecimal price, Long shopId);
 	
 	// Warehouse quantity methods
-	@Query("SELECT COUNT(w) FROM Warehouse w WHERE w.product.id = :productId")
+    @Query("SELECT COUNT(w) FROM Warehouse w WHERE w.product.id = :productId AND w.isDelete = false AND w.locked = false")
 	long countWarehouseItemsByProductId(@Param("productId") Long productId);
 	
-	@Query("SELECT COUNT(w) FROM Warehouse w WHERE w.product.id = :productId AND w.itemType = :itemType")
+    @Query("SELECT COUNT(w) FROM Warehouse w WHERE w.product.id = :productId AND w.itemType = :itemType AND w.isDelete = false AND w.locked = false")
 	long countWarehouseItemsByProductIdAndType(@Param("productId") Long productId, @Param("itemType") String itemType);
 }

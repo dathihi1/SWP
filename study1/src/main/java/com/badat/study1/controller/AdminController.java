@@ -203,9 +203,17 @@ public class AdminController {
             }
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) return ResponseEntity.status(404).body(Map.of("error", "User not found"));
-            if (currentUser.getId().equals(user.getId()) && currentUser.getRole() == User.Role.ADMIN) {
+            
+            // Check: Admin cannot lock themselves
+            if (currentUser.getId().equals(user.getId())) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Admin không thể tự khóa chính mình"));
             }
+            
+            // Check: Admin cannot lock another Admin
+            if (user.getRole() == User.Role.ADMIN && currentUser.getRole() == User.Role.ADMIN) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Admin không thể khóa Admin khác"));
+            }
+            
             if (user.getStatus().equals(User.Status.LOCKED)) {
                 return ResponseEntity.badRequest().body(Map.of("error", "User is already locked"));
             }
@@ -268,8 +276,17 @@ public class AdminController {
             }
             User userToToggle = userService.findById(userId);
             if (userToToggle == null) return ResponseEntity.status(404).body(Map.of("error", "User not found"));
-            if (currentUser.getId().equals(userToToggle.getId()) && currentUser.getRole() == User.Role.ADMIN && userToToggle.getStatus() == User.Status.ACTIVE) {
+            
+            // Check: Admin cannot lock themselves
+            if (currentUser.getId().equals(userToToggle.getId())) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Admin không thể tự khóa chính mình"));
+            }
+            
+            // Check: Admin cannot lock another Admin (only when trying to lock, not unlock)
+            if (userToToggle.getStatus() == User.Status.ACTIVE && 
+                userToToggle.getRole() == User.Role.ADMIN && 
+                currentUser.getRole() == User.Role.ADMIN) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Admin không thể khóa Admin khác"));
             }
             if (userToToggle.getStatus() == User.Status.ACTIVE) {
                 userToToggle.setStatus(User.Status.LOCKED);

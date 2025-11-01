@@ -198,6 +198,11 @@ public class CaptchaService {
         throw new UnsupportedOperationException("Use validateCaptcha(HttpServletRequest, String) instead");
     }
     
+    /**
+     * @deprecated This method is deprecated due to security vulnerability (sends answer to frontend).
+     * Use {@link #generateCaptchaWithCookie()} instead for secure image captcha.
+     */
+    @Deprecated
     // Generate simple captcha with answer stored in Redis
     public Map<String, String> generateSimpleCaptcha() {
         try {
@@ -235,6 +240,11 @@ public class CaptchaService {
         }
     }
     
+    /**
+     * @deprecated This method is deprecated. Use {@link #validateCaptcha(HttpServletRequest, String)} instead
+     * which reads captchaId from HttpOnly cookie for better security.
+     */
+    @Deprecated
     // Validate simple captcha against stored answer
     public boolean validateSimpleCaptcha(String captchaId, String userInput) {
         log.info("Validating simple captcha - ID: {}, User input: '{}'", captchaId, userInput);

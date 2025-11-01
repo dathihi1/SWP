@@ -227,6 +227,11 @@ public class AuthenticationController {
         }
     }
     
+    /**
+     * @deprecated This endpoint is deprecated. Use {@link #getCaptcha()} instead for secure image captcha.
+     * Simple captcha sends the answer to frontend which is a security vulnerability.
+     */
+    @Deprecated
     @GetMapping("/captcha/simple")
     public ResponseEntity<?> getSimpleCaptcha() {
         try {
