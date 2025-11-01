@@ -1,9 +1,7 @@
 package com.badat.study1.controller;
 
-import com.badat.study1.model.Order;
 import com.badat.study1.model.OrderItem;
 import com.badat.study1.model.User;
-import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
@@ -27,7 +25,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AnalyticsController {
 
-    private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final StallRepository stallRepository;
     private final ShopRepository shopRepository;

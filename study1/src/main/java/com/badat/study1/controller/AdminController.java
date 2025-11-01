@@ -1,7 +1,6 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
-import com.badat.study1.model.Shop;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
@@ -10,10 +9,8 @@ import com.badat.study1.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,7 +29,6 @@ public class AdminController {
     private final AuditLogService auditLogService;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final com.badat.study1.service.IpLockoutService ipLockoutService;
     private final StallRepository stallRepository;
 
     // API thêm user
