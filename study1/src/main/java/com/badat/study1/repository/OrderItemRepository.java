@@ -101,4 +101,10 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
      * Find completed OrderItems after a start date (inclusive) ordered by createdAt asc
      */
     List<OrderItem> findByStatusAndCreatedAtAfterOrderByCreatedAtAsc(OrderItem.Status status, LocalDateTime start);
+
+    /**
+     * Sum quantity of completed items sold for a stall
+     */
+    @Query("SELECT COALESCE(SUM(oi.quantity), 0) FROM OrderItem oi WHERE oi.stallId = :stallId AND oi.status = com.badat.study1.model.OrderItem.Status.COMPLETED")
+    long sumCompletedQuantityByStallId(@Param("stallId") Long stallId);
 }

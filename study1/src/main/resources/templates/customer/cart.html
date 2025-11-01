@@ -24,11 +24,14 @@
         .product-checkbox { transform: scale(1.2); }
         .product-image { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; background: #f8f9fa; }
         .quantity-controls { display: flex; align-items: center; border: 1px solid #ced4da; border-radius: 4px; overflow: hidden; width: 140px; height: 36px; box-sizing: border-box; background: #fff; }
-        .quantity-controls .qty-btn { flex-shrink: 0; width: 48px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 0; line-height: 1; background: #fff; padding: 0; }
-        .quantity-controls .qty-btn i { font-size: 14px; }
+        .quantity-controls .qty-btn { flex-shrink: 0; width: 44px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 0; line-height: 1; background: #fff; padding: 0; }
+        .quantity-controls .qty-btn i { font-size: 14px; line-height: 1; pointer-events: none; }
+        .quantity-controls .btn-plus { padding-right: 2px; }
+        .quantity-controls .btn-plus i { transform: translateX(-1px); }
         .quantity-controls .btn-minus { border-right: 1px solid #ced4da; }
         .quantity-controls .btn-plus { border-left: 1px solid #ced4da; }
-        .quantity-controls input { flex-grow: 1; width: 44px; height: 36px; border: 0; padding: 0; background: #fff; text-align: center; -moz-appearance: textfield; outline: none; }
+        .quantity-controls input { flex-grow: 1; width: 52px; height: 36px; border: 0; padding: 0; background: #fff; text-align: center; -moz-appearance: textfield; outline: none; }
+        .quantity-controls input:focus { border: 0; box-shadow: none; }
         .quantity-controls input::-webkit-outer-spin-button,
         .quantity-controls input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .checkout-bar { 
@@ -214,17 +217,13 @@
                                 <div class="mid-wrap">
                                     <div class="price-left product-price price-cell">${formatMoney(price)}&nbsp;₫</div>
                                     <div class="qty-cell">
-                                        <div class="quantity-controls">
-                                            <button class="btn qty-btn btn-minus" type="button" 
-                                                    onclick="updateQty(${item.product?.id}, Math.max(1, ${qty}-1))">
-                                                <i class="fa-solid fa-minus"></i>
-                                            </button>
-                                            <input class="form-control text-center" type="number" min="1" 
-                                                   value="${qty}" onchange="updateQty(${item.product?.id}, this.value)">
-                                            <button class="btn qty-btn btn-plus" type="button" 
-                                                    onclick="updateQty(${item.product?.id}, ${qty}+1)">
-                                                <i class="fa-solid fa-plus"></i>
-                                            </button>
+                                        <div class="input-group input-group-sm" style="width: 140px;">
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="updateQty(${item.product?.id}, Math.max(1, ${qty}-1))">&minus;</button>
+                                            <input class="form-control text-center" type="number" min="1" value="${qty}"
+                                                   onchange="updateQty(${item.product?.id}, this.value)" />
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="updateQty(${item.product?.id}, ${qty}+1)">&plus;</button>
                                         </div>
                                     </div>
                                     <div class="text-end subtotal-cell">
