@@ -254,9 +254,30 @@ public class ViewController {
                 stallsWithCounts.add(vm);
             }
             
-            // Sort by product count descending and take top 8
+            // Sort by average rating (descending), then by review count (descending), then by product count (descending) and take top 8
             stallCards = stallsWithCounts.stream()
-                    .sorted((a, b) -> Integer.compare((Integer) b.get("productCount"), (Integer) a.get("productCount")))
+                    .sorted((a, b) -> {
+                        // First compare by average rating (higher is better)
+                        double ratingA = ((Number) a.getOrDefault("averageRating", 0.0)).doubleValue();
+                        double ratingB = ((Number) b.getOrDefault("averageRating", 0.0)).doubleValue();
+                        int ratingCompare = Double.compare(ratingB, ratingA);
+                        if (ratingCompare != 0) {
+                            return ratingCompare;
+                        }
+                        
+                        // If ratings are equal, compare by review count (more reviews is better)
+                        int reviewCountA = ((Number) a.getOrDefault("reviewCount", 0)).intValue();
+                        int reviewCountB = ((Number) b.getOrDefault("reviewCount", 0)).intValue();
+                        int reviewCompare = Integer.compare(reviewCountB, reviewCountA);
+                        if (reviewCompare != 0) {
+                            return reviewCompare;
+                        }
+                        
+                        // If review counts are also equal, compare by product count
+                        int productCountA = ((Number) a.getOrDefault("productCount", 0)).intValue();
+                        int productCountB = ((Number) b.getOrDefault("productCount", 0)).intValue();
+                        return Integer.compare(productCountB, productCountA);
+                    })
                     .limit(8)
                     .collect(Collectors.toList());
                     
