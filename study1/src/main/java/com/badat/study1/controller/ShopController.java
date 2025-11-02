@@ -348,22 +348,8 @@ public class ShopController {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền thêm sản phẩm vào gian hàng này!");
                 return "redirect:/seller/stall-management";
             }
-            
-            // Kiểm tra xem có sản phẩm đã bị xóa mềm với cùng tên và giá không
-            var existingDeletedProduct = productRepository.findByNameAndPriceAndShopIdAndIsDeleteTrue(
-                    productName, productPrice, stall.getShopId());
-            
+
             Product product;
-            if (existingDeletedProduct.isPresent()) {
-                // Hồi phục sản phẩm đã bị xóa mềm
-                product = existingDeletedProduct.get();
-                product.setIsDelete(false);
-                product.setQuantity(0); // Reset quantity to 0
-                product.setStatus(Product.Status.UNAVAILABLE); // Set status to UNAVAILABLE
-                product.setUpdatedAt(java.time.LocalDateTime.now());
-                product.setDeletedBy(null); // Clear deleted by
-                
-            } else {
                 // Tạo sản phẩm mới
                 String uniqueKey = "PROD_" + System.currentTimeMillis() + "_" + user.getId();
                 
@@ -378,8 +364,6 @@ public class ShopController {
                         .uniqueKey(uniqueKey)
                         .status(Product.Status.UNAVAILABLE) // Default status is UNAVAILABLE when stock is 0
                         .build();
-                
-            }
             
             // Lưu vào database
             productRepository.save(product);
@@ -601,7 +585,6 @@ public class ShopController {
                     // Kiểm tra xem có warehouse item đã tồn tại với cùng unique key trong toàn bộ hệ thống không
                     List<Warehouse> existingItems = warehouseRepository.findByItemTypeOrderByCreatedAtDesc(type);
                     Warehouse existingItem = null;
-                    boolean isItemAlreadyPurchased = false;
                     
                     for (Warehouse item : existingItems) {
                         // Check by unique key instead of full line match
@@ -645,13 +628,6 @@ public class ShopController {
                                 break;
                             }
                         }
-                    }
-                    
-                    // Kiểm tra các điều kiện không được phép lưu
-                    if (isItemAlreadyPurchased) {
-                        failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong hệ thống và đã được mua (").append(itemType).append(")\n");
-                        continue;
                     }
                     
                     if (existingItem != null && !existingItem.getIsDelete()) {
@@ -848,63 +824,6 @@ public class ShopController {
         }
     }
 
-
-    @PostMapping("/seller/restore-product/{productId}")
-    public String restoreProduct(@PathVariable Long productId,
-                                RedirectAttributes redirectAttributes) {
-        
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
-        if (!isAuthenticated) {
-            return "redirect:/login";
-        }
-        
-        User user = (User) authentication.getPrincipal();
-        
-        // Check if user has SELLER role
-        if (!user.getRole().equals(User.Role.SELLER)) {
-            return "redirect:/profile";
-        }
-        
-        try {
-            // Lấy thông tin sản phẩm
-            var productOptional = productRepository.findById(productId);
-            if (productOptional.isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/stall-management";
-            }
-            
-            Product product = productOptional.get();
-            
-            // Kiểm tra quyền sở hữu sản phẩm
-            var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền hồi phục sản phẩm này!");
-                return "redirect:/seller/stall-management";
-            }
-            
-            // Restore product - chỉ cập nhật is_delete = false
-            product.setIsDelete(false);
-            product.setDeletedBy(null);
-            product.setUpdatedAt(java.time.LocalDateTime.now());
-            
-            // Lưu vào database
-            productRepository.save(product);
-            
-            // KHÔNG tự động restore warehouse items - chỉ restore khi user add lại item đó
-            // (với điều kiện item đó chưa được mua)
-            
-            redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được hồi phục thành công!");
-            
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi hồi phục sản phẩm. Vui lòng thử lại!");
-        }
-        
-        return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
-    }
-
     @PostMapping("/seller/update-product/{productId}")
     public String updateProduct(@PathVariable Long productId,
                               @RequestParam String productName,
@@ -1015,8 +934,6 @@ public class ShopController {
     }
 
     // Endpoint để cập nhật quantity cho tất cả products từ warehouse
-
-
     @PostMapping("/seller/update-product-quantities")
     @ResponseBody
     public ResponseEntity<?> updateProductQuantities() {

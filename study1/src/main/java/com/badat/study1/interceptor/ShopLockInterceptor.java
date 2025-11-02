@@ -39,37 +39,28 @@ public class ShopLockInterceptor implements HandlerInterceptor {
         
         try {
             String username = authentication.getName();
-            log.debug("Checking shop lock status for user: {}", username);
-            
             // Tìm user theo username
             var user = userRepository.findByUsername(username);
             if (user.isEmpty()) {
-                log.warn("User not found: {}", username);
                 return true; // Cho phép truy cập nếu không tìm thấy user
             }
             
             // Tìm shop theo userId
             var shop = shopRepository.findByUserId(user.get().getId());
             if (shop.isEmpty()) {
-                log.debug("No shop found for user: {}", username);
                 return true; // Cho phép truy cập nếu user chưa có shop
             }
             
             Shop shopEntity = shop.get();
             if (shopEntity.getStatus() == Shop.Status.INACTIVE) {
-                log.info("Blocking access for locked shop owner: {} (shop: {})", username, shopEntity.getId());
-                
                 // Hiển thị thông báo trực tiếp
                 response.setContentType("text/html;charset=UTF-8");
                 response.getWriter().write(generateLockedMessage());
                 return false;
             }
-            
-            log.debug("Shop is active for user: {}", username);
             return true;
             
         } catch (Exception e) {
-            log.error("Error checking shop lock status for user: {}", authentication.getName(), e);
             return true; // Cho phép truy cập nếu có lỗi
         }
     }

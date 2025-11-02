@@ -116,7 +116,6 @@ public class ViewController {
 
     @GetMapping("/")
     public String homePage(Model model) {
-        log.info("Homepage requested");
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
@@ -292,11 +291,6 @@ public class ViewController {
         return "home";
     }
 
-    @GetMapping("/index")
-    public String indexPage() {
-        return "redirect:/";
-    }
-
     @GetMapping("/login")
     public String loginPage() {
         return "login";
@@ -351,11 +345,7 @@ public class ViewController {
 		boolean missingPhone = (user.getPhone() == null || user.getPhone().trim().isEmpty());
 		boolean missingFullName = (user.getFullName() == null || user.getFullName().trim().isEmpty());
 		
-		log.info("Seller registration check - User: {}, Phone: {}, FullName: {}, MissingPhone: {}, MissingFullName: {}", 
-				user.getUsername(), user.getPhone(), user.getFullName(), missingPhone, missingFullName);
-		
 		if (missingPhone || missingFullName) {
-			log.info("Redirecting to profile - missing required info");
 			redirectAttributes.addFlashAttribute("infoRequired",
 					"Vui lòng cập nhật đầy đủ Họ và tên và Số điện thoại trước khi đăng ký bán hàng.");
 			return "redirect:/profile";
@@ -372,10 +362,9 @@ public class ViewController {
                 .orElse(BigDecimal.ZERO);
         model.addAttribute("walletBalance", walletBalance);
 
-        // Đã có shop => đang chờ duyệt nếu role chưa là SELLER
+        // Đã có shop
         boolean hasShop = shopRepository.findByUserId(user.getId()).isPresent();
         boolean isSeller = user.getRole() == User.Role.SELLER;
-        model.addAttribute("pendingReview", hasShop && !isSeller);
         model.addAttribute("alreadySeller", isSeller);
 
         return "seller/register";
@@ -667,12 +656,6 @@ public class ViewController {
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
 
-        // Lấy số dư ví
-        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                .map(Wallet::getBalance)
-                .orElse(BigDecimal.ZERO);
-        model.addAttribute("walletBalance", walletBalance);
-
         return "seller/shop";
     }
 
@@ -688,7 +671,7 @@ public class ViewController {
 
         User user = (User) authentication.getPrincipal();
 
-        // Check if user has ADMIN role (for now, only ADMIN can access seller pages)
+        // Check if user has SELLER role
         if (!user.getRole().equals(User.Role.SELLER)) {
             return "redirect:/profile";
         }
@@ -696,12 +679,6 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-
-        // Lấy số dư ví
-        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                .map(Wallet::getBalance)
-                .orElse(BigDecimal.ZERO);
-        model.addAttribute("walletBalance", walletBalance);
 
         return "seller/shop";
     }
@@ -728,12 +705,6 @@ public class ViewController {
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
 
-        // Lấy số dư ví
-        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                .map(Wallet::getBalance)
-                .orElse(BigDecimal.ZERO);
-        model.addAttribute("walletBalance", walletBalance);
-
         // Lấy danh sách gian hàng của user và tính tổng kho
         shopRepository.findByUserId(user.getId()).ifPresent(shop -> {
             var stalls = stallRepository.findByShopIdAndIsDeleteFalse(shop.getId());
@@ -743,7 +714,7 @@ public class ViewController {
                 // Lấy tất cả sản phẩm trong gian hàng này
                 var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
 
-                // Tính tổng kho theo Warehouse (không khóa, không xóa)
+                // Tính tổng kho theo Warehouse (không khóa)
                 int totalStock = (int) warehouseRepository.countAvailableItemsByStallId(stall.getId());
 
                 stall.setProductCount(totalStock);
@@ -784,7 +755,7 @@ public class ViewController {
 
             model.addAttribute("stalls", stalls);
 
-            // Lấy tổng số sản phẩm trong shop
+            // Lấy tổng số sản phẩm trong stall
             long totalProducts = productRepository.countByShopIdAndIsDeleteFalse(shop.getId());
             model.addAttribute("totalProducts", totalProducts);
         });
@@ -818,12 +789,6 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-
-        // Lấy số dư ví
-        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                .map(Wallet::getBalance)
-                .orElse(BigDecimal.ZERO);
-        model.addAttribute("walletBalance", walletBalance);
         
         return "seller/add-stall";
     }
@@ -848,12 +813,6 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-
-        // Lấy số dư ví
-        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                .map(Wallet::getBalance)
-                .orElse(BigDecimal.ZERO);
-        model.addAttribute("walletBalance", walletBalance);
 
         // Lấy thông tin gian hàng
         var stall = stallRepository.findById(id);
@@ -893,12 +852,6 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-
-        // Lấy số dư ví
-        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                .map(Wallet::getBalance)
-                .orElse(BigDecimal.ZERO);
-        model.addAttribute("walletBalance", walletBalance);
 
         // Lấy thông tin gian hàng
         var stallOptional = stallRepository.findById(stallId);
@@ -950,12 +903,6 @@ public class ViewController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-
-        // Lấy số dư ví
-        BigDecimal walletBalance = walletRepository.findByUserId(user.getId())
-                .map(Wallet::getBalance)
-                .orElse(BigDecimal.ZERO);
-        model.addAttribute("walletBalance", walletBalance);
 
         // Lấy thông tin sản phẩm
         var productOptional = productRepository.findById(productId);
@@ -1236,7 +1183,6 @@ public class ViewController {
         return ResponseEntity.ok(reviewDTOs);
 
     } catch (Exception e) {
-        log.error("Error fetching reviews for stall {}: {}", stallId, e.getMessage());
         return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
     }
 }
@@ -1289,7 +1235,6 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         return ResponseEntity.ok(Map.of("message", "Reviews marked as read", "count", reviews.size()));
 
     } catch (Exception e) {
-        log.error("Error marking reviews as read for stall {}: {}", stallId, e.getMessage());
         return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
     }
 }
