@@ -65,18 +65,9 @@ public class AuthenticationController {
             
             log.info("Login attempt for username: {} from IP: {}", username, ipAddress);
             
-            //  1. Check IP lockout
-            if (ipLockoutService.isIpLocked(ipAddress)) {
-                log.warn("Login blocked - IP locked: {}", ipAddress);
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.IP_LOCKED, ipAddress, 
-                        "Login attempt from locked IP");
-                return ResponseEntity.status(429).body(Map.of(
-                    "error", "IP đã bị khóa do quá nhiều lần đăng nhập sai",
-                    "lockedUntil", "30 phút"
-                ));
-            }
+            // IP lockout check is now handled by IpBlockingFilter (removed duplicate check here)
             
-            //  1.5. Check if IP is rate limited for captcha failures
+            //  1. Check if IP is rate limited for captcha failures
             if (captchaRateLimitService.isCaptchaRateLimited(ipAddress)) {
                 log.warn("Captcha rate limited - IP: {}", ipAddress);
                 return ResponseEntity.status(429).body(Map.of(
@@ -298,6 +289,8 @@ public class AuthenticationController {
             
             // Validate captcha - captchaId from HttpOnly cookie
             if (request.getCaptchaCode() == null || request.getCaptchaCode().trim().isEmpty()) {
+                // Record failed attempt for missing captcha
+                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_REQUIRED, ipAddress, 
                         "Registration without captcha");
                 return ResponseEntity.status(400).body(Map.of(
@@ -310,6 +303,8 @@ public class AuthenticationController {
             boolean captchaValid = captchaService.validateCaptcha(http, request.getCaptchaCode());
             
             if (!captchaValid) {
+                // Record failed attempt for invalid captcha
+                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
                 captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
                         "Registration with invalid captcha");
@@ -348,17 +343,25 @@ public class AuthenticationController {
             try {
                 userService.register(request);
             } catch (RuntimeException e) {
-                if ("EMAIL_EXISTS".equals(e.getMessage())) {
+                // Record failed attempt for registration errors
+                String errorType = e.getMessage();
+                String identifier = request.getEmail() != null ? request.getEmail() : 
+                                   (request.getUsername() != null ? request.getUsername() : "unknown");
+                if ("EMAIL_EXISTS".equals(errorType)) {
+                    ipLockoutService.recordFailedAttempt(ipAddress, identifier);
                     return ResponseEntity.badRequest().body(Map.of(
                         "error", "Email đã được sử dụng",
                         "field", "email"
                     ));
-                } else if ("USERNAME_EXISTS".equals(e.getMessage())) {
+                } else if ("USERNAME_EXISTS".equals(errorType)) {
+                    ipLockoutService.recordFailedAttempt(ipAddress, identifier);
                     return ResponseEntity.badRequest().body(Map.of(
                         "error", "Tên đăng nhập đã tồn tại",
                         "field", "username"
                     ));
                 }
+                // Record failed attempt for other registration errors
+                ipLockoutService.recordFailedAttempt(ipAddress, identifier);
                 throw e; // Re-throw other exceptions
             }
             
@@ -390,6 +393,15 @@ public class AuthenticationController {
             
         } catch (Exception e) {
             log.error("Registration error: {}", e.getMessage());
+            // Record failed attempt for unexpected errors
+            try {
+                String ipAddress = getClientIpAddress(http);
+                String identifier = request.getEmail() != null ? request.getEmail() : 
+                                   (request.getUsername() != null ? request.getUsername() : "unknown");
+                ipLockoutService.recordFailedAttempt(ipAddress, identifier);
+            } catch (Exception ex) {
+                log.error("Failed to record failed attempt: {}", ex.getMessage());
+            }
             // Don't leak information
             ResponseCookie clearCookieForError = ResponseCookie.from("captcha_id", "")
                     .httpOnly(true)
@@ -538,6 +550,8 @@ public class AuthenticationController {
             
             // Validate captcha - captchaId from HttpOnly cookie
             if (request.getCaptchaCode() == null || request.getCaptchaCode().trim().isEmpty()) {
+                // Record failed attempt for missing captcha
+                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_REQUIRED, ipAddress, 
                         "Forgot password without captcha");
                 return ResponseEntity.status(400).body(Map.of(
@@ -552,6 +566,8 @@ public class AuthenticationController {
             log.info("Forgot password captcha validation result: {}", captchaValid);
             
             if (!captchaValid) {
+                // Record failed attempt for invalid captcha
+                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
                 captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
                         "Forgot password with invalid captcha");
@@ -609,6 +625,14 @@ public class AuthenticationController {
             
         } catch (Exception e) {
             log.error("Forgot password error: {}", e.getMessage(), e);
+            // Record failed attempt for unexpected errors
+            try {
+                String ipAddress = getClientIpAddress(httpRequest);
+                String identifier = request.getEmail() != null ? request.getEmail() : "unknown";
+                ipLockoutService.recordFailedAttempt(ipAddress, identifier);
+            } catch (Exception ex) {
+                log.error("Failed to record failed attempt: {}", ex.getMessage());
+            }
             // Always return success to prevent email enumeration
             ResponseCookie clearCookieForError = ResponseCookie.from("captcha_id", "")
                     .httpOnly(true)

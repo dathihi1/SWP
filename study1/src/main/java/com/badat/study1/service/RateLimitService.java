@@ -21,6 +21,9 @@ public class RateLimitService {
     @Value("${security.rate-limit.email-max-requests-per-hour:3}")
     private int emailMaxRequestsPerHour;
     
+    @Value("${security.rate-limit.forgot-password-email-max-requests-per-hour:5}")
+    private int forgotPasswordEmailMaxRequestsPerHour;
+    
     @Value("${security.rate-limit.otp-max-attempts:5}")
     private int otpMaxAttempts;
     
@@ -33,30 +36,59 @@ public class RateLimitService {
     @Value("${security.rate-limit.ip-lockout-minutes:60}")
     private int ipLockoutMinutes;
     
-    private static final String EMAIL_RATE_LIMIT_PREFIX = "rate_limit:forgot_password:";
+    private static final String EMAIL_RATE_LIMIT_PREFIX = "rate_limit:email:";
     private static final String OTP_ATTEMPTS_PREFIX = "otp_attempts:";
     private static final String REGISTER_RATE_LIMIT_PREFIX = "rate_limit:register:";
     private static final String FORGOT_PASSWORD_IP_PREFIX = "forgot_password_ip:";
     
-    public boolean isEmailRateLimited(String email) {
-        String key = EMAIL_RATE_LIMIT_PREFIX + email;
+    /**
+     * Check email rate limiting with purpose-specific limits
+     * @param email Email address
+     * @param purpose Purpose: "register" or "forgot_password"
+     * @return true if rate limited
+     */
+    public boolean isEmailRateLimited(String email, String purpose) {
+        String key = EMAIL_RATE_LIMIT_PREFIX + purpose + ":" + email;
         Long attempts = (Long) redisTemplate.opsForValue().get(key);
-        return attempts != null && attempts >= emailMaxRequestsPerHour;
+        int maxRequests = "forgot_password".equals(purpose) ? forgotPasswordEmailMaxRequestsPerHour : emailMaxRequestsPerHour;
+        return attempts != null && attempts >= maxRequests;
+    }
+    
+    /**
+     * Check email rate limiting (backward compatibility - uses default limit)
+     * @param email Email address
+     * @return true if rate limited
+     */
+    public boolean isEmailRateLimited(String email) {
+        // Default to register purpose for backward compatibility
+        return isEmailRateLimited(email, "register");
     }
     
     public void recordEmailRequest(String email) {
-        String key = EMAIL_RATE_LIMIT_PREFIX + email;
+        // Default to register purpose for backward compatibility
+        recordEmailRequest(email, "register");
+    }
+    
+    /**
+     * Record email request with purpose-specific tracking
+     * @param email Email address
+     * @param purpose Purpose: "register" or "forgot_password"
+     */
+    public void recordEmailRequest(String email, String purpose) {
+        String key = EMAIL_RATE_LIMIT_PREFIX + purpose + ":" + email;
         Long attempts = redisTemplate.opsForValue().increment(key);
         redisTemplate.expire(key, 1, TimeUnit.HOURS);
         
+        int maxRequests = "forgot_password".equals(purpose) ? forgotPasswordEmailMaxRequestsPerHour : emailMaxRequestsPerHour;
+        
         if (attempts != null && attempts == 1) {
-            log.info("First forgot password request for email: {}", email);
+            log.info("First {} request for email: {}", purpose, email);
         } else if (attempts != null) {
-            log.warn("Forgot password request #{} for email: {}", attempts, email);
+            log.warn("{} request #{} for email: {}", purpose, attempts, email);
             
             // Log email rate limit when approaching or reaching limit
-            if (attempts >= emailMaxRequestsPerHour) {
-                String details = "Email rate limited for forgot password (attempts: " + attempts + "/" + emailMaxRequestsPerHour + ")";
+            if (attempts >= maxRequests) {
+                String details = "Email rate limited for " + purpose + " (attempts: " + attempts + "/" + maxRequests + ")";
                 securityEventService.logSecurityEvent(
                     SecurityEvent.EventType.EMAIL_RATE_LIMIT,
                     null,
@@ -105,7 +137,12 @@ public class RateLimitService {
     }
     
     public Long getEmailRequestCount(String email) {
-        String key = EMAIL_RATE_LIMIT_PREFIX + email;
+        // Default to register purpose for backward compatibility
+        return getEmailRequestCount(email, "register");
+    }
+    
+    public Long getEmailRequestCount(String email, String purpose) {
+        String key = EMAIL_RATE_LIMIT_PREFIX + purpose + ":" + email;
         Long attempts = (Long) redisTemplate.opsForValue().get(key);
         return attempts != null ? attempts : 0L;
     }
@@ -117,9 +154,16 @@ public class RateLimitService {
     }
     
     public void clearEmailRateLimit(String email) {
-        String key = EMAIL_RATE_LIMIT_PREFIX + email;
-        redisTemplate.delete(key);
+        // Clear both register and forgot_password limits
+        redisTemplate.delete(EMAIL_RATE_LIMIT_PREFIX + "register:" + email);
+        redisTemplate.delete(EMAIL_RATE_LIMIT_PREFIX + "forgot_password:" + email);
         log.info("Email rate limit cleared for: {}", email);
+    }
+    
+    public void clearEmailRateLimit(String email, String purpose) {
+        String key = EMAIL_RATE_LIMIT_PREFIX + purpose + ":" + email;
+        redisTemplate.delete(key);
+        log.info("Email rate limit cleared for: {} (purpose: {})", email, purpose);
     }
     
     public void clearOtpRateLimit(String email) {

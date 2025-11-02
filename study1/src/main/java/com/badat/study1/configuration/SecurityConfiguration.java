@@ -58,6 +58,7 @@ public class SecurityConfiguration {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final UserActivityLogService userActivityLogService;
     private final ApiCallLogFilter apiCallLogFilter;
+    private final IpBlockingFilter ipBlockingFilter;
     private final JwtService jwtService;
     private final AdminAuthenticationSuccessHandler adminAuthenticationSuccessHandler;
     private final ClientRegistrationRepository clientRegistrationRepository;
@@ -102,7 +103,11 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
-        // Add API call logging filter first
+        // Add IP blocking filter FIRST - chặn IP bị lock trước khi request đến controller/security layers
+        // Điều này giúp tiết kiệm tài nguyên server vì không cần xử lý request ở các layer sau
+        http.addFilterBefore(ipBlockingFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+        
+        // Add API call logging filter
         http.addFilterBefore(apiCallLogFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
         
         // Add JWT filter before default authentication

@@ -37,13 +37,14 @@ public class OtpService {
     private static final String RESET_TOKEN_PREFIX = "reset_token:";
     
     public void sendOtp(String email, String purpose) {
-        // Check rate limiting (skip for forgot password)
-        if (!"forgot_password".equals(purpose) && rateLimitService.isEmailRateLimited(email)) {
+        // Check rate limiting for all purposes (including forgot_password)
+        // Use separate limit for forgot_password to allow legitimate users to recover their password
+        if (rateLimitService.isEmailRateLimited(email, purpose)) {
             try {
                 auditLogService.logAction(
                         null,
                         "EMAIL_BLOCKED_RATE_LIMIT_ACTIVE",
-                        "Blocked email send due to active rate limit for " + email,
+                        "Blocked email send due to active rate limit for " + email + " (purpose: " + purpose + ")",
                         null,
                         false,
                         "RATE_LIMIT_ACTIVE",
@@ -113,8 +114,8 @@ public class OtpService {
             emailService.sendEmail(email, subject, body);
         }
         
-        // Record request
-        rateLimitService.recordEmailRequest(email);
+        // Record request with purpose
+        rateLimitService.recordEmailRequest(email, purpose);
         
         log.info("OTP sent to email: {} for purpose: {}", email, purpose);
     }
