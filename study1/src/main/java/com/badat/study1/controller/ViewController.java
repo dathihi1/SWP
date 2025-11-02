@@ -1329,7 +1329,7 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
 
     @GetMapping("/admin/users")
     public String adminUsers(Model model,
-                           @RequestParam(defaultValue = "0") int page,
+                           @RequestParam(defaultValue = "1") int page,
                            @RequestParam(defaultValue = "25") int size,
                            @RequestParam(required = false) String search,
                            @RequestParam(required = false) String role,
@@ -1348,26 +1348,73 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
                 return "redirect:/";
             }
 
+            // Validate and normalize size parameter
+            boolean sizeChanged = false;
+            if (size < 1) {
+                size = 25; // Default to 25 if invalid
+                sizeChanged = true;
+            } else if (size > 100) {
+                size = 100; // Limit to maximum 100
+                sizeChanged = true;
+            }
+
+            // Validate page parameter (1-based indexing)
+            boolean pageChanged = false;
+            if (page < 1) {
+                page = 1;
+                pageChanged = true;
+            }
+
             // Create sort object
             Sort sort = Sort.by(sortDir.equals("desc") ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);
-            Pageable pageable = PageRequest.of(page, size, sort);
+            
+            // Convert 1-based page to 0-based for Spring Data
+            Pageable pageable = PageRequest.of(page - 1, size, sort);
 
             // Get users with filters
             Page<User> usersPage = userService.getUsersWithFilters(search, role, status, pageable);
 
+            // Validate page is not greater than total pages
+            int totalPages = usersPage.getTotalPages();
+            if (totalPages > 0 && page > totalPages) {
+                page = totalPages;
+                pageChanged = true;
+                // Re-fetch with corrected page
+                pageable = PageRequest.of(page - 1, size, sort);
+                usersPage = userService.getUsersWithFilters(search, role, status, pageable);
+            }
+
+            // If parameters were corrected, redirect to valid URL to update browser
+            if (sizeChanged || pageChanged) {
+                StringBuilder redirectUrl = new StringBuilder("/admin/users?page=").append(page).append("&size=").append(size);
+                if (search != null && !search.isEmpty()) {
+                    redirectUrl.append("&search=").append(java.net.URLEncoder.encode(search, java.nio.charset.StandardCharsets.UTF_8));
+                }
+                if (role != null && !role.isEmpty()) {
+                    redirectUrl.append("&role=").append(role);
+                }
+                if (status != null && !status.isEmpty()) {
+                    redirectUrl.append("&status=").append(status);
+                }
+                redirectUrl.append("&sortBy=").append(sortBy);
+                redirectUrl.append("&sortDir=").append(sortDir);
+                return "redirect:" + redirectUrl.toString();
+            }
+
             model.addAttribute("users", usersPage.getContent());
-            model.addAttribute("currentPage", page);
+            model.addAttribute("currentPage", page); // 1-based for frontend
             model.addAttribute("totalPages", usersPage.getTotalPages());
             model.addAttribute("totalElements", usersPage.getTotalElements());
             model.addAttribute("pageSize", size);
-            model.addAttribute("search", search);
-            model.addAttribute("role", role);
-            model.addAttribute("status", status);
+            model.addAttribute("search", search != null ? search : "");
+            model.addAttribute("role", role != null ? role : "");
+            model.addAttribute("status", status != null ? status : "");
             model.addAttribute("sortBy", sortBy);
             model.addAttribute("sortDir", sortDir);
             model.addAttribute("isAuthenticated", true);
             model.addAttribute("username", currentUser.getUsername());
             model.addAttribute("userRole", currentUser.getRole().name());
+            model.addAttribute("currentUserId", currentUser.getId()); // Add current user ID for frontend validation
 
             return "admin/users";
 
@@ -1588,6 +1635,20 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         
         log.info("Audit logs query - Page: {}, Size: {}, Total elements: {}, Total pages: {}", 
                 page, size, auditLogsPage.getTotalElements(), auditLogsPage.getTotalPages());
+        
+        // If page is beyond total pages, redirect to last page
+        int totalPages = auditLogsPage.getTotalPages();
+        if (totalPages > 0 && page >= totalPages) {
+            log.warn("Requested page {} is beyond total pages {}, redirecting to page {}", 
+                page, totalPages, totalPages - 1);
+            String redirectUrl = "/admin/audit-logs?page=" + (totalPages - 1) + "&size=" + size;
+            if (action != null) redirectUrl += "&action=" + action;
+            if (category != null) redirectUrl += "&category=" + category;
+            if (success != null) redirectUrl += "&success=" + success;
+            if (startDate != null) redirectUrl += "&startDate=" + startDate;
+            if (endDate != null) redirectUrl += "&endDate=" + endDate;
+            return "redirect:" + redirectUrl;
+        }
         
         // Get unique actions and categories for filter dropdowns
         List<String> actions = auditLogRepository.findDistinctActions();
@@ -1973,10 +2034,31 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             }
 
             User currentUser = (User) authentication.getPrincipal();
-            int safeSize = com.badat.study1.util.PaginationValidator.validateSize(size);
-            int safePageOneBased = com.badat.study1.util.PaginationValidator.validateOneBasedPage(page);
-            int safePageIndex = com.badat.study1.util.PaginationValidator.toZeroBased(safePageOneBased);
-            Pageable pageable = PageRequest.of(safePageIndex, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+            
+            // Validate pagination parameters
+            int validatedSize = com.badat.study1.util.PaginationValidator.validateSize(size);
+            int validatedPageOneBased = com.badat.study1.util.PaginationValidator.validateOneBasedPage(page);
+            
+            // Redirect if parameters were invalid
+            if (validatedSize != size || validatedPageOneBased != page) {
+                StringBuilder redirectUrl = new StringBuilder("/user/activity-history?page=").append(validatedPageOneBased).append("&size=").append(validatedSize);
+                if (action != null && !action.isEmpty()) {
+                    redirectUrl.append("&action=").append(java.net.URLEncoder.encode(action, java.nio.charset.StandardCharsets.UTF_8));
+                }
+                if (success != null) {
+                    redirectUrl.append("&success=").append(success);
+                }
+                if (fromDate != null && !fromDate.isEmpty()) {
+                    redirectUrl.append("&fromDate=").append(fromDate);
+                }
+                if (toDate != null && !toDate.isEmpty()) {
+                    redirectUrl.append("&toDate=").append(toDate);
+                }
+                return "redirect:" + redirectUrl.toString();
+            }
+            
+            int safePageIndex = com.badat.study1.util.PaginationValidator.toZeroBased(validatedPageOneBased);
+            Pageable pageable = PageRequest.of(safePageIndex, validatedSize, Sort.by(Sort.Direction.DESC, "createdAt"));
 
             LocalDate from = null;
             LocalDate to = null;
@@ -1992,10 +2074,24 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
 
             int totalPages = activities.getTotalPages();
             int clampedIndex = com.badat.study1.util.PaginationValidator.validatePageAgainstTotal(safePageIndex, totalPages);
+            
+            // If page is beyond total pages, redirect to valid page
             if (clampedIndex != safePageIndex) {
-                pageable = PageRequest.of(clampedIndex, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-                activities = userActivityLogService.getUserActivities(
-                    currentUser.getId(), normalizedAction, success, from, to, pageable);
+                int validPageOneBased = totalPages > 0 ? totalPages : 1;
+                StringBuilder redirectUrl = new StringBuilder("/user/activity-history?page=").append(validPageOneBased).append("&size=").append(validatedSize);
+                if (action != null && !action.isEmpty()) {
+                    redirectUrl.append("&action=").append(java.net.URLEncoder.encode(action, java.nio.charset.StandardCharsets.UTF_8));
+                }
+                if (success != null) {
+                    redirectUrl.append("&success=").append(success);
+                }
+                if (fromDate != null && !fromDate.isEmpty()) {
+                    redirectUrl.append("&fromDate=").append(fromDate);
+                }
+                if (toDate != null && !toDate.isEmpty()) {
+                    redirectUrl.append("&toDate=").append(toDate);
+                }
+                return "redirect:" + redirectUrl.toString();
             }
 
             List<com.badat.study1.dto.response.UserActivityLogResponse> activityResponses = activities.getContent().stream()
@@ -2011,7 +2107,7 @@ public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
             model.addAttribute("selectedSuccess", success);
             model.addAttribute("selectedFromDate", fromDate);
             model.addAttribute("selectedToDate", toDate);
-            model.addAttribute("selectedSize", safeSize);
+            model.addAttribute("selectedSize", validatedSize);
             model.addAttribute("isAuthenticated", true);
             model.addAttribute("username", currentUser.getUsername());
             model.addAttribute("userRole", currentUser.getRole().name());

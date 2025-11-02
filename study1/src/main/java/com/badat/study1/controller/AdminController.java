@@ -1,7 +1,6 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
-import com.badat.study1.model.Shop;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.StallRepository;
@@ -10,10 +9,8 @@ import com.badat.study1.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,7 +29,6 @@ public class AdminController {
     private final AuditLogService auditLogService;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final com.badat.study1.service.IpLockoutService ipLockoutService;
     private final StallRepository stallRepository;
 
     // API thêm user
@@ -207,9 +203,17 @@ public class AdminController {
             }
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) return ResponseEntity.status(404).body(Map.of("error", "User not found"));
-            if (currentUser.getId().equals(user.getId()) && currentUser.getRole() == User.Role.ADMIN) {
+            
+            // Check: Admin cannot lock themselves
+            if (currentUser.getId().equals(user.getId())) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Admin không thể tự khóa chính mình"));
             }
+            
+            // Check: Admin cannot lock another Admin
+            if (user.getRole() == User.Role.ADMIN && currentUser.getRole() == User.Role.ADMIN) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Admin không thể khóa Admin khác"));
+            }
+            
             if (user.getStatus().equals(User.Status.LOCKED)) {
                 return ResponseEntity.badRequest().body(Map.of("error", "User is already locked"));
             }
@@ -272,8 +276,17 @@ public class AdminController {
             }
             User userToToggle = userService.findById(userId);
             if (userToToggle == null) return ResponseEntity.status(404).body(Map.of("error", "User not found"));
-            if (currentUser.getId().equals(userToToggle.getId()) && currentUser.getRole() == User.Role.ADMIN && userToToggle.getStatus() == User.Status.ACTIVE) {
+            
+            // Check: Admin cannot lock themselves
+            if (currentUser.getId().equals(userToToggle.getId())) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Admin không thể tự khóa chính mình"));
+            }
+            
+            // Check: Admin cannot lock another Admin (only when trying to lock, not unlock)
+            if (userToToggle.getStatus() == User.Status.ACTIVE && 
+                userToToggle.getRole() == User.Role.ADMIN && 
+                currentUser.getRole() == User.Role.ADMIN) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Admin không thể khóa Admin khác"));
             }
             if (userToToggle.getStatus() == User.Status.ACTIVE) {
                 userToToggle.setStatus(User.Status.LOCKED);

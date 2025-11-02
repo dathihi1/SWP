@@ -236,11 +236,20 @@
         .btn-lock {
             background-color: #ffc107;
             color: #000;
+            min-width: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .btn-lock:hover {
             background-color: #e0a800;
             color: #000;
+        }
+        
+        .btn-lock i {
+            width: 16px;
+            text-align: center;
         }
         
         .btn-view {
@@ -261,6 +270,22 @@
         .btn-info:hover {
             background-color: #138496;
             color: white;
+        }
+        
+        /* Pagination Styles (like api-logs) */
+        .pagination .page-link {
+            padding: 0.5rem 0.75rem;
+        }
+        
+        .pagination .page-item.active .page-link {
+            background-color: #ff7b00;
+            border-color: #ff7b00;
+            color: white;
+        }
+        
+        .pagination .page-item .page-link:hover {
+            background-color: rgba(255, 123, 0, 0.1);
+            color: #ff7b00;
         }
         
         @media (max-width: 768px) {
@@ -356,7 +381,7 @@
                         <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                         <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" th:href="@{/logout}" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                     </ul>
                 </div>
             </div>
@@ -404,7 +429,8 @@
                         </div>
                     <div class="collapse" id="filterCollapse">
                         <div class="card-body">
-                            <form method="get" action="/admin/users" class="row g-3">
+                            <form method="get" action="/admin/users" class="row g-3" id="filterForm" onsubmit="return validateFilterForm(event)">
+                                <input type="hidden" name="page" value="1">
                                 <div class="col-md-3">
                                     <label for="search" class="form-label">Tìm kiếm</label>
                                     <input type="text" class="form-control" id="search" name="search" 
@@ -427,20 +453,11 @@
                                         <option value="LOCKED" th:selected="${status == 'LOCKED'}">Khóa</option>
                                         </select>
                                     </div>
-                                <div class="col-md-2">
-                                    <label for="size" class="form-label">Số lượng/trang</label>
-                                    <select class="form-select" id="size" name="size">
-                                            <option value="10" th:selected="${pageSize == 10}">10</option>
-                                            <option value="25" th:selected="${pageSize == 25}">25</option>
-                                            <option value="50" th:selected="${pageSize == 50}">50</option>
-                                            <option value="100" th:selected="${pageSize == 100}">100</option>
-                                        </select>
-                                    </div>
-                                <div class="col-md-3 d-flex align-items-end">
+                                <div class="col-md-4 d-flex align-items-end">
                                     <button type="submit" class="btn btn-primary me-2">
                                         <i class="fas fa-search me-1"></i>Tìm kiếm
                                     </button>
-                                    <a href="/admin/users" class="btn btn-outline-secondary">
+                                    <a href="/admin/users?page=1" class="btn btn-outline-secondary">
                                         <i class="fas fa-times me-1"></i>Xóa bộ lọc
                                     </a>
                             </div>
@@ -460,7 +477,7 @@
                         <thead>
                             <tr>
                                 <th>
-                                    <a th:href="@{/admin/users(sortBy='id', sortDir=${sortBy == 'id' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                    <a th:href="@{/admin/users(page=1, sortBy='id', sortDir=${sortBy == 'id' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
                                         ID 
                                         <i class="fas fa-sort" th:if="${sortBy != 'id'}"></i>
@@ -469,7 +486,7 @@
                                     </a>
                                 </th>
                                 <th>
-                                    <a th:href="@{/admin/users(sortBy='username', sortDir=${sortBy == 'username' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                    <a th:href="@{/admin/users(page=1, sortBy='username', sortDir=${sortBy == 'username' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
                                         Tên đăng nhập
                                         <i class="fas fa-sort" th:if="${sortBy != 'username'}"></i>
@@ -478,7 +495,7 @@
                                     </a>
                                 </th>
                                 <th>
-                                    <a th:href="@{/admin/users(sortBy='email', sortDir=${sortBy == 'email' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                    <a th:href="@{/admin/users(page=1, sortBy='email', sortDir=${sortBy == 'email' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
                                         Email
                                         <i class="fas fa-sort" th:if="${sortBy != 'email'}"></i>
@@ -487,7 +504,7 @@
                                     </a>
                                 </th>
                                 <th>
-                                    <a th:href="@{/admin/users(sortBy='role', sortDir=${sortBy == 'role' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                    <a th:href="@{/admin/users(page=1, sortBy='role', sortDir=${sortBy == 'role' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
                                         Vai trò 
                                         <i class="fas fa-sort" th:if="${sortBy != 'role'}"></i>
@@ -496,7 +513,7 @@
                                     </a>
                                 </th>
                                 <th>
-                                    <a th:href="@{/admin/users(sortBy='status', sortDir=${sortBy == 'status' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                    <a th:href="@{/admin/users(page=1, sortBy='status', sortDir=${sortBy == 'status' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
                                         Trạng thái 
                                         <i class="fas fa-sort" th:if="${sortBy != 'status'}"></i>
@@ -505,7 +522,7 @@
                                     </a>
                                 </th>
                                 <th>
-                                    <a th:href="@{/admin/users(sortBy='createdAt', sortDir=${sortBy == 'createdAt' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
+                                    <a th:href="@{/admin/users(page=1, sortBy='createdAt', sortDir=${sortBy == 'createdAt' && sortDir == 'asc' ? 'desc' : 'asc'}, search=${search}, role=${role}, status=${status}, size=${pageSize})}" 
                                        class="text-decoration-none text-dark">
                                         Ngày tạo
                                         <i class="fas fa-sort" th:if="${sortBy != 'createdAt'}"></i>
@@ -557,10 +574,14 @@
                                                 onclick="openEditModal(this.dataset)">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-action btn-lock" title="Khóa/Mở khóa" 
+                                        <button class="btn btn-action btn-lock" 
                                                 th:data-user-id="${user.id}" 
                                                 th:data-user-status="${user.status.name()}"
-                                                onclick="toggleUserLock(this.dataset.userId, this.dataset.userStatus)">
+                                                th:data-user-role="${user.role.name()}"
+                                                th:disabled="${(user.id == currentUserId) || (user.role.name() == 'ADMIN' && user.status.name() == 'ACTIVE')}"
+                                                th:style="${(user.id == currentUserId) || (user.role.name() == 'ADMIN' && user.status.name() == 'ACTIVE')} ? 'opacity: 0.5; cursor: not-allowed;' : ''"
+                                                th:title="${(user.id == currentUserId) ? 'Bạn không thể khóa chính mình' : ((user.role.name() == 'ADMIN' && user.status.name() == 'ACTIVE') ? 'Admin không thể khóa Admin khác' : 'Khóa/Mở khóa')}"
+                                                onclick="toggleUserLock(this.dataset.userId, this.dataset.userStatus, this.dataset.userRole, this)">
                                             <i class="fas fa-lock" th:if="${user.status.name() == 'ACTIVE'}"></i>
                                             <i class="fas fa-unlock" th:if="${user.status.name() == 'LOCKED'}"></i>
                                         </button>
@@ -576,52 +597,67 @@
                         </tbody>
                     </table>
                 </div>
-                
-                <!-- Pagination -->
-                <div class="pagination-section" th:if="${totalPages > 1}">
-                    <div class="d-flex justify-content-between align-items-center p-3">
-                        <div class="pagination-info">
-                            <span th:text="'Hiển thị ' + ${(currentPage * pageSize) + 1} + ' - ' + ${(currentPage + 1) * pageSize > totalElements ? totalElements : (currentPage + 1) * pageSize} + ' của ' + ${totalElements} + ' kết quả'">
-                                Hiển thị 1 - 10 của 100 kết quả
-                            </span>
+            </div>
+            
+            <!-- Pagination Footer -->
+            <div th:if="${totalPages > 0}" class="d-flex justify-content-between align-items-center mt-4 p-3" style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-muted">
+                        Hiển thị <span th:text="${((currentPage - 1) * pageSize) + 1}">1</span> - <span th:text="${(currentPage * pageSize > totalElements ? totalElements : currentPage * pageSize)}">10</span> / <span th:text="${totalElements}">100</span> kết quả
                     </div>
-                        <nav aria-label="User pagination">
-                            <ul class="pagination mb-0">
-                                <!-- Previous Page -->
-                            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                                <a class="page-link" 
-                                       th:href="@{/admin/users(page=${currentPage - 1}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
-                                   th:if="${currentPage > 0}">
-                                    <i class="fas fa-chevron-left"></i>
-                                </a>
-                                <span class="page-link" th:if="${currentPage == 0}">
-                                    <i class="fas fa-chevron-left"></i>
-                                </span>
-                            </li>
-                            
-                                <!-- Page Numbers -->
-                                <li class="page-item" th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}" 
-                                th:classappend="${pageNum == currentPage} ? 'active'">
-                                <a class="page-link" 
-                                       th:href="@{/admin/users(page=${pageNum}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
-                                   th:text="${pageNum + 1}">1</a>
-                            </li>
-                            
-                                <!-- Next Page -->
-                            <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
-                                <a class="page-link" 
-                                       th:href="@{/admin/users(page=${currentPage + 1}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
-                                   th:if="${currentPage < totalPages - 1}">
-                                    <i class="fas fa-chevron-right"></i>
-                                </a>
-                                <span class="page-link" th:if="${currentPage == totalPages - 1}">
-                                    <i class="fas fa-chevron-right"></i>
-                                </span>
-                            </li>
-                        </ul>
-                    </nav>
-                    </div>
+                    <select class="form-select form-select-sm" style="width: auto;" onchange="changePageSize(this.value)">
+                        <option value="10" th:selected="${pageSize == 10}">10 / trang</option>
+                        <option value="25" th:selected="${pageSize == 25}">25 / trang</option>
+                        <option value="50" th:selected="${pageSize == 50}">50 / trang</option>
+                        <option value="100" th:selected="${pageSize == 100}">100 / trang</option>
+                    </select>
                 </div>
+                <nav th:if="${totalPages > 1}">
+                    <ul class="pagination mb-0">
+                        <!-- First Page -->
+                        <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
+                            <a class="page-link" th:href="@{/admin/users(page=1, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        
+                        <!-- Previous Page -->
+                        <li class="page-item" th:classappend="${currentPage == 1} ? 'disabled'">
+                            <a class="page-link" th:href="@{/admin/users(page=${currentPage - 1}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}" th:if="${currentPage > 1}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            <span class="page-link" th:if="${currentPage == 1}">
+                                <i class="fas fa-chevron-left"></i>
+                            </span>
+                        </li>
+                        
+                        <!-- Page Numbers with Ellipsis -->
+                        <li class="page-item" 
+                            th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
+                            th:if="${(pageNum >= currentPage - 2) and (pageNum <= currentPage + 2)}"
+                            th:classappend="${pageNum == currentPage} ? 'active'">
+                            <a class="page-link" th:href="@{/admin/users(page=${pageNum}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}"
+                               th:text="${pageNum}">1</a>
+                        </li>
+                        
+                        <!-- Next Page -->
+                        <li class="page-item" th:classappend="${currentPage >= totalPages} ? 'disabled'">
+                            <a class="page-link" th:href="@{/admin/users(page=${currentPage + 1}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}" th:if="${currentPage < totalPages}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                            <span class="page-link" th:if="${currentPage >= totalPages}">
+                                <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </li>
+                        
+                        <!-- Last Page -->
+                        <li class="page-item" th:classappend="${currentPage >= totalPages} ? 'disabled'">
+                            <a class="page-link" th:href="@{/admin/users(page=${totalPages}, size=${pageSize}, search=${search}, role=${role}, status=${status}, sortBy=${sortBy}, sortDir=${sortDir})}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
@@ -723,8 +759,9 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/auth.js"></script>
     <script th:inline="javascript">
-        // Sidebar toggle functionality
+        // Sidebar toggle functionality and pagination validation
         document.addEventListener('DOMContentLoaded', function() {
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.querySelector('.sidebar');
@@ -753,6 +790,35 @@
                     item.classList.add('active');
                 }
             });
+            
+            // Validate pagination parameters on page load (Frontend validation)
+            const urlParams = new URLSearchParams(window.location.search);
+            const page = parseInt(urlParams.get('page') || '1');
+            const size = parseInt(urlParams.get('size') || '25');
+            let needsRedirect = false;
+            
+            // Validate page
+            if (isNaN(page) || page < 1) {
+                urlParams.set('page', '1');
+                needsRedirect = true;
+            }
+            
+            // Validate size
+            if (isNaN(size) || size < 1) {
+                urlParams.set('size', '25');
+                urlParams.set('page', '1');
+                needsRedirect = true;
+            } else if (size > 100) {
+                urlParams.set('size', '100');
+                urlParams.set('page', '1');
+                needsRedirect = true;
+            }
+            
+            // Redirect if validation found invalid parameters
+            if (needsRedirect) {
+                const newUrl = window.location.pathname + '?' + urlParams.toString();
+                window.location.href = newUrl;
+            }
         });
         
         // Sorting function
@@ -770,7 +836,7 @@
             const url = new URL(window.location);
             url.searchParams.set('sortBy', column);
             url.searchParams.set('sortDir', newSortDir);
-            url.searchParams.set('page', '0'); // Reset to first page
+            url.searchParams.set('page', '1'); // Reset to first page (1-based)
             window.location.href = url.toString();
         }
         
@@ -895,8 +961,64 @@
             });
         };
         
+        // Validation functions
+        function validateFilterForm(event) {
+            const sizeInput = document.getElementById('size');
+            const size = parseInt(sizeInput.value);
+            
+            if (isNaN(size) || size < 1) {
+                alert('Số lượng mỗi trang phải từ 1 trở lên!');
+                sizeInput.value = 25;
+                event.preventDefault();
+                return false;
+            }
+            
+            if (size > 100) {
+                alert('Số lượng mỗi trang tối đa là 100!');
+                sizeInput.value = 100;
+                event.preventDefault();
+                return false;
+            }
+            
+            // Reset page to 1 when filtering
+            document.querySelector('input[name="page"]').value = 1;
+            return true;
+        }
+        
+        // Change page size (called from pagination footer)
+        function changePageSize(size) {
+            const sizeNum = parseInt(size);
+            if (isNaN(sizeNum) || sizeNum < 1) {
+                alert('Số lượng mỗi trang phải từ 1 trở lên!');
+                return;
+            }
+            if (sizeNum > 100) {
+                alert('Số lượng mỗi trang tối đa là 100!');
+                return;
+            }
+            // Reset to page 1 when changing size
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', '1');
+            url.searchParams.set('size', sizeNum);
+            window.location.href = url.toString();
+        }
+        
         // Action button functions
-        function toggleUserLock(userId, currentStatus) {
+        function toggleUserLock(userId, currentStatus, userRole, buttonElement) {
+            // Frontend validation: Check if button is disabled
+            if (buttonElement && buttonElement.disabled) {
+                const currentUserId = /*[[${currentUserId}]]*/ null;
+                if (currentUserId && userId == currentUserId) {
+                    alert('Bạn không thể khóa chính mình!');
+                    return;
+                }
+                if (userRole === 'ADMIN' && currentStatus === 'ACTIVE') {
+                    alert('Admin không thể khóa Admin khác!');
+                    return;
+                }
+                return;
+            }
+            
             const action = currentStatus === 'ACTIVE' ? 'khóa' : 'mở khóa';
             if (confirm(`Bạn có chắc chắn muốn ${action} người dùng này?`)) {
                 fetch(`/api/admin/users/${userId}/toggle-lock`, {

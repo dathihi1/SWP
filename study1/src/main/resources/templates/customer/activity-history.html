@@ -518,45 +518,73 @@
 <script src="/js/auth.js"></script>
 <script th:inline="javascript">
 document.addEventListener('DOMContentLoaded', function() {
-    // Debug pagination info
-    console.log('Pagination debug:', {
-        currentPage: /*[[${activities != null}]]*/ false ? /*[[${activities.number}]]*/ 0 : null,
-        totalPages: /*[[${activities != null}]]*/ false ? /*[[${activities.totalPages}]]*/ 1 : null,
-        totalElements: /*[[${activities != null}]]*/ false ? /*[[${activities.totalElements}]]*/ 0 : null,
-        first: /*[[${activities != null}]]*/ false ? /*[[${activities.first}]]*/ true : null,
-        last: /*[[${activities != null}]]*/ false ? /*[[${activities.last}]]*/ true : null
-    });
+    // Validate pagination parameters on page load (Frontend validation)
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = parseInt(urlParams.get('page') || '1');
+    const size = parseInt(urlParams.get('size') || '10');
+    let needsRedirect = false;
     
-    // Debug filter options
-    console.log('Filter debug:', {
-        availableActions: /*[[${availableActions}]]*/ [],
-        actionMappings: /*[[${actionMappings}]]*/ {},
-        selectedAction: /*[[${selectedAction}]]*/ null
-    });
+    // Validate page (1-based)
+    if (isNaN(page) || page < 1) {
+        urlParams.set('page', '1');
+        needsRedirect = true;
+    }
+    
+    // Validate size
+    if (isNaN(size) || size < 1) {
+        urlParams.set('size', '10');
+        urlParams.set('page', '1');
+        needsRedirect = true;
+    } else if (size > 100) {
+        urlParams.set('size', '100');
+        urlParams.set('page', '1');
+        needsRedirect = true;
+    }
+    
+    // Redirect if validation found invalid parameters
+    if (needsRedirect) {
+        const newUrl = window.location.pathname + '?' + urlParams.toString();
+        window.location.href = newUrl;
+        return;
+    }
     
     // Ensure form submission preserves current filters
     const filterForm = document.getElementById('filterForm');
     if (filterForm) {
         filterForm.addEventListener('submit', function(e) {
-            console.log('Filter form submitted');
+            const sizeInput = document.getElementById('size');
+            const sizeValue = parseInt(sizeInput.value);
+            
+            if (isNaN(sizeValue) || sizeValue < 1) {
+                alert('Số lượng mỗi trang phải từ 1 trở lên!');
+                sizeInput.value = 10;
+                e.preventDefault();
+                return false;
+            }
+            
+            if (sizeValue > 100) {
+                alert('Số lượng mỗi trang tối đa là 100!');
+                sizeInput.value = 100;
+                e.preventDefault();
+                return false;
+            }
+            
+            // Reset to page 1 when filtering
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', '1');
+            url.searchParams.set('size', sizeValue);
+            window.location.href = url.toString();
+            e.preventDefault();
+            return false;
         });
     }
     
-    // Add click handlers for pagination links to debug
-    document.querySelectorAll('.pagination a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            console.log('Pagination link clicked:', this.href);
-        });
-    });
-    
     // Initialize Bootstrap dropdowns
-    // Wait for Bootstrap to load
     setTimeout(function() {
         const dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
         const dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
             return new bootstrap.Dropdown(dropdownToggleEl);
         });
-        console.log('Dropdowns initialized:', dropdownList.length);
     }, 500);
 });
 </script>
