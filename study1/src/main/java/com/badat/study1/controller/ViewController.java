@@ -25,6 +25,10 @@ import com.badat.study1.repository.UserActivityLogRepository;
 import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
+import com.badat.study1.service.OtpService;
+import com.badat.study1.service.ResetTokenLockoutService;
+import com.badat.study1.service.SecurityEventService;
+import com.badat.study1.model.SecurityEvent;
 import java.time.LocalDateTime;
 import com.badat.study1.dto.response.AuditLogResponse;
 import com.badat.study1.dto.response.UserActivityLogResponse;
@@ -81,6 +85,9 @@ public class ViewController {
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
     private final UserService userService;
+    private final OtpService otpService;
+    private final ResetTokenLockoutService resetTokenLockoutService;
+    private final SecurityEventService securityEventService;
     private final com.badat.study1.service.UserActivityLogService userActivityLogService;
     private final WarehouseRepository warehouseRepository;
 
@@ -254,9 +261,30 @@ public class ViewController {
                 stallsWithCounts.add(vm);
             }
             
-            // Sort by product count descending and take top 8
+            // Sort by average rating (descending), then by review count (descending), then by product count (descending) and take top 8
             stallCards = stallsWithCounts.stream()
-                    .sorted((a, b) -> Integer.compare((Integer) b.get("productCount"), (Integer) a.get("productCount")))
+                    .sorted((a, b) -> {
+                        // First compare by average rating (higher is better)
+                        double ratingA = ((Number) a.getOrDefault("averageRating", 0.0)).doubleValue();
+                        double ratingB = ((Number) b.getOrDefault("averageRating", 0.0)).doubleValue();
+                        int ratingCompare = Double.compare(ratingB, ratingA);
+                        if (ratingCompare != 0) {
+                            return ratingCompare;
+                        }
+                        
+                        // If ratings are equal, compare by review count (more reviews is better)
+                        int reviewCountA = ((Number) a.getOrDefault("reviewCount", 0)).intValue();
+                        int reviewCountB = ((Number) b.getOrDefault("reviewCount", 0)).intValue();
+                        int reviewCompare = Integer.compare(reviewCountB, reviewCountA);
+                        if (reviewCompare != 0) {
+                            return reviewCompare;
+                        }
+                        
+                        // If review counts are also equal, compare by product count
+                        int productCountA = ((Number) a.getOrDefault("productCount", 0)).intValue();
+                        int productCountB = ((Number) b.getOrDefault("productCount", 0)).intValue();
+                        return Integer.compare(productCountB, productCountA);
+                    })
                     .limit(8)
                     .collect(Collectors.toList());
                     
@@ -301,15 +329,68 @@ public class ViewController {
 
     @GetMapping("/reset-password")
     public String resetPasswordPage(@RequestParam(value = "email", required = false) String email,
+                                   @RequestParam(value = "token", required = false) String token,
                                    @RequestParam(value = "otp", required = false) String otp,
-                                   Model model) {
-        if (email != null) {
-            model.addAttribute("email", email);
+                                   Model model,
+                                   HttpServletRequest request) {
+        // CRITICAL SECURITY: Validate token when GET request
+        if (email == null || token == null) {
+            log.warn("Reset password page accessed without email or token");
+            return "redirect:/forgot-password?error=missing_params";
         }
+        
+        // Get IP address for security tracking
+        String ipAddress = getClientIpAddress(request);
+        
+        // Check if account is locked
+        if (resetTokenLockoutService.isLocked(email, ipAddress)) {
+            log.warn("Reset password page accessed but account is locked for email: {} from IP: {}", email, ipAddress);
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.RESET_TOKEN_VALIDATION_FAILED,
+                ipAddress,
+                email,
+                "Attempt to access reset password page but account is locked"
+            );
+            return "redirect:/forgot-password?error=locked";
+        }
+        
+        // Validate reset token (this also checks if OTP was verified)
+        boolean isValidToken = otpService.validateResetToken(token, email);
+        
+        if (!isValidToken) {
+            // Track failed attempt
+            resetTokenLockoutService.recordFailedAttempt(email, ipAddress);
+            
+            // Log security event
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.RESET_TOKEN_VALIDATION_FAILED,
+                ipAddress,
+                email,
+                "Invalid reset token attempted on GET /reset-password"
+            );
+            
+            log.warn("Invalid reset token attempt on GET /reset-password for email: {} from IP: {}", email, ipAddress);
+            return "redirect:/forgot-password?error=invalid_token";
+        }
+        
+        // Token is valid, allow access to reset password page
+        model.addAttribute("email", email);
         if (otp != null) {
             model.addAttribute("otp", otp);
         }
         return "reset-password";
+    }
+    
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
+        }
+        return request.getRemoteAddr();
     }
 
     @GetMapping("/seller/register")

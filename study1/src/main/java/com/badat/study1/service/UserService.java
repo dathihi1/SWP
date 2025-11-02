@@ -398,39 +398,74 @@ public class UserService {
         log.info("Password reset successfully for email: {}", email);
     }
     
+    @Transactional(rollbackFor = Exception.class)
     public void resetPasswordWithToken(String email, String resetToken, String newPassword) {
-        // Validate password strength
-        if (newPassword.length() < 6 || newPassword.length() > 100) {
-            throw new RuntimeException("Mật khẩu phải từ 6-100 ký tự");
+        boolean tokenValidated = false;
+        boolean passwordUpdated = false;
+        
+        try {
+            // Step 1: Validate password strength
+            if (newPassword.length() < 6 || newPassword.length() > 100) {
+                throw new RuntimeException("Mật khẩu phải từ 6-100 ký tự");
+            }
+            
+            // Step 2: Validate reset token
+            tokenValidated = otpService.validateResetToken(resetToken, email);
+            if (!tokenValidated) {
+                log.warn("❌ Step 2 FAILED: Token validation failed for email: {}", email);
+                throw new RuntimeException("Token không hợp lệ hoặc đã hết hạn");
+            }
+            log.info("✅ Step 2 SUCCESS: Token validated for email: {}", email);
+            
+            // Step 3: Find user
+            Optional<User> userOpt = userRepository.findByEmailAndIsDeleteFalse(email);
+            if (userOpt.isEmpty()) {
+                log.warn("❌ Step 3 FAILED: User not found for email: {}", email);
+                throw new RuntimeException("Email không tồn tại trong hệ thống");
+            }
+            
+            User user = userOpt.get();
+            
+            // Step 4: Final check if user is registered via Google OAuth2
+            if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+                log.warn("❌ Step 4 FAILED: Google OAuth user attempted password reset for email: {}", email);
+                throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
+            }
+            log.info("✅ Step 4 SUCCESS: User validated for email: {}", email);
+            
+            // Step 5: Update password (DB operation - có transaction)
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+            passwordUpdated = true;
+            log.info("✅ Step 5 SUCCESS: Password updated in DB for email: {}", email);
+            
+            // Step 6: Invalidate reset token (Redis operation)
+            otpService.invalidateResetToken(resetToken, email);
+            log.info("✅ Step 6 SUCCESS: Reset token invalidated for email: {}", email);
+            
+            // Step 7: Clear OTP verification state (Redis operation)
+            otpService.clearOtpVerificationState(email, "forgot_password");
+            log.info("✅ Step 7 SUCCESS: OTP verification state cleared for email: {}", email);
+            
+            // All steps successful
+            log.info("✅ ALL STEPS SUCCESS: Password reset completed successfully for email: {} (provider: {})", email, user.getProvider());
+            
+        } catch (Exception e) {
+            log.error("❌ Error in password reset flow for email: {}", email, e);
+            
+            // DB transaction sẽ tự động rollback nếu exception xảy ra
+            // Redis operations không thể rollback, nhưng acceptable vì:
+            // - Nếu DB update thành công → password đã đổi → token không nên được dùng lại
+            // - Token expire sau 30 phút → không có vấn đề lớn
+            if (passwordUpdated) {
+                log.warn("⚠️ WARNING: Password was updated in DB but Redis cleanup may have failed for email: {}", email);
+                log.warn("⚠️ This is acceptable - password has been changed, token will expire in 30 minutes");
+            } else {
+                log.info("✅ DB transaction will rollback automatically - no password change occurred");
+            }
+            
+            throw e;
         }
-        
-        // Validate reset token
-        boolean isValidToken = otpService.validateResetToken(resetToken, email);
-        if (!isValidToken) {
-            throw new RuntimeException("Token không hợp lệ hoặc đã hết hạn");
-        }
-        
-        // Find user
-        Optional<User> userOpt = userRepository.findByEmailAndIsDeleteFalse(email);
-        if (userOpt.isEmpty()) {
-            throw new RuntimeException("Email không tồn tại trong hệ thống");
-        }
-        
-        User user = userOpt.get();
-        
-        // Final check if user is registered via Google OAuth2
-        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
-            throw new RuntimeException("Tài khoản này được đăng ký bằng Google. Vui lòng sử dụng chức năng đăng nhập bằng Google.");
-        }
-        
-        // Reset password
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-        
-        // Invalidate reset token immediately (one-time use)
-        otpService.invalidateResetToken(resetToken, email);
-        
-        log.info("Password reset with token successfully for email: {} (provider: {})", email, user.getProvider());
     }
     
     // New method for updating profile with validation

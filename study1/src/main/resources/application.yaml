@@ -108,6 +108,9 @@ security:
     forgot-password-otp-max-attempts: 10  # Nới lỏng cho forgot password
     otp-expire-minutes: 10
     otp-lockout-minutes: 60  # Lockout 1 tiếng cho OTP
+    reset-token-max-attempts: 5  # Số lần thử sai reset token tối đa
+    reset-token-lockout-minutes: 60  # Thời gian lockout cho reset token (1 giờ)
+    reset-token-ip-max-attempts: 10  # Rate limit per IP cho reset token
 
   
 

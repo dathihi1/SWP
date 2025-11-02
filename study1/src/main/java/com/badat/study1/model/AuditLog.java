@@ -53,6 +53,9 @@ public class AuditLog extends BaseEntity {
     
     public enum Category {
         SECURITY_EVENT,  // Các sự kiện bảo mật (failed login attempts, suspicious activities, account locked/unlocked)
-        ADMIN_ACTION  // Các hành động của admin (thêm, sửa, xóa user, thay đổi role, etc.)
+        ADMIN_ACTION,    // Các hành động của admin (thêm, sửa, xóa user, thay đổi role, etc.)
+        API_CALL,        // Các lời gọi API (API requests, responses)
+        SYSTEM_EVENT,    // Các sự kiện hệ thống (system events, maintenance, etc.)
+        USER_ACTION      // Các hành động của user (user actions, profile updates, etc.)
     }
 }

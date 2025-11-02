@@ -15,6 +15,7 @@ import com.badat.study1.service.CaptchaService;
 import com.badat.study1.service.IpLockoutService;
 import com.badat.study1.service.OtpLockoutService;
 import com.badat.study1.service.OtpService;
+import com.badat.study1.service.ResetTokenLockoutService;
 import com.badat.study1.service.SecurityEventService;
 import com.badat.study1.service.CaptchaRateLimitService;
 import com.badat.study1.service.RateLimitService;
@@ -52,6 +53,7 @@ public class AuthenticationController {
     private final RateLimitService rateLimitService;
     private final OtpLockoutService otpLockoutService;
     private final OtpService otpService;
+    private final ResetTokenLockoutService resetTokenLockoutService;
     private final com.badat.study1.service.UserActivityLogService userActivityLogService;
     private final com.badat.study1.repository.UserRepository userRepository;
 
@@ -669,6 +671,9 @@ public class AuthenticationController {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Mã OTP không được để trống"));
             }
             
+            // Note: IP lockout check is already handled by IpBlockingFilter at filter layer
+            // No need to check again here - filter will block request before reaching controller
+            
             // Log security event
             securityEventService.logSecurityEvent(
                 SecurityEvent.EventType.OTP_VERIFY_ATTEMPT, 
@@ -680,8 +685,11 @@ public class AuthenticationController {
             try {
                 userService.verifyForgotPasswordOtp(request.getEmail(), request.getOtp(), ipAddress);
             } catch (RuntimeException e) {
+                // Record failed attempt for IP lockout
+                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail());
+                
                 // Check if lockout error
-                if (e.getMessage().contains("nhập sai OTP quá 5 lần")) {
+                if (e.getMessage().contains("nhập sai OTP quá 5 lần") || e.getMessage().contains("nhập sai OTP quá 10 lần")) {
                     return ResponseEntity.status(429).body(Map.of(
                         "error", e.getMessage(),
                         "locked", true
@@ -690,7 +698,10 @@ public class AuthenticationController {
                 throw e; // Re-throw other errors
             }
             
-            // Generate resetToken and save to Redis
+            // CRITICAL SECURITY: Mark OTP as verified before generating reset token
+            otpService.markOtpVerified(request.getEmail(), "forgot_password");
+            
+            // Generate resetToken and save to Redis (will check OTP verification state)
             String resetToken = otpService.generateResetToken(request.getEmail());
             
             // Log successful verification
@@ -754,34 +765,101 @@ public class AuthenticationController {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Mật khẩu phải từ 6-100 ký tự"));
             }
             
+            // Note: IP lockout check is already handled by IpBlockingFilter at filter layer
+            // No need to check again here - filter will block request before reaching controller
+            
+            // CRITICAL SECURITY: Check reset token lockout before validating token
+            if (resetTokenLockoutService.isLocked(email, ipAddress)) {
+                Long remainingSeconds = resetTokenLockoutService.getLockoutTimeRemaining(email, ipAddress);
+                long minutes = remainingSeconds != null ? remainingSeconds / 60 : 60;
+                String errorMessage = "Bạn đã thử sai quá nhiều lần. Vui lòng thử lại sau " + minutes + " phút";
+                
+                log.warn("Reset password blocked - locked for email: {} from IP: {}", email, ipAddress);
+                securityEventService.logSecurityEvent(
+                    SecurityEvent.EventType.RESET_TOKEN_LOCKED,
+                    ipAddress,
+                    email,
+                    "Reset password attempt blocked - account locked"
+                );
+                
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", errorMessage,
+                    "locked", true
+                ));
+            }
+            
             // Log security event
             securityEventService.logSecurityEvent(
-                SecurityEvent.EventType.PASSWORD_RESET, 
-                ipAddress, 
+                SecurityEvent.EventType.RESET_TOKEN_VALIDATION_ATTEMPT, 
+                ipAddress,
+                email,
                 "Reset password attempt for: " + email
             );
             
             // Validate resetToken and reset password
+            // This will also check that OTP was verified
+            boolean isValidToken = otpService.validateResetToken(resetToken, email);
+            
+            if (!isValidToken) {
+                // Track failed attempt for both reset token lockout and IP lockout
+                resetTokenLockoutService.recordFailedAttempt(email, ipAddress);
+                ipLockoutService.recordFailedAttempt(ipAddress, email);
+                
+                // Log failed validation
+                securityEventService.logSecurityEvent(
+                    SecurityEvent.EventType.RESET_TOKEN_VALIDATION_FAILED,
+                    ipAddress,
+                    email,
+                    "Reset token validation failed - invalid token or OTP not verified"
+                );
+                
+                // Check if locked after this failed attempt
+                if (resetTokenLockoutService.isLocked(email, ipAddress)) {
+                    Long remainingSeconds = resetTokenLockoutService.getLockoutTimeRemaining(email, ipAddress);
+                    long minutes = remainingSeconds != null ? remainingSeconds / 60 : 60;
+                    return ResponseEntity.status(429).body(Map.of(
+                        "error", "Token không hợp lệ. Bạn đã thử sai quá nhiều lần. Vui lòng thử lại sau " + minutes + " phút",
+                        "locked", true
+                    ));
+                }
+                
+                return ResponseEntity.badRequest().body(ApiResponse.error("Token không hợp lệ hoặc đã hết hạn. Vui lòng thực hiện lại từ đầu."));
+            }
+            
+            // Token is valid, proceed with password reset
             userService.resetPasswordWithToken(email, resetToken, newPassword);
+            
+            // Clear lockout attempts on successful reset
+            resetTokenLockoutService.clearAttempts(email, ipAddress);
             
             // Log successful reset
             securityEventService.logSecurityEvent(
                 SecurityEvent.EventType.PASSWORD_RESET, 
-                ipAddress, 
+                ipAddress,
+                email,
                 "Password reset successfully for: " + email
             );
             
             return ResponseEntity.ok(ApiResponse.success("Mật khẩu đã được đặt lại thành công"));
                     
         } catch (Exception e) {
+            String email = request.get("email");
+            String ipAddress = getClientIpAddress(httpRequest);
+            
             log.error("Reset password failed for email: {} from IP: {}, error: {}", 
-                request.get("email"), getClientIpAddress(httpRequest), e.getMessage());
+                email, ipAddress, e.getMessage());
+            
+            // Track failed attempt if not already locked
+            if (email != null && !resetTokenLockoutService.isLocked(email, ipAddress)) {
+                resetTokenLockoutService.recordFailedAttempt(email, ipAddress);
+            }
             
             // Log failed reset
             securityEventService.logSecurityEvent(
-                SecurityEvent.EventType.PASSWORD_RESET, 
-                getClientIpAddress(httpRequest), 
-                "Reset password failed for: " + request.get("email") + ", reason: " + e.getMessage()
+                SecurityEvent.EventType.RESET_TOKEN_VALIDATION_FAILED, 
+                ipAddress,
+                email,
+                "Reset password failed for: " + email + ", reason: " + e.getMessage()
             );
             
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
