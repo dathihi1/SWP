@@ -181,10 +181,9 @@ public class AuthenticationController {
                     errorResponse.put("error", "Tên đăng nhập hoặc mật khẩu không đúng");
                 }
                 
-                // Always generate new captcha (image) after failed attempt
+                // Generate new captcha (image) for next attempt, but DO NOT mark as captcha error
                 Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
-                errorResponse.put("captchaRequired", true);
-                errorResponse.put("message", "captcha required");
+                errorResponse.put("captchaRequired", false);
                 errorResponse.put("captcha", newCaptchaResult.getKey());
                 
                 log.info("Generated new captcha after failed login attempt for user: {} from IP: {}", username, ipAddress);
@@ -267,16 +266,8 @@ public class AuthenticationController {
                 "Registration attempt for: " + request.getEmail()
             );
             
-            // Check IP lockout
-            if (ipLockoutService.isIpLocked(ipAddress)) {
-                log.warn("Registration blocked - IP locked: {}", ipAddress);
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.IP_LOCKED, ipAddress, 
-                        "Registration attempt from locked IP");
-                return ResponseEntity.status(429).body(Map.of(
-                    "error", "IP đã bị khóa do quá nhiều lần đăng nhập sai",
-                    "lockedUntil", "30 phút"
-                ));
-            }
+            // Note: IP lockout check is already handled by IpBlockingFilter at filter layer
+            // No need to check again here - filter will block request before reaching controller
             
             // Check IP rate limiting for registration
             if (rateLimitService.isIpRateLimited(ipAddress, "register")) {
@@ -439,12 +430,51 @@ public class AuthenticationController {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Mã OTP không được để trống"));
             }
             
+            // Check email rate limit for verify OTP
+            if (rateLimitService.isVerifyOtpEmailRateLimited(request.getEmail(), "register")) {
+                Long remainingMinutes = rateLimitService.getVerifyOtpRateLimitRemainingMinutes(
+                    request.getEmail(), ipAddress, "register");
+                log.warn("Verify OTP email rate limited for: {} from IP: {}", request.getEmail(), ipAddress);
+                securityEventService.logSecurityEvent(
+                    SecurityEvent.EventType.RATE_LIMITED,
+                    ipAddress,
+                    request.getEmail(),
+                    "Email rate limited for verify OTP register"
+                );
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã verify OTP quá nhiều lần từ email này. Vui lòng thử lại sau " + 
+                             (remainingMinutes != null && remainingMinutes > 0 ? remainingMinutes : 60) + " phút",
+                    "rateLimited", true
+                ));
+            }
+            
+            // Check IP rate limit for verify OTP
+            if (rateLimitService.isVerifyOtpIpRateLimited(ipAddress, "register")) {
+                Long remainingMinutes = rateLimitService.getVerifyOtpRateLimitRemainingMinutes(
+                    request.getEmail(), ipAddress, "register");
+                log.warn("Verify OTP IP rate limited for IP: {}", ipAddress);
+                securityEventService.logSecurityEvent(
+                    SecurityEvent.EventType.RATE_LIMITED,
+                    ipAddress,
+                    request.getEmail(),
+                    "IP rate limited for verify OTP register"
+                );
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "Quá nhiều yêu cầu verify OTP từ IP này. Vui lòng thử lại sau " + 
+                             (remainingMinutes != null && remainingMinutes > 0 ? remainingMinutes : 60) + " phút",
+                    "rateLimited", true
+                ));
+            }
+            
             // Log security event
             securityEventService.logSecurityEvent(
                 SecurityEvent.EventType.OTP_VERIFY_ATTEMPT, 
                 ipAddress, 
                 "OTP verification attempt for: " + request.getEmail()
             );
+            
+            // Record verify OTP request (before verification to track all attempts)
+            rateLimitService.recordVerifyOtpRequest(request.getEmail(), ipAddress, "register");
             
             // Call userService.verify() với ipAddress
             try {
@@ -528,16 +558,8 @@ public class AuthenticationController {
                 "Forgot password attempt for: " + request.getEmail()
             );
             
-            // Check IP lockout
-            if (ipLockoutService.isIpLocked(ipAddress)) {
-                log.warn("Forgot password blocked - IP locked: {}", ipAddress);
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.IP_LOCKED, ipAddress, 
-                        "Forgot password attempt from locked IP");
-                return ResponseEntity.status(429).body(Map.of(
-                    "error", "IP đã bị khóa do quá nhiều lần đăng nhập sai",
-                    "lockedUntil", "30 phút"
-                ));
-            }
+            // Note: IP lockout check is already handled by IpBlockingFilter at filter layer
+            // No need to check again here - filter will block request before reaching controller
             
             // Check IP rate limiting với limit riêng cho forgot password
             if (rateLimitService.isIpRateLimitedForForgotPassword(ipAddress)) {
@@ -563,17 +585,29 @@ public class AuthenticationController {
             }
             
             // Validate captcha using ID from HttpOnly cookie (IMAGE captcha)
-            log.info("Forgot password captcha validation - User input: {}", request.getCaptchaCode());
-            boolean captchaValid = captchaService.validateCaptcha(httpRequest, request.getCaptchaCode());
-            log.info("Forgot password captcha validation result: {}", captchaValid);
+            log.info("Forgot password captcha validation - User input: '{}', Email: {}", 
+                    request.getCaptchaCode(), request.getEmail());
+            
+            boolean captchaValid;
+            try {
+                captchaValid = captchaService.validateCaptcha(httpRequest, request.getCaptchaCode());
+                log.info("Forgot password captcha validation result: {} for email: {}", 
+                        captchaValid, request.getEmail());
+            } catch (Exception e) {
+                log.error("Exception during captcha validation for email: {} - {}", 
+                        request.getEmail(), e.getMessage(), e);
+                captchaValid = false;
+            }
             
             if (!captchaValid) {
                 // Record failed attempt for invalid captcha
                 ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
                 captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
                 securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
-                        "Forgot password with invalid captcha");
-                // Generate new captcha with new cookie
+                        "Forgot password with invalid captcha for email: " + request.getEmail());
+                
+                // CRITICAL: Generate new captcha with new cookie and RETURN IMMEDIATELY
+                // DO NOT proceed to send email
                 Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
                 ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
                         .httpOnly(true)
@@ -582,10 +616,15 @@ public class AuthenticationController {
                         .path("/")
                         .maxAge(0)
                         .build();
+                
+                log.warn("Captcha validation failed - returning error response without sending email for: {}", 
+                        request.getEmail());
+                
                 return ResponseEntity.status(400)
                         .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
                         .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
                         .body(Map.of(
+                            "success", false,
                             "error", "Mã xác thực không đúng, vui lòng nhập lại",
                             "captchaRequired", true,
                             "captcha", newCaptchaResult.getKey()
@@ -626,7 +665,9 @@ public class AuthenticationController {
                     ));
             
         } catch (Exception e) {
-            log.error("Forgot password error: {}", e.getMessage(), e);
+            log.error("Forgot password error for email: {} - {}", 
+                    request.getEmail(), e.getMessage(), e);
+            
             // Record failed attempt for unexpected errors
             try {
                 String ipAddress = getClientIpAddress(httpRequest);
@@ -635,7 +676,15 @@ public class AuthenticationController {
             } catch (Exception ex) {
                 log.error("Failed to record failed attempt: {}", ex.getMessage());
             }
-            // Always return success to prevent email enumeration
+            
+            // CRITICAL: If exception occurs, we should NOT send email
+            // Check if email was already sent by checking if we reached userService.forgotPassword()
+            // Since exception could occur before or after email sending, we use generic message
+            // But note: This catch block should only be reached for unexpected errors
+            // If captcha validation failed, it should have returned earlier
+            
+            // Generate new captcha for next attempt
+            Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
             ResponseCookie clearCookieForError = ResponseCookie.from("captcha_id", "")
                     .httpOnly(true)
                     .secure(false)
@@ -643,12 +692,19 @@ public class AuthenticationController {
                     .path("/")
                     .maxAge(0)
                     .build();
-            return ResponseEntity.ok()
+            
+            // Return generic error to prevent information leakage
+            // But also indicate that email was NOT sent due to error
+            log.warn("Exception occurred during forgot password - email NOT sent for: {}", request.getEmail());
+            
+            return ResponseEntity.status(500)
                     .header(HttpHeaders.SET_COOKIE, clearCookieForError.toString())
+                    .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
                     .body(Map.of(
-                        "success", true,
-                        "message", "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn khôi phục mật khẩu",
-                        "nextUrl", "/verify-otp?email=" + request.getEmail() + "&type=forgot_password"
+                        "success", false,
+                        "error", "Có lỗi xảy ra. Vui lòng thử lại.",
+                        "captchaRequired", true,
+                        "captcha", newCaptchaResult.getKey()
                     ));
         }
     }
@@ -671,6 +727,42 @@ public class AuthenticationController {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Mã OTP không được để trống"));
             }
             
+            // Check email rate limit for verify OTP
+            if (rateLimitService.isVerifyOtpEmailRateLimited(request.getEmail(), "forgot_password")) {
+                Long remainingMinutes = rateLimitService.getVerifyOtpRateLimitRemainingMinutes(
+                    request.getEmail(), ipAddress, "forgot_password");
+                log.warn("Verify OTP email rate limited for: {} from IP: {}", request.getEmail(), ipAddress);
+                securityEventService.logSecurityEvent(
+                    SecurityEvent.EventType.RATE_LIMITED,
+                    ipAddress,
+                    request.getEmail(),
+                    "Email rate limited for verify OTP forgot_password"
+                );
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã verify OTP quá nhiều lần từ email này. Vui lòng thử lại sau " + 
+                             (remainingMinutes != null && remainingMinutes > 0 ? remainingMinutes : 60) + " phút",
+                    "rateLimited", true
+                ));
+            }
+            
+            // Check IP rate limit for verify OTP
+            if (rateLimitService.isVerifyOtpIpRateLimited(ipAddress, "forgot_password")) {
+                Long remainingMinutes = rateLimitService.getVerifyOtpRateLimitRemainingMinutes(
+                    request.getEmail(), ipAddress, "forgot_password");
+                log.warn("Verify OTP IP rate limited for IP: {}", ipAddress);
+                securityEventService.logSecurityEvent(
+                    SecurityEvent.EventType.RATE_LIMITED,
+                    ipAddress,
+                    request.getEmail(),
+                    "IP rate limited for verify OTP forgot_password"
+                );
+                return ResponseEntity.status(429).body(Map.of(
+                    "error", "Quá nhiều yêu cầu verify OTP từ IP này. Vui lòng thử lại sau " + 
+                             (remainingMinutes != null && remainingMinutes > 0 ? remainingMinutes : 60) + " phút",
+                    "rateLimited", true
+                ));
+            }
+            
             // Note: IP lockout check is already handled by IpBlockingFilter at filter layer
             // No need to check again here - filter will block request before reaching controller
             
@@ -680,6 +772,9 @@ public class AuthenticationController {
                 ipAddress, 
                 "Forgot password OTP verification attempt for: " + request.getEmail()
             );
+            
+            // Record verify OTP request (before verification to track all attempts)
+            rateLimitService.recordVerifyOtpRequest(request.getEmail(), ipAddress, "forgot_password");
             
             // Call userService.verifyForgotPasswordOtp() với ipAddress
             try {

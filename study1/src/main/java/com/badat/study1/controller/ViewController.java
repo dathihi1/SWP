@@ -30,7 +30,6 @@ import com.badat.study1.service.ResetTokenLockoutService;
 import com.badat.study1.service.SecurityEventService;
 import com.badat.study1.model.SecurityEvent;
 import java.time.LocalDateTime;
-import com.badat.study1.dto.response.AuditLogResponse;
 import com.badat.study1.dto.response.UserActivityLogResponse;
 import com.badat.study1.util.PaginationValidator;
 import lombok.RequiredArgsConstructor;

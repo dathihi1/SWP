@@ -111,6 +111,10 @@ security:
     reset-token-max-attempts: 5  # Số lần thử sai reset token tối đa
     reset-token-lockout-minutes: 60  # Thời gian lockout cho reset token (1 giờ)
     reset-token-ip-max-attempts: 10  # Rate limit per IP cho reset token
+    verify-otp-email-max-requests-per-hour: 10  # Giới hạn số lần verify OTP từ cùng email (register)
+    verify-otp-forgot-password-email-max-requests-per-hour: 15  # Giới hạn số lần verify OTP từ cùng email (forgot password)
+    verify-otp-ip-max-requests-per-hour: 20  # Giới hạn số lần verify OTP từ cùng IP (register)
+    verify-otp-forgot-password-ip-max-requests-per-hour: 30  # Giới hạn số lần verify OTP từ cùng IP (forgot password)
 
   
 

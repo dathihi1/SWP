@@ -238,7 +238,7 @@
     function generateCaptcha() {
         console.log('Generating captcha...');
         // Get captcha from backend
-        fetch('/api/auth/captcha')
+        fetch('/api/auth/captcha', { credentials: 'same-origin' })
             .then(response => {
                 console.log('Captcha response status:', response.status);
                 if (!response.ok) {
@@ -314,6 +314,7 @@
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
                 body: JSON.stringify({ 
                     username, 
                     email, 

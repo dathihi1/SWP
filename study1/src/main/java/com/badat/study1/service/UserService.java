@@ -56,7 +56,14 @@ public class UserService {
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
-    @Transactional
+    /**
+     * Register new user - stores registration data in Redis and sends OTP email.
+     * Note: No database write operations here - user is only created after OTP verification.
+     * Transaction annotation not needed as this method only performs:
+     * - Read-only DB checks (duplicate email/username)
+     * - Redis write operations (not part of DB transaction)
+     * - Email sending (async operation)
+     */
     public void register(UserCreateRequest request) {
         // Check duplicate EMAIL - THROW EXCEPTION
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -71,6 +78,7 @@ public class UserService {
         }
 
         // Store safe registration data in Redis (no password)
+        // Redis operations are not part of DB transaction scope
         String registrationKey = "pending_registration:" + request.getEmail();
         Map<String, Object> safeData = Map.of(
             "email", request.getEmail(),

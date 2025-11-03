@@ -31,18 +31,31 @@ public class ApiCallLogFilter extends OncePerRequestFilter {
         // Record start time for duration calculation
         request.setAttribute(START_TIME_ATTRIBUTE, System.currentTimeMillis());
         
-        // Process the request first to allow authentication to happen
+        // Process the request and log exactly once (success OR fail)
+        boolean hasException = false;
+        Exception captured = null;
         try {
             filterChain.doFilter(request, response);
         } catch (Exception e) {
-            // Extract user ID after processing for failed requests
-            Long userId = getCurrentUserId();
-            logFailedRequest(request, response, userId, e);
-            throw e;
+            hasException = true;
+            captured = e;
         } finally {
-            // Extract user ID after processing for successful requests
             Long userId = getCurrentUserId();
-            logSuccessfulRequest(request, response, userId);
+            int status = response.getStatus();
+            if (hasException || status >= 400) {
+                logFailedRequest(request, response, userId, captured);
+            } else {
+                logSuccessfulRequest(request, response, userId);
+            }
+            if (hasException) {
+                if (captured instanceof ServletException) {
+                    throw (ServletException) captured;
+                } else if (captured instanceof IOException) {
+                    throw (IOException) captured;
+                } else {
+                    throw new RuntimeException(captured);
+                }
+            }
         }
     }
     
@@ -84,12 +97,17 @@ public class ApiCallLogFilter extends OncePerRequestFilter {
             // Extract data BEFORE async call to avoid request recycling issues
             String endpoint = request.getRequestURI();
             String method = request.getMethod();
-            int statusCode = 500;
+            int statusCode = response.getStatus();
+            if (statusCode < 400) {
+                statusCode = 500; // default to 500 if not set to an error
+            }
             String ipAddress = getClientIpAddress(request);
             String userAgent = request.getHeader("User-Agent");
             
-            // Set error status on the response
-            response.setStatus(500);
+            // Ensure response reflects the error status (do not override non-error statuses)
+            try {
+                response.setStatus(statusCode);
+            } catch (Exception ignore) {}
             
             // Log the failed API call asynchronously with extracted data
             apiCallLogService.logApiCall(userId, endpoint, method, statusCode, ipAddress, userAgent, durationMs);

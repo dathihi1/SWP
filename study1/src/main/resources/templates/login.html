@@ -323,10 +323,14 @@
             // Load saved credentials if remember me was checked
             loadSavedCredentials();
             
-            // Initialize captcha
+            // Initialize vars used by captcha generator before any call
+            // (avoid TDZ when generateCaptcha accesses isGeneratingCaptcha)
+            window.__loginCaptcha = window.__loginCaptcha || {};
+            let isGeneratingCaptcha = false;
+
+            // Initialize captcha (will trigger one generate on load)
             initializeCaptcha();
-            
-            // Always show captcha (required for all login attempts)
+            // Ensure captcha section visible on first load
             showCaptcha();
 
             // Handle login form submission
@@ -391,6 +395,7 @@
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        credentials: 'same-origin',
                         body: JSON.stringify({
                             username: username,
                             password: password,
@@ -428,43 +433,46 @@
                         }
                     } else {
                         // Handle different error types based on status code
-                        if (response.status === 400) {
-                            // Captcha errors (400 status)
-                            if (data.message && data.message.includes('captcha')) {
+                        if (response.status === 429) {
+                            const msg429 = data.message || data.error || 'Bạn thao tác quá nhiều. Vui lòng thử lại sau.';
+                            alert(msg429);
+                            try { throw new Error(msg429); } catch (e) {}
+                            loadCaptchaFromBackend();
+                        } else if (response.status === 400) {
+                            // Chỉ coi là lỗi captcha khi BE báo captchaRequired hoặc message chứa 'captcha'
+                            const isCaptchaError = (data && (data.captchaRequired === true || (data.message && data.message.toLowerCase().includes('captcha'))));
+                            if (isCaptchaError) {
                                 showCaptcha();
-                                
-                                if (data.message.includes('incorrect')) {
-                                    alert('Mã xác thực không đúng, vui lòng nhập lại!');
-                                } else if (data.message.includes('required')) {
-                                    alert('Vui lòng nhập mã xác thực!');
-                                } else {
-                                    alert('Mã xác thực không hợp lệ, vui lòng làm mới trang!');
-                                }
-                                
-                                // Update captcha with new one from backend if provided
+                                const msg400c = data.message || data.error || (data.message && data.message.toLowerCase().includes('required') ? 'Vui lòng nhập mã xác thực!' : 'Mã xác thực không hợp lệ, vui lòng làm mới!');
+                                alert(msg400c);
+                                try { throw new Error(msg400c); } catch (e) {}
                                 if (data.captcha) {
                                     updateCaptchaFromBackend(data.captcha);
                                 } else {
                                     loadCaptchaFromBackend();
                                 }
                             } else {
-                                // Other 400 errors
-                                alert(data.error || 'Lỗi dữ liệu đầu vào!');
+                                // 400 không liên quan captcha
+                                const msg400 = data.message || data.error || 'Lỗi dữ liệu đầu vào!';
+                                alert(msg400);
+                                try { throw new Error(msg400); } catch (e) {}
                                 loadCaptchaFromBackend();
                             }
                         } else if (response.status === 401) {
-                            // Authentication errors (401 status) - username/password wrong
-                            alert(data.error || 'Tài khoản hoặc mật khẩu không đúng!');
-                            
-                            // Use new captcha from backend response if available
+                            // Sai tài khoản/mật khẩu
+                            const msg401 = data.message || data.error || 'Tài khoản hoặc mật khẩu không đúng!';
+                            alert(msg401);
+                            try { throw new Error(msg401); } catch (e) {}
                             if (data.captcha) {
                                 updateCaptchaFromBackend(data.captcha);
                             } else {
                                 loadCaptchaFromBackend();
                             }
                         } else {
-                            // Other errors
-                            alert(data.error || 'Có lỗi xảy ra!');
+                            // Khác
+                            const msgOther = data.message || data.error || 'Có lỗi xảy ra!';
+                            alert(msgOther);
+                            try { throw new Error(msgOther); } catch (e) {}
                             loadCaptchaFromBackend();
                         }
                     }
@@ -527,6 +535,7 @@
             }
             
             // Captcha functions
+
             function initializeCaptcha() {
                 const captchaImage = document.getElementById('captchaImage');
                 if (captchaImage) {
@@ -536,9 +545,11 @@
             }
             
             function generateCaptcha() {
+                if (isGeneratingCaptcha) return;
+                isGeneratingCaptcha = true;
                 console.log('Generating captcha...');
                 // Get captcha from backend
-                fetch('/api/auth/captcha')
+                fetch('/api/auth/captcha', { credentials: 'same-origin' })
                     .then(response => {
                         console.log('Captcha response status:', response.status);
                         if (!response.ok) {
@@ -563,6 +574,9 @@
                     .catch(error => {
                         console.error('Error getting captcha from backend:', error);
                         alert('Không thể tải captcha. Vui lòng làm mới trang.');
+                    })
+                    .finally(() => {
+                        isGeneratingCaptcha = false;
                     });
             }
             
@@ -574,7 +588,11 @@
                 const captchaSection = document.getElementById('captchaSection');
                 if (captchaSection) {
                     captchaSection.style.display = 'block';
-                    generateCaptcha();
+                    // Ensure an image is present; generate if missing/unset
+                    const img = document.getElementById('captchaImage');
+                    if (img && (!img.src || img.src.trim() === '' || img.src.endsWith('/'))) {
+                        generateCaptcha();
+                    }
                 }
             }
             
