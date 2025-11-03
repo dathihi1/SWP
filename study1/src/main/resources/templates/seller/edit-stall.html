@@ -394,11 +394,11 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="stallName" class="form-label">Tên gian hàng <span class="required">*</span></label>
-                                <input type="text" class="form-control" id="stallName" name="stallName" th:value="${stall.stallName}" required>
+                                <input type="text" class="form-control" id="stallName" name="stallName" th:value="${stall.stallName}">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="status" class="form-label">Trạng thái <span class="required">*</span></label>
-                                <select class="form-select" id="status" name="status" required th:disabled="${stall.status == 'REJECTED'}">
+                                <select class="form-select" id="status" name="status" th:disabled="${stall.status == 'REJECTED'}">
                                     <option value="OPEN" th:selected="${stall.status == 'OPEN'}">Mở</option>
                                     <option value="CLOSED" th:selected="${stall.status == 'CLOSED'}">Đóng</option>
                                 </select>
@@ -434,13 +434,13 @@
                             Mô tả gian hàng
                         </h5>
                         <div class="mb-3">
-                            <label for="shortDescription" class="form-label">Mô tả ngắn <span class="required">*</span></label>
-                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" required th:text="${stall.shortDescription}"></textarea>
+                            <label for="shortDescription" class="form-label">Mô tả ngắn</label>
+                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" th:text="${stall.shortDescription}"></textarea>
                             <div class="form-text">Mô tả ngắn gọn về gian hàng, sản phẩm chính</div>
                         </div>
                         <div class="mb-3">
-                            <label for="detailedDescription" class="form-label">Mô tả chi tiết <span class="required">*</span></label>
-                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" required th:text="${stall.detailedDescription}"></textarea>
+                            <label for="detailedDescription" class="form-label">Mô tả chi tiết</label>
+                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" th:text="${stall.detailedDescription}"></textarea>
                             <div class="form-text">Mô tả chi tiết về gian hàng, dịch vụ, chính sách bán hàng</div>
                         </div>
                     </div>
@@ -654,67 +654,7 @@
             document.getElementById('imagePreview').style.display = 'none';
         }
         
-        // Form validation and submission
-        document.getElementById('editStallForm').addEventListener('submit', function(e) {
-            const shortDesc = document.getElementById('shortDescription').value.trim();
-            const detailedDesc = document.getElementById('detailedDescription').value.trim();
-            
-            if (shortDesc.length === 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập mô tả ngắn');
-                document.getElementById('shortDescription').focus();
-                return;
-            }
-            
-            if (detailedDesc.length === 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập mô tả chi tiết');
-                document.getElementById('detailedDescription').focus();
-                return;
-            }
-            
-            if (shortDesc.length > 200) {
-                e.preventDefault();
-                alert('Mô tả ngắn không được vượt quá 200 ký tự');
-                document.getElementById('shortDescription').focus();
-                return;
-            }
-
-            // Handle cropped image data
-            if (croppedImageData) {
-                // Create a new FormData object
-                const formData = new FormData();
-                
-                // Add all form fields
-                formData.append('stallName', document.getElementById('stallName').value);
-                formData.append('status', document.getElementById('status').value);
-                formData.append('shortDescription', shortDesc);
-                formData.append('detailedDescription', detailedDesc);
-                
-                // Add cropped image as a file
-                formData.append('stallImageFile', croppedImageData, 'cropped-image.jpg');
-                
-                // Prevent default form submission
-                e.preventDefault();
-                
-                // Submit via fetch
-                fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (response.ok) {
-                        window.location.href = '/seller/stall-management';
-                    } else {
-                        alert('Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!');
-                });
-            }
-        });
+        // Không validate phía client; để controller kiểm tra
     </script>
 </body>
 </html>

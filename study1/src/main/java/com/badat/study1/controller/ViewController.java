@@ -366,6 +366,7 @@ public class ViewController {
         boolean hasShop = shopRepository.findByUserId(user.getId()).isPresent();
         boolean isSeller = user.getRole() == User.Role.SELLER;
         model.addAttribute("alreadySeller", isSeller);
+		model.addAttribute("pendingReview", false);
 
         return "seller/register";
     }

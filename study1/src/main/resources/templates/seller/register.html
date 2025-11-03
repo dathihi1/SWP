@@ -238,26 +238,17 @@
                 <div class="field">
                     <label for="ownerName">Tên Shop</label>
                     <input id="ownerName" name="ownerName" type="text" placeholder="Tên Shop của bạn" required>
-                    <small class="text-muted">Tên shop phải là duy nhất</small>
+                    <small class="text-danger">Tên shop không được trùng</small>
                 </div>
                 <div class="field">
                     <label for="identity">Số CCCD</label>
                     <input id="identity" name="identity" type="text" placeholder="XXXXXXXXXXXX" pattern="[0-9]{12}" title="Số CCCD phải có đúng 12 chữ số" required>
-                    <small class="text-muted">Nhập đúng 12 chữ số</small>
+                    <small class="text-danger">Nhập đúng 12 số</small>
                 </div>
                 <div class="field">
-                    <label for="bankAccountNumber">Số tài khoản ngân hàng</label>
-                    <input id="bankAccountNumber" name="bankAccountNumber" type="text" placeholder="123456789" pattern="[0-9]{8,20}" title="Số tài khoản phải có từ 8-20 chữ số" required>
-                    <small class="text-muted">Nhập từ 8-20 chữ số</small>
-                    <small class="text-danger">Chú ý: Tên chủ tài khoản ngân hàng phải khớp với họ và tên trong thông tin cá nhân</small>
-                </div>
-                <div class="field">
-                    <label for="bankName">Tên ngân hàng</label>
-                    <div class="bank-dropdown">
-                        <input type="text" id="bankName" name="bankName" class="bank-search" placeholder="Tìm kiếm ngân hàng..." autocomplete="off" required>
-                        <div class="bank-list" id="bankList"></div>
-                    </div>
-                    <small class="text-muted">Nhập để tìm kiếm ngân hàng</small>
+                    <label for="bankAccountName">Tên tài khoản ngân hàng</label>
+                    <input id="bankAccountName" name="bankAccountName" type="text" placeholder="Tên chủ tài khoản ngân hàng" required>
+                    <small class="text-danger">Chú ý: Tên chủ tài khoản ngân hàng phải khớp với tài khoản ngân hàng khi rút tiền</small>
                 </div>
             </div>
 
@@ -265,7 +256,7 @@
                 <label class="small text-muted m-0"><input type="checkbox" id="agree" name="agree" required> Tôi đồng ý với <a class="link-secondary" th:href="@{/terms}" target="_blank" rel="noopener noreferrer">Điều khoản & Chính sách</a></label>
                 <div>
                     <button class="btn btn-danger" type="reset">Xoá</button>
-                    <button class="btn primary" type="submit">Đăng ký</button>
+                    <button class="btn btn-primary" type="submit">Đăng ký</button>
                 </div>
             </div>
             <div th:if="${submitError}" class="alert alert-danger mt-3" th:text="${submitError}"></div>
@@ -336,102 +327,7 @@
 <script src="/js/auth.js"></script>
 </body>
 <script>
-    // Vietnamese banks data
-    const vietnameseBanks = [
-        { code: 'ACB', name: 'Ngân hàng TMCP Á Châu' },
-        { code: 'BIDV', name: 'Ngân hàng TMCP Đầu tư và Phát triển Việt Nam' },
-        { code: 'CTG', name: 'Ngân hàng TMCP Công Thương Việt Nam' },
-        { code: 'MB', name: 'Ngân hàng TMCP Quân đội' },
-        { code: 'TCB', name: 'Ngân hàng TMCP Kỹ thương Việt Nam' },
-        { code: 'VCB', name: 'Ngân hàng TMCP Ngoại thương Việt Nam' },
-        { code: 'VPB', name: 'Ngân hàng TMCP Việt Nam Thịnh Vượng' },
-        { code: 'TPB', name: 'Ngân hàng TMCP Tiên Phong' },
-        { code: 'HDB', name: 'Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh' },
-        { code: 'STB', name: 'Ngân hàng TMCP Sài Gòn Thương Tín' },
-        { code: 'VIB', name: 'Ngân hàng TMCP Quốc tế Việt Nam' },
-        { code: 'MSB', name: 'Ngân hàng TMCP Hàng Hải' },
-        { code: 'OCB', name: 'Ngân hàng TMCP Phương Đông' },
-        { code: 'SHB', name: 'Ngân hàng TMCP Sài Gòn - Hà Nội' },
-        { code: 'LPB', name: 'Ngân hàng TMCP Lào - Việt' },
-        { code: 'NAB', name: 'Ngân hàng TMCP Nam Á' },
-        { code: 'PGB', name: 'Ngân hàng TMCP Xăng dầu Petrolimex' },
-        { code: 'SCB', name: 'Ngân hàng TMCP Sài Gòn' },
-        { code: 'VAB', name: 'Ngân hàng TMCP Việt Á' },
-        { code: 'GPB', name: 'Ngân hàng TMCP Dầu Khí Toàn Cầu' }
-    ];
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const bankSearch = document.getElementById('bankName');
-        const bankList = document.getElementById('bankList');
-        let selectedBank = null;
-
-        // Show bank list
-        function showBankList() {
-            bankList.style.display = 'block';
-        }
-
-        // Hide bank list
-        function hideBankList() {
-            setTimeout(() => {
-                bankList.style.display = 'none';
-            }, 200);
-        }
-
-        // Filter banks based on search input
-        function filterBanks(searchTerm) {
-            const filteredBanks = vietnameseBanks.filter(bank => 
-                bank.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                bank.code.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-
-            bankList.innerHTML = '';
-            
-            if (filteredBanks.length === 0) {
-                bankList.innerHTML = '<div class="bank-item">Không tìm thấy ngân hàng</div>';
-                return;
-            }
-
-            filteredBanks.forEach(bank => {
-                const bankItem = document.createElement('div');
-                bankItem.className = 'bank-item';
-                bankItem.innerHTML = `
-                    <span class="bank-code">${bank.code}</span>
-                    <span class="bank-name">${bank.name}</span>
-                `;
-                
-                bankItem.addEventListener('click', function() {
-                    bankSearch.value = bank.name;
-                    selectedBank = bank;
-                    hideBankList();
-                });
-                
-                bankList.appendChild(bankItem);
-            });
-        }
-
-        // Event listeners
-        bankSearch.addEventListener('focus', showBankList);
-        bankSearch.addEventListener('input', function() {
-            const searchTerm = this.value;
-            if (searchTerm.length > 0) {
-                filterBanks(searchTerm);
-                showBankList();
-            } else {
-                hideBankList();
-            }
-        });
-
-        bankSearch.addEventListener('blur', hideBankList);
-
-        // Prevent form submission if no bank is selected
-        document.querySelector('form').addEventListener('submit', function(e) {
-            if (!selectedBank && bankSearch.value.trim() !== '') {
-                e.preventDefault();
-                alert('Vui lòng chọn ngân hàng từ danh sách gợi ý');
-                bankSearch.focus();
-            }
-        });
-    });
+    // No bank dropdown needed anymore
 </script>
 </html>
 

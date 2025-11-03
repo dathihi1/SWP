@@ -27,8 +27,8 @@ public class Shop {
     @Column(name = "cccd")
     String cccd;
 
-    @Column(name = "bank_account_id", nullable = false)
-    Long bankAccountId;
+    @Column(name = "bank_account_name", length = 150)
+    String bankAccountName;
 
     @Column(name = "description", columnDefinition = "TEXT")
     String description;

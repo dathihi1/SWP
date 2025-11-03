@@ -64,6 +64,7 @@ public class ShopController {
                           @RequestParam(required = false) String isCropped,
                           RedirectAttributes redirectAttributes) {
         
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
                                 !authentication.getName().equals("anonymousUser");
@@ -110,6 +111,18 @@ public class ShopController {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết là bắt buộc!");
             return "redirect:/seller/add-stall";
         }
+
+        // Backend word-count validation
+        int shortWordCount = (int) java.util.Arrays.stream(shortDescription.trim().split("\\s+")).filter(s -> !s.isBlank()).count();
+        int detailedWordCount = (int) java.util.Arrays.stream(detailedDescription.trim().split("\\s+")).filter(s -> !s.isBlank()).count();
+        if (shortWordCount > 150) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn không được vượt quá 150 từ!");
+            return "redirect:/seller/add-stall";
+        }
+        if (detailedWordCount > 500) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết không được vượt quá 500 từ!");
+            return "redirect:/seller/add-stall";
+        }
         
         // Validate unique products checkbox
         if (uniqueProducts == null || !uniqueProducts) {
@@ -144,7 +157,8 @@ public class ShopController {
             if (currentStallCount >= 5) {
                 redirectAttributes.addFlashAttribute("errorMessage", 
                         "Bạn đã đạt giới hạn tối đa 5 gian hàng. Không thể tạo thêm gian hàng mới!");
-                return "redirect:/seller/stall-management";
+                // Đưa người dùng về trang tạo để thấy thông báo thay vì quay về quản lý
+                return "redirect:/seller/add-stall";
             }
             
             // Create new stall
@@ -259,6 +273,26 @@ public class ShopController {
                 }
             }
             
+            // Validate description lengths
+            if (shortDescription == null || shortDescription.trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn là bắt buộc!");
+                return "redirect:/seller/edit-stall/" + id;
+            }
+            if (detailedDescription == null || detailedDescription.trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết là bắt buộc!");
+                return "redirect:/seller/edit-stall/" + id;
+            }
+            int shortWordCountEdit = (int) java.util.Arrays.stream(shortDescription.trim().split("\\s+")).filter(s -> !s.isBlank()).count();
+            int detailedWordCountEdit = (int) java.util.Arrays.stream(detailedDescription.trim().split("\\s+")).filter(s -> !s.isBlank()).count();
+            if (shortWordCountEdit > 150) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn không được vượt quá 150 từ!");
+                return "redirect:/seller/edit-stall/" + id;
+            }
+            if (detailedWordCountEdit > 500) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết không được vượt quá 500 từ!");
+                return "redirect:/seller/edit-stall/" + id;
+            }
+
             // Cập nhật thông tin gian hàng
             stall.setStallName(stallName);
             

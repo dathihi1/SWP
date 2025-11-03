@@ -386,6 +386,7 @@
             <!-- Form Container -->
             <div class="form-container">
                 <form th:action="@{/seller/add-stall}" method="post" enctype="multipart/form-data" id="addStallForm">
+                    <input type="hidden" id="isCroppedHidden" name="isCropped" value="">
                     <!-- Basic Information -->
                     <div class="form-section">
                         <h5 class="section-title">
@@ -395,11 +396,11 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="stallName" class="form-label">Tên gian hàng <span class="required">*</span></label>
-                                <input type="text" class="form-control" id="stallName" name="stallName" required>
+                                <input type="text" class="form-control" id="stallName" name="stallName">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="businessType" class="form-label">Loại hình kinh doanh <span class="required">*</span></label>
-                                <select class="form-select" id="businessType" name="businessType" required>
+                                <select class="form-select" id="businessType" name="businessType">
                                     <option value="">Chọn loại hình kinh doanh</option>
                                     <option value="Bán sản phẩm">Bán sản phẩm</option>
                                 </select>
@@ -408,7 +409,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="stallCategory" class="form-label">Loại gian hàng <span class="required">*</span></label>
-                                <select class="form-select" id="stallCategory" name="stallCategory" required>
+                                <select class="form-select" id="stallCategory" name="stallCategory">
                                     <option value="">Chọn loại gian hàng</option>
                                     <option value="Thẻ cào (Điện thoại, Game)">Thẻ Cào (Điện thoại, Game)</option>
                                     <option value="Tài khoản Email">Tài khoản Email</option>
@@ -417,7 +418,7 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="discount" class="form-label">Chiết khấu cho sàn <span class="required">*</span></label>
-                                <select class="form-select" id="discount" name="discount" required>
+                                <select class="form-select" id="discount" name="discount">
                                     <option value="">Chọn chiết khấu</option>
                                     <option value="5">5%</option>
                                 </select>
@@ -434,12 +435,12 @@
                         </h5>
                         <div class="mb-3">
                             <label for="shortDescription" class="form-label">Mô tả ngắn <span class="required">*</span></label>
-                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" required placeholder="Nhập mô tả ngắn về gian hàng (tối đa 200 ký tự)"></textarea>
+                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" placeholder="Nhập mô tả ngắn về gian hàng"></textarea>
                             <div class="form-text">Mô tả ngắn gọn về gian hàng, sản phẩm chính</div>
                         </div>
                         <div class="mb-3">
                             <label for="detailedDescription" class="form-label">Mô tả chi tiết <span class="required">*</span></label>
-                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" required placeholder="• Giới thiệu sản phẩm&#10;• Lưu ý hoặc quy định của shop&#10;• Chính sách bảo hành"></textarea>
+                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" placeholder="• Giới thiệu sản phẩm&#10;• Lưu ý hoặc quy định của shop&#10;• Chính sách bảo hành"></textarea>
                             <div class="form-text">Mô tả chi tiết về gian hàng, dịch vụ, chính sách bán hàng</div>
                             <div class="alert alert-warning mt-2 py-2 px-3" role="alert" style="font-size: 0.9rem;">
                                 <i class="fa-solid fa-circle-exclamation me-2"></i>
@@ -456,7 +457,7 @@
                         </h5>
                         <div class="mb-3">
                             <label for="stallImageFile" class="form-label">Tải lên hình ảnh gian hàng <span class="required">*</span></label>
-                            <input type="file" class="form-control" id="stallImageFile" name="stallImageFile" accept="image/*" required onchange="previewImage(this)">
+                            <input type="file" class="form-control" id="stallImageFile" name="stallImageFile" accept="image/*" onchange="previewImage(this)">
                             <div class="form-text">Chọn file hình ảnh đại diện cho gian hàng (JPG, PNG, GIF) - Bắt buộc</div>
                         </div>
                         <div id="imagePreview" class="mb-3" style="display: none;">
@@ -491,7 +492,7 @@
                     <div class="form-section">
                         <div class="mb-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="uniqueProducts" name="uniqueProducts" required>
+                                <input class="form-check-input" type="checkbox" id="uniqueProducts" name="uniqueProducts">
                                 <label class="form-check-label" for="uniqueProducts">
                                     <strong>Sản phẩm không trùng lặp:</strong> <span class="required"></span> (Cam kết sản phẩm chỉ được bán ra 1 lần và duy nhất trên hệ thống)
                                 </label>
@@ -687,92 +688,9 @@
         
         // Form validation and submission
         document.getElementById('addStallForm').addEventListener('submit', function(e) {
-            const shortDesc = document.getElementById('shortDescription').value.trim();
-            const detailedDesc = document.getElementById('detailedDescription').value.trim();
-            const uniqueProducts = document.getElementById('uniqueProducts').checked;
-            const imageFile = document.getElementById('stallImageFile').files[0];
-            
-            // Validate image is required
-            if (!imageFile) {
-                e.preventDefault();
-                alert('Vui lòng tải lên hình ảnh gian hàng');
-                document.getElementById('stallImageFile').focus();
-                return;
-            }
-            
-            if (shortDesc.length === 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập mô tả ngắn');
-                document.getElementById('shortDescription').focus();
-                return;
-            }
-            
-            if (detailedDesc.length === 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập mô tả chi tiết');
-                document.getElementById('detailedDescription').focus();
-                return;
-            }
-            
-            if (shortDesc.length > 200) {
-                e.preventDefault();
-                alert('Mô tả ngắn không được vượt quá 200 ký tự');
-                document.getElementById('shortDescription').focus();
-                return;
-            }
-            
-            if (!uniqueProducts) {
-                e.preventDefault();
-                alert('Bạn phải đồng ý với cam kết "Sản phẩm không trùng lặp" để tạo gian hàng');
-                document.getElementById('uniqueProducts').focus();
-                return;
-            }
-
-            // Validate that image has been cropped
-            if (!croppedImageData) {
-                e.preventDefault();
-                alert('Bạn phải cắt ảnh trước khi tạo gian hàng!');
-                document.getElementById('stallImageFile').focus();
-                return;
-            }
-
-            // Handle cropped image data
+            // Chỉ đánh dấu đã cắt nếu có dữ liệu crop; mọi validation do backend xử lý
             if (croppedImageData) {
-                // Create a new FormData object
-                const formData = new FormData();
-                
-                // Add all form fields
-                formData.append('stallName', document.getElementById('stallName').value);
-                formData.append('businessType', document.getElementById('businessType').value);
-                formData.append('stallCategory', document.getElementById('stallCategory').value);
-                formData.append('discount', document.getElementById('discount').value);
-                formData.append('shortDescription', shortDesc);
-                formData.append('detailedDescription', detailedDesc);
-                formData.append('uniqueProducts', uniqueProducts);
-                
-                // Add cropped image as a file
-                formData.append('stallImageFile', croppedImageData, 'cropped-image.jpg');
-                formData.append('isCropped', 'true');
-                
-                // Prevent default form submission
-                e.preventDefault();
-                
-                // Submit via fetch
-                fetch('/seller/add-stall', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (response.ok) {
-                        window.location.href = '/seller/stall-management';
-                    } else {
-                        alert('Có lỗi xảy ra khi tạo gian hàng. Vui lòng thử lại!');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Có lỗi xảy ra khi tạo gian hàng. Vui lòng thử lại!');
-                });
+                document.getElementById('isCroppedHidden').value = 'true';
             }
         });
         
