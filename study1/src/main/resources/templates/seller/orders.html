@@ -427,23 +427,25 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="orderItem : ${orders}">
+                            <tr th:each="o : ${orders}">
                                 <td>
-                                    <span class="order-code text-primary" th:text="${orderItem.order.orderCode}">ORDER_CODE</span>
+                                    <span class="order-code text-primary" th:text="${o.order.orderCode}">ORDER_CODE</span>
                                 </td>
-                                <td th:text="${orderItem.product.name}">Tên sản phẩm</td>
-                                <td th:text="${orderItem.warehouse.stall.stallName}">Tên gian hàng</td>
-                                <td th:text="${orderItem.quantity}">1</td>
-                                <td class="amount" th:text="${#numbers.formatDecimal(orderItem.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
-                                <td class="amount" th:text="${#numbers.formatDecimal(orderItem.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
                                 <td>
-                                    <span class="status-badge" 
-                                          th:classappend="'status-' + ${orderItem.status.name().toLowerCase()}"
-                                          th:text="${T(com.badat.study1.util.StatusUtils).getStatusDisplayName(orderItem.status)}">
+                                    <span th:text="${o.firstProductName}">Tên sản phẩm</span>
+                                </td>
+                                <td th:text="${o.stallName}">Tên gian hàng</td>
+                                <td th:text="${o.totalQuantity}">1</td>
+                                <td class="amount" th:text="${#numbers.formatDecimal(o.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
+                                <td class="amount" th:text="${#numbers.formatDecimal(o.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
+                                <td>
+                                    <span class="status-badge"
+                                          th:classappend="'status-' + ${o.status.name().toLowerCase()}"
+                                          th:text="${T(com.badat.study1.util.StatusUtils).getStatusDisplayName(o.status)}">
                                         Trạng thái
                                     </span>
                                 </td>
-                                <td th:text="${#temporals.format(orderItem.createdAt, 'dd/MM/yyyy HH:mm')}">Ngày tạo</td>
+                                <td th:text="${#temporals.format(o.createdAt, 'dd/MM/yyyy HH:mm')}">Ngày tạo</td>
                             </tr>
                             <tr th:if="${orders.isEmpty()}">
                                 <td colspan="8" class="text-center text-muted py-4">

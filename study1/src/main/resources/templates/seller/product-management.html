@@ -608,27 +608,6 @@
             }
         }
         
-        
-        
-        // Form validation
-        document.getElementById('addProductForm').addEventListener('submit', function(e) {
-            const productName = document.getElementById('productName').value.trim();
-            const productPrice = document.getElementById('productPrice').value;
-            
-            if (productName.length === 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập tên mặt hàng');
-                document.getElementById('productName').focus();
-                return;
-            }
-            
-            if (productPrice === '' || parseFloat(productPrice) <= 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập giá mặt hàng hợp lệ');
-                document.getElementById('productPrice').focus();
-                return;
-            }
-        });
     </script>
 </body>
 </html>

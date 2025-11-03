@@ -688,9 +688,21 @@
         
         // Form validation and submission
         document.getElementById('addStallForm').addEventListener('submit', function(e) {
-            // Chỉ đánh dấu đã cắt nếu có dữ liệu crop; mọi validation do backend xử lý
-            if (croppedImageData) {
-                document.getElementById('isCroppedHidden').value = 'true';
+            // Nếu có ảnh đã cắt thì thay thế file input bằng ảnh đã cắt trước khi submit
+            if (croppedImageData instanceof Blob) {
+                try {
+                    const fileInput = document.getElementById('stallImageFile');
+                    const croppedFile = new File([croppedImageData], 'cropped.jpg', { type: 'image/jpeg' });
+                    const dt = new DataTransfer();
+                    dt.items.add(croppedFile);
+                    fileInput.files = dt.files;
+                    document.getElementById('isCroppedHidden').value = 'true';
+                } catch (_) {
+                    // fallback: chỉ đánh dấu isCropped, backend sẽ kiểm tra
+                    document.getElementById('isCroppedHidden').value = croppedImageData ? 'true' : '';
+                }
+                    } else {
+                document.getElementById('isCroppedHidden').value = '';
             }
         });
         
@@ -702,7 +714,7 @@
             document.getElementById('detailedDescription').value = '';
             
             // Clear file inputs
-            document.getElementById('stallImage').value = '';
+            document.getElementById('stallImageFile').value = '';
             
             // Clear any preview images
             const preview = document.getElementById('imagePreview');

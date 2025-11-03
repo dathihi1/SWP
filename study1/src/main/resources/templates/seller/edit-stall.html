@@ -632,6 +632,21 @@
             document.getElementById('imagePreview').style.display = 'none';
         });
 
+        // On form submit: if we have a cropped blob, replace the file input with the cropped image
+        document.getElementById('editStallForm').addEventListener('submit', function(e) {
+            try {
+                if (croppedImageData instanceof Blob) {
+                    const fileInput = document.getElementById('stallImageFile');
+                    const croppedFile = new File([croppedImageData], 'cropped.jpg', { type: 'image/jpeg' });
+                    const dt = new DataTransfer();
+                    dt.items.add(croppedFile);
+                    fileInput.files = dt.files;
+                }
+            } catch (_) {
+                // no-op: if browser doesn't support DataTransfer, fall back to original file
+            }
+        });
+
         // Reset image crop function
         function resetImageCrop() {
             // Clear file input
