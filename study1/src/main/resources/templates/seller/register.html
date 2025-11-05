@@ -190,7 +190,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/product-management}" href="/seller/product-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
@@ -218,12 +218,8 @@
         <div th:if="${alreadySeller}" class="alert alert-info text-center" role="alert">
             <i class="fa-solid fa-handshake fa-3x text-primary mb-3"></i>
             <h5 class="alert-heading mb-3 text-primary" th:text="${submitSuccess} ? 'Yêu cầu đăng ký bán hàng của bạn đã được gửi thành công!' : 'Bạn đã đăng ký shop thành công!'">Bạn đã đăng ký shop thành công</h5>
-            <div th:if="${submitSuccess}">
-                <p class="mb-1">Hệ thống đang chuyển yêu cầu của bạn đến quản trị viên để duyệt.</p>
-                <p class="mb-0">Dự kiến thời gian xử lý: 12–24 giờ làm việc.</p>
-            </div>
             <div th:if="${submitSuccess == false}" class="d-flex justify-content-center mt-2">
-                <a class="btn btn-outline-primary keep-outline" th:href="@{/seller/stall-management}" href="/seller/stall-management">
+                <a class="btn btn-outline-primary keep-outline" th:href="@{/seller/product-management}" href="/seller/product-management">
                     <i class="fa-solid fa-store me-2"></i>Quản lí gian hàng
                 </a>
             </div>
@@ -232,7 +228,7 @@
         
         
         <!-- Form đăng ký chỉ hiển thị cho user chưa có role SELLER -->
-        <form th:if="${!alreadySeller and !pendingReview}" method="post" th:action="@{/seller/register}" enctype="multipart/form-data" id="sellerRegisterForm">
+        <form th:if="${!alreadySeller}" method="post" th:action="@{/seller/register}" enctype="multipart/form-data" id="sellerRegisterForm">
             <h2 class="section-title">Thông tin tài khoản người bán</h2>
             <div class="grid">
                 <div class="field">
@@ -240,20 +236,33 @@
                     <input id="ownerName" name="ownerName" type="text" placeholder="Tên Shop của bạn" required>
                 </div>
                 <div class="field">
-                    <label for="identity">Số CCCD</label>
-                    <input id="identity" name="identity" type="text" placeholder="XXXXXXXXXXXX" pattern="[0-9]{12}" title="Số CCCD phải có đúng 12 chữ số" required>
+                    <label for="shopOwnerName">Tên chủ shop</label>
+                    <input id="shopOwnerName" name="shopOwnerName" type="text" placeholder="Tên chủ shop" required>
+                </div>
+            </div>
+            <br>
+            <div class="grid">
+                <div class="field">
+                    <label for="cccdFront">CCCD mặt trước</label>
+                    <input id="cccdFront" name="cccdFront" type="file" accept="image/*" required>
+                    <small class="text-muted">Vui lòng upload ảnh CCCD mặt trước</small>
+                    <div id="previewFront" style="margin-top: 12px; display: none;">
+                        <img id="imgFront" src="" alt="CCCD mặt trước" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: #f9f9f9;">
+                    </div>
                 </div>
                 <div class="field">
-                    <label for="bankAccountName">Tên tài khoản ngân hàng</label>
-                    <input id="bankAccountName" name="bankAccountName" type="text" placeholder="Tên chủ tài khoản ngân hàng" required>
-                    <small class="text-danger">Chú ý: Tên chủ tài khoản ngân hàng phải khớp với tài khoản ngân hàng khi rút tiền</small>
+                    <label for="cccdBack">CCCD mặt sau</label>
+                    <input id="cccdBack" name="cccdBack" type="file" accept="image/*" required>
+                    <small class="text-muted">Vui lòng upload ảnh CCCD mặt sau</small>
+                    <div id="previewBack" style="margin-top: 12px; display: none;">
+                        <img id="imgBack" src="" alt="CCCD mặt sau" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: #f9f9f9;">
+                    </div>
                 </div>
             </div>
 
             <div class="actions">
                 <label class="small text-muted m-0"><input type="checkbox" id="agree" name="agree" required> Tôi đồng ý với <a class="link-secondary" th:href="@{/terms}" target="_blank" rel="noopener noreferrer">Điều khoản & Chính sách</a></label>
                 <div>
-                    <button class="btn btn-danger" type="reset">Xoá</button>
                     <button class="btn btn-primary" type="submit">Đăng ký</button>
                 </div>
             </div>
@@ -323,10 +332,37 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/auth.js"></script>
-</body>
 <script>
-    // No bank dropdown needed anymore
+    // Preview image when file is selected
+    document.getElementById('cccdFront').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imgFront').src = e.target.result;
+                document.getElementById('previewFront').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            document.getElementById('previewFront').style.display = 'none';
+        }
+    });
+
+    document.getElementById('cccdBack').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imgBack').src = e.target.result;
+                document.getElementById('previewBack').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            document.getElementById('previewBack').style.display = 'none';
+        }
+    });
 </script>
+</body>
 </html>
 
 

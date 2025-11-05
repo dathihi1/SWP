@@ -25,7 +25,7 @@ public class KaptchaConfig {
         
         // Text properties - easier to read
         properties.setProperty("kaptcha.textproducer.char.length", String.valueOf(captchaLength));
-        properties.setProperty("kaptcha.textproducer.char.string", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+        properties.setProperty("kaptcha.textproducer.char.string", "A");
         properties.setProperty("kaptcha.textproducer.font.size", "28"); // Reduced for better fit and readability
         properties.setProperty("kaptcha.textproducer.font.color", "0,0,0"); // Pure black for better visibility
         properties.setProperty("kaptcha.textproducer.font.names", "Arial");

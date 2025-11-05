@@ -636,7 +636,6 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Tên gian hàng</th>
-                                <th>Loại kinh doanh</th>
                                 <th>Danh mục</th>
                                 <th>Mô tả ngắn</th>
                                 <th>Ngày tạo</th>
@@ -647,7 +646,7 @@
                             <tr th:each="stall : ${pendingStalls}">
                                 <td th:text="${stall.id}">1</td>
                                 <td th:text="${stall.stallName}">Gian hàng 1</td>
-                                <td th:text="${stall.businessType}">Thương mại</td>
+                                <td>-</td>
                                 <td th:text="${stall.stallCategory}">Điện tử</td>
                                 <td th:text="${stall.shortDescription}">Mô tả ngắn</td>
                                 <td th:text="${#temporals.format(stall.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2024 10:00</td>
@@ -656,9 +655,7 @@
                                     <button class="btn btn-sm btn-secondary" title="Xem chi tiết"
                                             th:data-stall-id="${stall.id}"
                                             th:data-stall-name="${stall.stallName}"
-                                            th:data-business-type="${stall.businessType}"
                                             th:data-stall-category="${stall.stallCategory}"
-                                            th:data-discount-percentage="${stall.discountPercentage}"
                                             th:data-short-description="${stall.shortDescription}"
                                             th:data-detailed-description="${stall.detailedDescription}"
                                             th:data-created-at="${stall.createdAt}"
@@ -707,7 +704,6 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Tên gian hàng</th>
-                                <th>Loại kinh doanh</th>
                                 <th>Danh mục</th>
                                 <th>Trạng thái</th>
                                 <th>Ngày xử lý</th>
@@ -718,7 +714,7 @@
                             <tr th:each="stall : ${historyStalls}">
                                 <td th:text="${stall.id}">1</td>
                                 <td th:text="${stall.stallName}">Gian hàng 1</td>
-                                <td th:text="${stall.businessType}">Thương mại</td>
+                                <td>-</td>
                                 <td th:text="${stall.stallCategory}">Điện tử</td>
                                 <td>
                                     <span class="badge bg-success" 
@@ -970,9 +966,7 @@
             // Get data from button attributes
             const stallId = button.getAttribute('data-stall-id');
             const stallName = button.getAttribute('data-stall-name');
-            const businessType = button.getAttribute('data-business-type');
             const stallCategory = button.getAttribute('data-stall-category');
-            const discountPercentage = button.getAttribute('data-discount-percentage');
             const shortDescription = button.getAttribute('data-short-description');
             const detailedDescription = button.getAttribute('data-detailed-description');
             const createdAt = button.getAttribute('data-created-at');
@@ -994,16 +988,8 @@
                                 <td>${stallName || 'Chưa có'}</td>
                             </tr>
                             <tr>
-                                <td><strong>Loại kinh doanh:</strong></td>
-                                <td>${businessType || 'Chưa có'}</td>
-                            </tr>
-                            <tr>
                                 <td><strong>Danh mục:</strong></td>
                                 <td>${stallCategory || 'Chưa có'}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Chiết khấu:</strong></td>
-                                <td>${discountPercentage || 0}%</td>
                             </tr>
                             <tr>
                                 <td><strong>Ngày tạo:</strong></td>

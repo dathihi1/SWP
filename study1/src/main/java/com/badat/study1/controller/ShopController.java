@@ -2,12 +2,13 @@ package com.badat.study1.controller;
 
 
 
-import com.badat.study1.model.Stall;
+import com.badat.study1.model.Product;
+import com.badat.study1.model.ProductVariant;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.repository.ProductVariantRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.WarehouseRepository;
 import com.badat.study1.repository.ReviewRepository;
@@ -28,34 +29,31 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.ui.Model;
 
 import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+
 
 @Controller
 public class ShopController {
     private final ShopRepository shopRepository;
-    private final StallRepository stallRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final UploadHistoryRepository uploadHistoryRepository;
     private final WarehouseRepository warehouseRepository;
     private final com.badat.study1.service.ShopService shopService;
     
 
-    public ShopController(ShopRepository shopRepository, StallRepository stallRepository, ProductRepository productRepository, UploadHistoryRepository uploadHistoryRepository, WarehouseRepository warehouseRepository, OrderItemRepository orderItemRepository, ReviewRepository reviewRepository, com.badat.study1.service.ShopService shopService) {
+    public ShopController(ShopRepository shopRepository, ProductRepository productRepository, ProductVariantRepository productVariantRepository, UploadHistoryRepository uploadHistoryRepository, WarehouseRepository warehouseRepository, OrderItemRepository orderItemRepository, ReviewRepository reviewRepository, com.badat.study1.service.ShopService shopService) {
         this.shopRepository = shopRepository;
-        this.stallRepository = stallRepository;
         this.productRepository = productRepository;
+        this.productVariantRepository = productVariantRepository;
         this.uploadHistoryRepository = uploadHistoryRepository;
         this.warehouseRepository = warehouseRepository;
         this.shopService = shopService;
     }
 
-    @PostMapping("/seller/add-stall")
-    public String addStall(@RequestParam String stallName,
-                          @RequestParam String businessType,
+    @PostMapping("/seller/add-product")
+    public String addProduct(@RequestParam String stallName,
                           @RequestParam String stallCategory,
-                          @RequestParam Double discount,
+                          @RequestParam(required = false, name = "productSubcategory") String productSubcategory,
                           @RequestParam String shortDescription,
                           @RequestParam String detailedDescription,
                           @RequestParam(required = false) MultipartFile stallImageFile,
@@ -80,53 +78,69 @@ public class ShopController {
         }
         
         if (stallName == null || stallName.trim().isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Tên gian hàng là bắt buộc!");
-            return "redirect:/seller/add-stall";
-        }
-        if (businessType == null || businessType.trim().isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Loại hình kinh doanh là bắt buộc!");
-            return "redirect:/seller/add-stall";
+            redirectAttributes.addFlashAttribute("errorMessage", "Tên sản phẩm là bắt buộc!");
+            return "redirect:/seller/add-product";
         }
         if (stallCategory == null || stallCategory.trim().isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Loại gian hàng là bắt buộc!");
-            return "redirect:/seller/add-stall";
-        }
-        if (discount == null) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Chiết khấu cho sàn là bắt buộc!");
-            return "redirect:/seller/add-stall";
+            redirectAttributes.addFlashAttribute("errorMessage", "Loại sản phẩm là bắt buộc!");
+            return "redirect:/seller/add-product";
         }
         if (shortDescription == null || shortDescription.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn là bắt buộc!");
-            return "redirect:/seller/add-stall";
+            return "redirect:/seller/add-product";
         }
         if (detailedDescription == null || detailedDescription.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết là bắt buộc!");
-            return "redirect:/seller/add-stall";
+            return "redirect:/seller/add-product";
+        }
+        // Validate specific category when applicable
+        String stallCategoryTrim = stallCategory.trim();
+        String subcategoryTrim = productSubcategory == null ? "" : productSubcategory.trim();
+        if (!"Khác".equalsIgnoreCase(stallCategoryTrim)) {
+            if (subcategoryTrim.isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn loại cụ thể cho sản phẩm!");
+                return "redirect:/seller/add-product";
+            }
+            // Enforce allowed subcategories by category
+            java.util.Set<String> allowed;
+            if ("Email".equalsIgnoreCase(stallCategoryTrim)) {
+                allowed = new java.util.HashSet<>(java.util.Arrays.asList("Gmail"));
+            } else if ("Tài khoản".equalsIgnoreCase(stallCategoryTrim)) {
+                allowed = new java.util.HashSet<>(java.util.Arrays.asList("Facebook","Twitter","Telegram","Instagram","Discord","Quizlet","Khác"));
+            } else if ("Thẻ cào (Game, Điện thoại)".equalsIgnoreCase(stallCategoryTrim)) {
+                allowed = new java.util.HashSet<>(java.util.Arrays.asList("Garena","Zing","Vcoin","Gate","Khác"));
+            } else {
+                allowed = java.util.Collections.emptySet();
+            }
+            if (!allowed.isEmpty() && !allowed.contains(subcategoryTrim)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Loại cụ thể không hợp lệ cho loại sản phẩm đã chọn!");
+                return "redirect:/seller/add-product";
+            }
         }
         int shortWordCount = (int) java.util.Arrays.stream(shortDescription.trim().split("\\s+")).filter(s -> !s.isBlank()).count();
         int detailedWordCount = (int) java.util.Arrays.stream(detailedDescription.trim().split("\\s+")).filter(s -> !s.isBlank()).count();
         if (shortWordCount > 150) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn không được vượt quá 150 từ!");
-            return "redirect:/seller/add-stall";
+            return "redirect:/seller/add-product";
         }
         if (detailedWordCount > 500) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết không được vượt quá 500 từ!");
-            return "redirect:/seller/add-stall";
+            return "redirect:/seller/add-product";
         }
         if (uniqueProducts == null || !uniqueProducts) {
             redirectAttributes.addFlashAttribute("errorMessage", "Bạn phải đồng ý với cam kết 'Sản phẩm không trùng lặp' để tạo gian hàng!");
-            return "redirect:/seller/add-stall";
+            return "redirect:/seller/add-product";
         }
         if (stallImageFile == null || stallImageFile.isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Hình ảnh gian hàng là bắt buộc!");
-            return "redirect:/seller/add-stall";
+            redirectAttributes.addFlashAttribute("errorMessage", "Hình ảnh sản phẩm là bắt buộc!");
+            return "redirect:/seller/add-product";
         }
         if (isCropped == null || !isCropped.equals("true")) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Bạn phải cắt ảnh trước khi tạo gian hàng!");
-            return "redirect:/seller/add-stall";
+            redirectAttributes.addFlashAttribute("errorMessage", "Bạn phải cắt ảnh trước khi tạo sản phẩm!");
+            return "redirect:/seller/add-product";
         }
         
-        return shopService.addStall(user, stallName, businessType, stallCategory, discount, shortDescription, detailedDescription, stallImageFile, uniqueProducts, isCropped, redirectAttributes);
+        return shopService.addProduct(user, stallName, stallCategory, productSubcategory, shortDescription, detailedDescription, stallImageFile, uniqueProducts, isCropped, redirectAttributes);
     }
 
     @GetMapping("/seller/gross-sales")
@@ -147,25 +161,8 @@ public class ShopController {
         return shopService.sellerShopPage(user, model);
     }
 
-    @GetMapping("/seller/products")
-    public String sellerProductsPage(Model model) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
-                !authentication.getName().equals("anonymousUser");
 
-        if (!isAuthenticated) {
-            return "redirect:/login";
-        }
-
-        User user = (User) authentication.getPrincipal();
-        if (!user.getRole().equals(User.Role.SELLER)) {
-            return "redirect:/profile";
-        }
-
-        return shopService.sellerProductsPage(user, model);
-    }
-
-    @GetMapping("/seller/stall-management")
+    @GetMapping("/seller/product-management")
     public String sellerShopManagementPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
@@ -181,11 +178,11 @@ public class ShopController {
             return "redirect:/profile";
         }
 
-        return shopService.stallManagement(user, model);
-            }
+        return shopService.productManagementOverview(user, model);
+    }
             
-    @GetMapping("/seller/add-stall")
-    public String sellerAddStallPage(Model model) {
+    @GetMapping("/seller/add-product")
+    public String sellerAddProductPage(Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
                 !authentication.getName().equals("anonymousUser");
@@ -199,11 +196,11 @@ public class ShopController {
             return "redirect:/profile";
         }
 
-        return shopService.addStallPage(user, model);
+        return shopService.addProductPage(user, model);
     }
 
-    @GetMapping("/seller/edit-stall/{id}")
-    public String sellerEditStallPage(@PathVariable Long id, Model model) {
+    @GetMapping("/seller/edit-product/{id}")
+    public String sellerEditProductPage(@PathVariable Long id, Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
                 !authentication.getName().equals("anonymousUser");
@@ -217,7 +214,7 @@ public class ShopController {
             return "redirect:/profile";
         }
 
-        return shopService.editStallPage(user, id, model);
+        return shopService.editProductPage(user, id, model);
     }
 
     @GetMapping("/seller/product-management/{stallId}")
@@ -372,24 +369,27 @@ public class ShopController {
     @GetMapping("/stall-image/{stallId}")
     public ResponseEntity<byte[]> getStallImage(@PathVariable Long stallId) {
         try {
-            Stall stall = stallRepository.findById(stallId).orElse(null);
-            if (stall == null || stall.getStallImageData() == null) {
+            Product product = productRepository.findById(stallId).orElse(null);
+            if (product == null || product.getProductImageData() == null) {
                 return ResponseEntity.notFound().build();
             }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.IMAGE_JPEG);
-            headers.setContentLength(stall.getStallImageData().length);
-            headers.setCacheControl("max-age=3600"); // Cache for 1 hour
+            headers.setContentLength(product.getProductImageData().length);
+            // Disable caching to ensure latest image shows after update
+            headers.setCacheControl("no-store, no-cache, must-revalidate");
+            headers.add("Pragma", "no-cache");
+            headers.add("Expires", "0");
 
-            return new ResponseEntity<>(stall.getStallImageData(), headers, HttpStatus.OK);
+            return new ResponseEntity<>(product.getProductImageData(), headers, HttpStatus.OK);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @PostMapping("/seller/edit-stall/{id}")
-    public String editStall(@PathVariable Long id,
+    @PostMapping("/seller/edit-product/{id}")
+    public String editProduct(@PathVariable Long id,
                           @RequestParam String stallName,
                           @RequestParam String status,
                           @RequestParam String shortDescription,
@@ -413,16 +413,16 @@ public class ShopController {
         }
         
         // Controller-level validations and readonly protection
-            var stallOptional = stallRepository.findById(id);
-            if (stallOptional.isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
-                return "redirect:/seller/stall-management";
+            var productOptional = productRepository.findById(id);
+            if (productOptional.isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
+                return "redirect:/seller/product-management";
             }
-            Stall stall = stallOptional.get();
+            Product product = productOptional.get();
             var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền sửa gian hàng này!");
-                return "redirect:/seller/stall-management";
+            if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền sửa sản phẩm này!");
+                return "redirect:/seller/product-management";
             }
             
         String stallNameTrim = stallName == null ? "" : stallName.trim();
@@ -430,56 +430,49 @@ public class ShopController {
         String detailedDescTrim = detailedDescription == null ? "" : detailedDescription.trim();
 
         if (stallNameTrim.isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Tên gian hàng là bắt buộc!");
-            return "redirect:/seller/edit-stall/" + id;
+            redirectAttributes.addFlashAttribute("errorMessage", "Tên sản phẩm là bắt buộc!");
+            return "redirect:/seller/edit-product/" + id;
         }
         if (shortDescTrim.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn là bắt buộc!");
-                    return "redirect:/seller/edit-stall/" + id;
+                    return "redirect:/seller/edit-product/" + id;
                 }
         if (detailedDescTrim.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết là bắt buộc!");
-            return "redirect:/seller/edit-stall/" + id;
+            return "redirect:/seller/edit-product/" + id;
         }
 
         int shortWordCount = (int) java.util.Arrays.stream(shortDescTrim.split("\\s+")).filter(s -> !s.isBlank()).count();
         int detailedWordCount = (int) java.util.Arrays.stream(detailedDescTrim.split("\\s+")).filter(s -> !s.isBlank()).count();
         if (shortWordCount > 150) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả ngắn không được vượt quá 150 từ!");
-            return "redirect:/seller/edit-stall/" + id;
+            return "redirect:/seller/edit-product/" + id;
         }
         if (detailedWordCount > 500) {
             redirectAttributes.addFlashAttribute("errorMessage", "Mô tả chi tiết không được vượt quá 500 từ!");
-            return "redirect:/seller/edit-stall/" + id;
+            return "redirect:/seller/edit-product/" + id;
         }
 
-        // Validate status input (readonly protection for illegal transitions)
+        // Validate status input: only OPEN or CLOSED are allowed
         String incomingStatus = status == null ? "" : status.trim();
-        if ("REJECTED".equals(stall.getStatus())) {
-            if (!"PENDING".equals(incomingStatus)) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Trạng thái không hợp lệ cho gian hàng bị từ chối!");
-                return "redirect:/seller/edit-stall/" + id;
-            }
-        } else {
-            if (!("OPEN".equals(incomingStatus) || "CLOSED".equals(incomingStatus))) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Trạng thái không hợp lệ!");
-                    return "redirect:/seller/edit-stall/" + id;
-                }
-            }
+        if (!("OPEN".equals(incomingStatus) || "CLOSED".equals(incomingStatus))) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Trạng thái không hợp lệ!");
+            return "redirect:/seller/edit-product/" + id;
+        }
             
         // No-op change detection: if all fields are unchanged and no new image is uploaded, block update
-        String targetStatus = "REJECTED".equals(stall.getStatus()) ? "PENDING" : incomingStatus;
-        boolean sameName = stallNameTrim.equals(stall.getStallName());
-        boolean sameStatus = targetStatus.equals(stall.getStatus());
-        boolean sameShort = shortDescTrim.equals(stall.getShortDescription());
-        boolean sameDetailed = detailedDescTrim.equals(stall.getDetailedDescription());
+        String targetStatus = incomingStatus;
+        boolean sameName = stallNameTrim.equals(product.getProductName());
+        boolean sameStatus = targetStatus.equals(product.getStatus());
+        boolean sameShort = shortDescTrim.equals(product.getShortDescription());
+        boolean sameDetailed = detailedDescTrim.equals(product.getDetailedDescription());
         boolean noNewImage = (stallImageFile == null || stallImageFile.isEmpty());
         if (sameName && sameStatus && sameShort && sameDetailed && noNewImage) {
             redirectAttributes.addFlashAttribute("errorMessage", "Không có thay đổi nào để cập nhật hoặc trường không được phép thay đổi!");
-            return "redirect:/seller/edit-stall/" + id;
+            return "redirect:/seller/edit-product/" + id;
         }
 
-        return shopService.editStall(user, id, stallNameTrim, incomingStatus, shortDescTrim, detailedDescTrim, stallImageFile, redirectAttributes);
+        return shopService.editProduct(user, id, stallNameTrim, incomingStatus, shortDescTrim, detailedDescTrim, stallImageFile, redirectAttributes);
     }
 
     @PostMapping("/seller/add-product/{stallId}")
@@ -582,11 +575,13 @@ public class ShopController {
         
         if (productName == null || productName.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Tên mặt hàng là bắt buộc!");
-            return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
+            Long parentProductId = productVariantRepository.findById(productId).map(ProductVariant::getProductId).orElse(0L);
+            return "redirect:/seller/product-management/" + parentProductId;
         }
         if (productPrice == null || productPrice.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             redirectAttributes.addFlashAttribute("errorMessage", "Giá tiền phải lớn hơn 0!");
-            return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
+            Long parentProductId = productVariantRepository.findById(productId).map(ProductVariant::getProductId).orElse(0L);
+            return "redirect:/seller/product-management/" + parentProductId;
         }
         
         return shopService.updateProduct(user, productId, productName, productPrice, redirectAttributes);

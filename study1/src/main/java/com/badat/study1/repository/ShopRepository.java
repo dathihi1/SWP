@@ -10,15 +10,14 @@ import java.util.Optional;
 
 public interface ShopRepository extends JpaRepository<Shop, Long> {
     Optional<Shop> findByUserId(Long userId);
-    Optional<Shop> findByCccd(String cccd);
     Optional<Shop> findByShopName(String shopName);
+    Optional<Shop> findByShopNameIgnoreCaseAndIsDelete(String shopName, Boolean isDelete);
     
     // Pagination methods
     Page<Shop> findByStatus(Shop.Status status, Pageable pageable);
     Page<Shop> findByIsDelete(Boolean isDelete, Pageable pageable);
     Page<Shop> findByStatusAndIsDelete(Shop.Status status, Boolean isDelete, Pageable pageable);
-    Page<Shop> findByShopNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
-        String shopName, String description, Pageable pageable);
+    Page<Shop> findByShopNameContainingIgnoreCase(String shopName, Pageable pageable);
     
     // List methods for dropdowns
     List<Shop> findByStatus(Shop.Status status);

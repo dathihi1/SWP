@@ -31,16 +31,16 @@ public class Warehouse {
     private String itemData;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant productVariant;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shop_id", nullable = false)
     private Shop shop;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stall_id", nullable = false)
-    private Stall stall;
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

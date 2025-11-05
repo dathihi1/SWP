@@ -27,12 +27,12 @@ public class OrderItem extends BaseEntity {
     @JoinColumn(name = "order_id", insertable = false, updatable = false)
     Order order;
 
-    @Column(name = "product_id", nullable = false)
-    Long productId;
+    @Column(name = "product_variant_id", nullable = false)
+    Long productVariantId;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false)
-    Product product;
+    @JoinColumn(name = "product_variant_id", insertable = false, updatable = false)
+    ProductVariant productVariant;
 
     @Column(name = "warehouse_id", nullable = false)
     Long warehouseId;
@@ -68,8 +68,8 @@ public class OrderItem extends BaseEntity {
     @Column(name = "shop_id", nullable = false)
     Long shopId;
 
-    @Column(name = "stall_id", nullable = false)
-    Long stallId;
+    @Column(name = "product_id", nullable = false)
+    Long productId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

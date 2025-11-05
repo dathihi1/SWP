@@ -4,7 +4,7 @@ import com.badat.study1.model.OrderItem;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.StallRepository;
+import com.badat.study1.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,8 +26,8 @@ import java.util.stream.Collectors;
 public class AnalyticsController {
 
     private final OrderItemRepository orderItemRepository;
-    private final StallRepository stallRepository;
     private final ShopRepository shopRepository;
+    private final ProductRepository productRepository;
 
     @GetMapping("/seller/sales")
     public ResponseEntity<Map<String, Object>> sales(@RequestParam(value = "month", required = false) String month,
@@ -120,16 +120,16 @@ public class AnalyticsController {
             return ResponseEntity.ok(Collections.emptyList());
         }
         
-        // Chỉ lấy gian hàng của shop hiện tại
-        var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId()).stream()
-                .map(stall -> {
-                    Map<String, Object> stallData = new HashMap<>();
-                    stallData.put("id", stall.getId());
-                    stallData.put("name", stall.getStallName());
-                    return stallData;
+        // Chỉ lấy sản phẩm của shop hiện tại
+        var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId()).stream()
+                .map(product -> {
+                    Map<String, Object> productData = new HashMap<>();
+                    productData.put("id", product.getId());
+                    productData.put("name", product.getProductName());
+                    return productData;
                 })
                 .toList();
-        return ResponseEntity.ok(stalls);
+        return ResponseEntity.ok(products);
     }
 
     @GetMapping("/seller/stall-sales")
@@ -154,10 +154,10 @@ public class AnalyticsController {
             return ResponseEntity.ok(Collections.emptyMap());
         }
 
-        // security: validate stall belongs to seller's shop if provided
+        // security: validate product belongs to seller's shop if provided
         if (stallId != null) {
-            var stall = stallRepository.findByIdAndShopIdAndIsDeleteFalse(stallId, userShop.get().getId());
-            if (stall.isEmpty()) {
+            var product = productRepository.findByIdAndShopIdAndIsDeleteFalse(stallId, userShop.get().getId());
+            if (product.isEmpty()) {
                 return ResponseEntity.ok(Collections.emptyMap());
             }
         }
@@ -165,10 +165,10 @@ public class AnalyticsController {
         LocalDateTime startDt = start.atStartOfDay();
         List<OrderItem> orderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
         
-        // Filter order items by date range and stall
+        // Filter order items by date range and product
         List<OrderItem> orderItemsInRange = orderItems.stream()
                 .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDt))
-                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getStallId()))
+                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getProductId()))
                 .collect(Collectors.toList());
         
         // Filter completed order items for revenue calculation
@@ -209,7 +209,7 @@ public class AnalyticsController {
         BigDecimal pendingSum = orderItems.stream()
                 .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.PENDING)
                 .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDt))
-                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getStallId()))
+                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getProductId()))
                 .filter(orderItem -> {
                     LocalDate od = orderItem.getCreatedAt().toLocalDate();
                     return !od.isBefore(start) && !od.isAfter(end);

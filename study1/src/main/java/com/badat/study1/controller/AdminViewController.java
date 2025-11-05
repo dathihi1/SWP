@@ -1,14 +1,14 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
-import com.badat.study1.model.Stall;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.StallRepository;
+import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.WithdrawRequestRepository;
 import com.badat.study1.repository.AuditLogRepository;
+import com.badat.study1.model.Product;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -41,7 +41,7 @@ import java.util.ArrayList;
 public class AdminViewController {
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
-    private final StallRepository stallRepository;
+    private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final WithdrawRequestRepository withdrawRequestRepository;
@@ -148,26 +148,26 @@ public class AdminViewController {
             .collect(Collectors.toList());
         model.addAttribute("topSellers", topSellers);
 
-        Map<Long, BigDecimal> revenueByStall = new java.util.HashMap<>();
-        Map<Long, java.util.Set<Long>> ordersByStallDistinct = new java.util.HashMap<>();
+        Map<Long, BigDecimal> revenueByProduct = new java.util.HashMap<>();
+        Map<Long, java.util.Set<Long>> ordersByProductDistinct = new java.util.HashMap<>();
         for (var item : completedItems) {
-            Long stallId = item.getStallId();
-            revenueByStall.put(stallId, revenueByStall.getOrDefault(stallId, BigDecimal.ZERO)
+            Long productId = item.getProductId();
+            revenueByProduct.put(productId, revenueByProduct.getOrDefault(productId, BigDecimal.ZERO)
                 .add(item.getTotalAmount() != null ? item.getTotalAmount() : BigDecimal.ZERO));
-            ordersByStallDistinct.computeIfAbsent(stallId, k -> new java.util.HashSet<>()).add(item.getOrderId());
+            ordersByProductDistinct.computeIfAbsent(productId, k -> new java.util.HashSet<>()).add(item.getOrderId());
         }
-        List<Map<String, Object>> topStalls = revenueByStall.entrySet().stream()
+        List<Map<String, Object>> topStalls = revenueByProduct.entrySet().stream()
             .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
             .limit(5)
             .map(e -> {
-                Long stallId = e.getKey();
-                var stallOpt = stallRepository.findById(stallId);
-                String stallName = stallOpt.map(Stall::getStallName).orElse("Stall " + stallId);
+                Long productId = e.getKey();
+                var productOpt = productRepository.findById(productId);
+                String productName = productOpt.map(Product::getProductName).orElse("Product " + productId);
                 Map<String, Object> m = new java.util.HashMap<>();
-                m.put("stallId", stallId);
-                m.put("stallName", stallName);
+                m.put("stallId", productId);
+                m.put("stallName", productName);
                 m.put("revenue", e.getValue());
-                m.put("orders", (long) ordersByStallDistinct.getOrDefault(stallId, java.util.Collections.emptySet()).size());
+                m.put("orders", (long) ordersByProductDistinct.getOrDefault(productId, java.util.Collections.emptySet()).size());
                 return m;
             })
             .collect(Collectors.toList());
@@ -192,20 +192,19 @@ public class AdminViewController {
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
         model.addAttribute("user", user);
-        model.addAttribute("pendingStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("PENDING"));
-        model.addAttribute("approvedStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("CLOSED"));
-        model.addAttribute("rejectedStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("REJECTED"));
-        List<Stall> historyStalls = new java.util.ArrayList<>();
-        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("CLOSED"));
-        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("OPEN"));
-        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("REJECTED"));
-        historyStalls.sort((a, b) -> {
-            if (a.getApprovedAt() == null && b.getApprovedAt() == null) return 0;
-            if (a.getApprovedAt() == null) return 1;
-            if (b.getApprovedAt() == null) return -1;
-            return b.getApprovedAt().compareTo(a.getApprovedAt());
+        model.addAttribute("pendingStalls", productRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("OPEN"));
+        model.addAttribute("approvedStalls", productRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("CLOSED"));
+        model.addAttribute("rejectedStalls", java.util.Collections.emptyList());
+        List<Product> historyProducts = new java.util.ArrayList<>();
+        historyProducts.addAll(productRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("CLOSED"));
+        historyProducts.addAll(productRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("OPEN"));
+        historyProducts.sort((a, b) -> {
+            if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+            if (a.getCreatedAt() == null) return 1;
+            if (b.getCreatedAt() == null) return -1;
+            return b.getCreatedAt().compareTo(a.getCreatedAt());
         });
-        model.addAttribute("historyStalls", historyStalls);
+        model.addAttribute("historyStalls", historyProducts);
         java.util.List<User> sellers = userRepository.findByRole(User.Role.SELLER);
         for (User seller : sellers) {
             if (seller.getStatus() == null) {
@@ -234,7 +233,7 @@ public class AdminViewController {
                     .count();
                 var shop = shopRepository.findByUserId(seller.getId()).orElse(null);
                 String shopName = shop != null ? shop.getShopName() : "Chưa có shop";
-                long stallsCount = shop != null ? stallRepository.countByShopIdAndIsDeleteFalse(shop.getId()) : 0;
+                long productsCount = shop != null ? productRepository.countByShopIdAndIsDeleteFalse(shop.getId()) : 0;
                 Map<String, Object> sellerData = new java.util.HashMap<>();
                 sellerData.put("seller", seller);
                 sellerData.put("shop", shop);
@@ -242,7 +241,7 @@ public class AdminViewController {
                 sellerData.put("totalRevenue", totalRevenue);
                 sellerData.put("totalOrders", totalOrders);
                 sellerData.put("completedOrders", completedOrdersCount);
-                sellerData.put("stallsCount", stallsCount);
+                sellerData.put("stallsCount", productsCount);
                 return sellerData;
             })
             .collect(Collectors.toList());
@@ -295,18 +294,14 @@ public class AdminViewController {
             return "redirect:/";
         }
         try {
-            Stall stall = stallRepository.findById(stallId).orElse(null);
-            if (stall == null) {
+            Product product = productRepository.findById(stallId).orElse(null);
+            if (product == null) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
                 return "redirect:/admin/stalls";
             }
-            stall.setStatus("CLOSED");
-            stall.setActive(false);
-            stall.setApprovedAt(Instant.now());
-            stall.setApprovedBy(user.getId());
-            stall.setApprovalReason(reason);
-            stallRepository.save(stall);
-            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được duyệt thành công!");
+            product.setStatus("OPEN");
+            productRepository.save(product);
+            redirectAttributes.addFlashAttribute("successMessage", "Cập nhật trạng thái sản phẩm thành OPEN thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi duyệt gian hàng!");
         }
@@ -334,18 +329,14 @@ public class AdminViewController {
             return "redirect:/";
         }
         try {
-            Stall stall = stallRepository.findById(stallId).orElse(null);
-            if (stall == null) {
+            Product product = productRepository.findById(stallId).orElse(null);
+            if (product == null) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
                 return "redirect:/admin/stalls";
             }
-            stall.setStatus("REJECTED");
-            stall.setActive(false);
-            stall.setApprovedAt(Instant.now());
-            stall.setApprovedBy(user.getId());
-            stall.setApprovalReason(reason);
-            stallRepository.save(stall);
-            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã bị từ chối!");
+            product.setStatus("CLOSED");
+            productRepository.save(product);
+            redirectAttributes.addFlashAttribute("successMessage", "Cập nhật trạng thái sản phẩm thành CLOSED thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi từ chối gian hàng!");
         }
@@ -360,11 +351,11 @@ public class AdminViewController {
     @GetMapping("/admin/stalls/{id}/image")
     public ResponseEntity<byte[]> getStallImage(@PathVariable("id") Long stallId) {
         try {
-            Stall stall = stallRepository.findById(stallId).orElse(null);
-            if (stall == null || stall.getStallImageData() == null || stall.getStallImageData().length == 0) {
+            Product product = productRepository.findById(stallId).orElse(null);
+            if (product == null || product.getProductImageData() == null || product.getProductImageData().length == 0) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            byte[] imageBytes = stall.getStallImageData();
+            byte[] imageBytes = product.getProductImageData();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.IMAGE_JPEG);
             headers.setCacheControl("max-age=3600, must-revalidate");

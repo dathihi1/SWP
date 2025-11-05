@@ -7,10 +7,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 public interface ShopService {
     String sellerShopPage(User user, Model model);
-    String sellerProductsPage(User user, Model model);
-    String stallManagement(User user, Model model);
-    String addStallPage(User user, Model model);
-    String editStallPage(User user, Long stallId, Model model);
+    String productManagementOverview(User user, Model model);
+    String addProductPage(User user, Model model);
+    String editProductPage(User user, Long productId, Model model);
     String productManagementPage(User user, Long stallId, Model model);
     String addQuantityPage(User user, Long productId, int page, Model model);
     String ordersPage(User user, int page, String status, Long stallId, Long productId, String dateFrom, String dateTo, Model model);
@@ -20,11 +19,10 @@ public interface ShopService {
     ResponseEntity<?> markReviewsAsRead(User user, Long stallId);
     String replyToReview(User user, Long reviewId, String sellerReply, RedirectAttributes redirectAttributes);
 
-    String addStall(User user,
+    String addProduct(User user,
                     String stallName,
-                    String businessType,
                     String stallCategory,
-                    Double discount,
+                    String productSubcategory,
                     String shortDescription,
                     String detailedDescription,
                     org.springframework.web.multipart.MultipartFile stallImageFile,
@@ -32,7 +30,7 @@ public interface ShopService {
                     String isCropped,
                     RedirectAttributes redirectAttributes);
 
-    String editStall(User user,
+    String editProduct(User user,
                      Long id,
                      String stallName,
                      String status,

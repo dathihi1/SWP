@@ -1,21 +1,20 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.AuditLog;
-import com.badat.study1.model.Stall;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.model.WalletHistory;
 import com.badat.study1.model.Product;
 import com.badat.study1.model.Review;
-import com.badat.study1.model.ApiCallLog;
 import com.badat.study1.model.UserActivityLog;
 import com.badat.study1.repository.AuditLogRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.repository.ProductVariantRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
+import com.badat.study1.model.ProductVariant;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.repository.WarehouseRepository;
@@ -26,7 +25,6 @@ import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import java.time.LocalDateTime;
-import com.badat.study1.dto.response.AuditLogResponse;
 import com.badat.study1.dto.response.UserActivityLogResponse;
 import com.badat.study1.util.PaginationValidator;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +38,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -67,8 +64,8 @@ import java.util.Locale;
 public class ViewController {
     private final WalletRepository walletRepository;
     private final ShopRepository shopRepository;
-    private final StallRepository stallRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final UploadHistoryRepository uploadHistoryRepository;
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
@@ -164,38 +161,38 @@ public class ViewController {
             model.addAttribute("userRole", "USER");
         }
 
-        // Load top 8 stalls with highest product counts for homepage preview
+        // Load top 8 products with highest product variant counts for homepage preview
         try {
-            var activeStalls = stallRepository.findByStatusAndIsDeleteFalse("OPEN");
+            var activeProducts = productRepository.findByStatusAndIsDeleteFalse("OPEN");
             List<Map<String, Object>> stallCards = new ArrayList<>();
             
-            // Calculate product counts for all stalls
+            // Calculate product variant counts for all products
             List<Map<String, Object>> stallsWithCounts = new ArrayList<>();
-            for (Stall stall : activeStalls) {
+            for (Product product : activeProducts) {
                 Map<String, Object> vm = new HashMap<>();
-                vm.put("stallId", stall.getId());
-                vm.put("stallName", stall.getStallName());
-                vm.put("stallCategory", stall.getStallCategory());
+                vm.put("stallId", product.getId());
+                vm.put("stallName", product.getProductName());
+                vm.put("stallCategory", product.getProductCategory());
 
-                // Compute product count by counting warehouse items (not locked, not deleted)
-                int totalStock = (int) warehouseRepository.countAvailableItemsByStallId(stall.getId());
+                // Compute product variant count by counting warehouse items (not locked, not deleted)
+                int totalStock = (int) warehouseRepository.countAvailableItemsByProductId(product.getId());
                 vm.put("productCount", totalStock);
                 
-                // Calculate price range from available products
-                var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
-                if (!products.isEmpty()) {
-                    var availableProducts = products.stream()
-                            .filter(product -> product.getQuantity() != null && product.getQuantity() > 0)
+                // Calculate price range from available product variants
+                var productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(product.getId());
+                if (!productVariants.isEmpty()) {
+                    var availableProductVariants = productVariants.stream()
+                            .filter(pv -> pv.getQuantity() != null && pv.getQuantity() > 0)
                             .collect(Collectors.toList());
                     
-                    if (!availableProducts.isEmpty()) {
-                        BigDecimal minPrice = availableProducts.stream()
-                                .map(Product::getPrice)
+                    if (!availableProductVariants.isEmpty()) {
+                        BigDecimal minPrice = availableProductVariants.stream()
+                                .map(ProductVariant::getPrice)
                                 .min(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
                         
-                        BigDecimal maxPrice = availableProducts.stream()
-                                .map(Product::getPrice)
+                        BigDecimal maxPrice = availableProductVariants.stream()
+                                .map(ProductVariant::getPrice)
                                 .max(BigDecimal::compareTo)
                                 .orElse(BigDecimal.ZERO);
                         
@@ -216,15 +213,15 @@ public class ViewController {
                 }
 
                 // Resolve shop name
-                shopRepository.findById(stall.getShopId())
+                shopRepository.findById(product.getShopId())
                         .ifPresent(shop -> vm.put("shopName", shop.getShopName()));
                 if (!vm.containsKey("shopName")) {
                     vm.put("shopName", "Unknown Shop");
                 }
 
-                // Calculate average rating for the stall
+                // Calculate average rating for the product
                 try {
-                    var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stall.getId());
+                    var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(product.getId());
                     if (!reviews.isEmpty()) {
                         double avgRating = reviews.stream()
                                 .mapToInt(Review::getRating)
@@ -237,14 +234,14 @@ public class ViewController {
                         vm.put("reviewCount", 0);
                     }
                 } catch (Exception e) {
-                    log.warn("Error calculating average rating for stall {}: {}", stall.getId(), e.getMessage());
+                    log.warn("Error calculating average rating for product {}: {}", product.getId(), e.getMessage());
                     vm.put("averageRating", 0.0);
                     vm.put("reviewCount", 0);
                 }
 
                 // Always set imageBase64 key, even if null
-                if (stall.getStallImageData() != null && stall.getStallImageData().length > 0) {
-                    String base64 = Base64.getEncoder().encodeToString(stall.getStallImageData());
+                if (product.getProductImageData() != null && product.getProductImageData().length > 0) {
+                    String base64 = Base64.getEncoder().encodeToString(product.getProductImageData());
                     vm.put("imageBase64", base64);
                 } else {
                     vm.put("imageBase64", null);
@@ -286,8 +283,6 @@ public class ViewController {
             // Add empty stalls list to prevent template errors
             model.addAttribute("stalls", new ArrayList<>());
         }
-
-        log.info("Returning home template");
         return "home";
     }
 

@@ -1,13 +1,13 @@
 package com.badat.study1.service.impl;
 
 import com.badat.study1.model.Product;
-import com.badat.study1.model.Stall;
+import com.badat.study1.model.ProductVariant;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.repository.ProductVariantRepository;
 import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.WarehouseRepository;
 import com.badat.study1.service.ShopService;
@@ -16,6 +16,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.Map;
+import com.badat.study1.model.OrderItem;
+import com.badat.study1.model.Order;
+import com.badat.study1.dto.OrderSummary;
 import org.springframework.ui.Model;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -24,27 +29,32 @@ import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Objects;
 
 @Service
 public class ShopServiceImpl implements ShopService {
     private final ShopRepository shopRepository;
-    private final StallRepository stallRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final UploadHistoryRepository uploadHistoryRepository;
     private final WarehouseRepository warehouseRepository;
     private final OrderItemRepository orderItemRepository;
     private final ReviewRepository reviewRepository;
 
     public ShopServiceImpl(ShopRepository shopRepository,
-                           StallRepository stallRepository,
                            ProductRepository productRepository,
+                           ProductVariantRepository productVariantRepository,
                            UploadHistoryRepository uploadHistoryRepository,
                            WarehouseRepository warehouseRepository,
                            OrderItemRepository orderItemRepository,
                            ReviewRepository reviewRepository) {
         this.shopRepository = shopRepository;
-        this.stallRepository = stallRepository;
         this.productRepository = productRepository;
+        this.productVariantRepository = productVariantRepository;
         this.uploadHistoryRepository = uploadHistoryRepository;
         this.warehouseRepository = warehouseRepository;
         this.orderItemRepository = orderItemRepository;
@@ -52,76 +62,76 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public String stallManagement(User user, Model model) {
+    public String productManagementOverview(User user, Model model) {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
 
         shopRepository.findByUserId(user.getId()).ifPresent(shop -> {
-            var stalls = stallRepository.findByShopIdAndIsDeleteFalse(shop.getId());
-            stalls.forEach(stall -> {
-                var products = productRepository.findByStallIdAndIsDeleteFalse(stall.getId());
-                int totalStock = (int) warehouseRepository.countAvailableItemsByStallId(stall.getId());
-                stall.setProductCount(totalStock);
-                if (!products.isEmpty()) {
-                    var availableProducts = products.stream()
-                            .filter(product -> product.getQuantity() != null && product.getQuantity() > 0)
+            var products = productRepository.findByShopIdAndIsDeleteFalse(shop.getId());
+            products.forEach(product -> {
+                var productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(product.getId());
+                int totalStock = (int) warehouseRepository.countAvailableItemsByProductId(product.getId());
+                product.setProductVariantCount(totalStock);
+                if (!productVariants.isEmpty()) {
+                    var availableProductVariants = productVariants.stream()
+                            .filter(pv -> pv.getQuantity() != null && pv.getQuantity() > 0)
                             .collect(Collectors.toList());
-                    if (!availableProducts.isEmpty()) {
-                        BigDecimal minPrice = availableProducts.stream().map(Product::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
-                        BigDecimal maxPrice = availableProducts.stream().map(Product::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+                    if (!availableProductVariants.isEmpty()) {
+                        BigDecimal minPrice = availableProductVariants.stream().map(ProductVariant::getPrice).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+                        BigDecimal maxPrice = availableProductVariants.stream().map(ProductVariant::getPrice).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
                         NumberFormat viNumber = NumberFormat.getNumberInstance(Locale.US);
                         viNumber.setGroupingUsed(true);
                         String minStr = viNumber.format(minPrice.setScale(0, RoundingMode.HALF_UP));
                         String maxStr = viNumber.format(maxPrice.setScale(0, RoundingMode.HALF_UP));
                         if (minPrice.equals(maxPrice)) {
-                            stall.setPriceRange(minStr + " VND");
+                            product.setPriceRange(minStr + " VND");
                         } else {
-                            stall.setPriceRange(minStr + " VND - " + maxStr + " VND");
+                            product.setPriceRange(minStr + " VND - " + maxStr + " VND");
                         }
                     } else {
-                        stall.setPriceRange("Hết hàng");
+                        product.setPriceRange("-");
                     }
                 } else {
-                    stall.setPriceRange("Chưa có sản phẩm");
+                    product.setPriceRange("-");
                 }
             });
-            model.addAttribute("stalls", stalls);
+            model.addAttribute("products", products);
             long totalProducts = productRepository.countByShopIdAndIsDeleteFalse(shop.getId());
             model.addAttribute("totalProducts", totalProducts);
         });
 
-        return "seller/stall-management";
+        return "seller/product-management";
     }
 
     @Override
-    public String addStallPage(User user, Model model) {
+    public String addProductPage(User user, Model model) {
         boolean hasShop = shopRepository.findByUserId(user.getId()).isPresent();
         if (!hasShop) {
-            return "redirect:/seller/stall-management";
+            return "redirect:/seller/product-management";
         }
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        return "seller/add-stall";
+        return "seller/add-product";
     }
 
     @Override
-    public String editStallPage(User user, Long stallId, Model model) {
+    public String editProductPage(User user, Long productId, Model model) {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        var stall = stallRepository.findById(stallId);
-        if (stall.isEmpty()) {
-            return "redirect:/seller/stall-management";
+        var product = productRepository.findById(productId);
+        if (product.isEmpty()) {
+            return "redirect:/seller/product-management";
         }
         shopRepository.findByUserId(user.getId()).ifPresent(shop -> {
-            if (!stall.get().getShopId().equals(shop.getId())) {
+            if (!product.get().getShopId().equals(shop.getId())) {
                 // silently ignore, redirect handled below
             }
         });
-        model.addAttribute("stall", stall.get());
-        return "seller/edit-stall";
+        model.addAttribute("stall", product.get());
+        return "seller/edit-product";
     }
 
     @Override
@@ -129,24 +139,24 @@ public class ShopServiceImpl implements ShopService {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        var stallOptional = stallRepository.findById(stallId);
-        if (stallOptional.isEmpty()) {
-            return "redirect:/seller/stall-management";
+        var productOptional = productRepository.findById(stallId);
+        if (productOptional.isEmpty()) {
+            return "redirect:/seller/product-management";
         }
-        Stall stall = stallOptional.get();
+        Product product = productOptional.get();
         var userShop = shopRepository.findByUserId(user.getId());
-        if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
-            return "redirect:/seller/stall-management";
+        if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
+            return "redirect:/seller/product-management";
         }
-        model.addAttribute("stall", stall);
-        var products = productRepository.findByStallIdAndIsDeleteFalse(stallId);
-        for (Product p : products) {
-            long stock = warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(p.getId());
-            p.setQuantity((int) stock);
-            p.setStatus(stock > 0 ? Product.Status.AVAILABLE : Product.Status.UNAVAILABLE);
+        model.addAttribute("stall", product);
+        var productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(stallId);
+        for (ProductVariant pv : productVariants) {
+            long stock = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(pv.getId());
+            pv.setQuantity((int) stock);
+            pv.setStatus(stock > 0 ? ProductVariant.Status.AVAILABLE : ProductVariant.Status.UNAVAILABLE);
         }
-        model.addAttribute("products", products);
-        return "seller/product-management";
+        model.addAttribute("products", productVariants);
+        return "seller/product-variant-management";
     }
 
     @Override
@@ -156,19 +166,18 @@ public class ShopServiceImpl implements ShopService {
         model.addAttribute("userRole", user.getRole().name());
         var productOptional = productRepository.findById(productId);
         if (productOptional.isEmpty()) {
-            return "redirect:/seller/stall-management";
+            return "redirect:/seller/product-management";
         }
         var product = productOptional.get();
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
-            return "redirect:/seller/stall-management";
+            return "redirect:/seller/product-management";
         }
-        var stallOptional = stallRepository.findById(product.getStallId());
-        if (stallOptional.isEmpty() || !stallOptional.get().getShopId().equals(userShop.get().getId())) {
-            return "redirect:/seller/stall-management";
+        if (!product.getShopId().equals(userShop.get().getId())) {
+            return "redirect:/seller/product-management";
         }
         model.addAttribute("product", product);
-        model.addAttribute("stall", stallOptional.get());
+        model.addAttribute("stall", product);
         int validatedPage = Math.max(0, page);
         Pageable pageable = PageRequest.of(validatedPage, 5);
         Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
@@ -193,59 +202,59 @@ public class ShopServiceImpl implements ShopService {
         model.addAttribute("userRole", user.getRole().name());
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
-            return "redirect:/seller/stall-management";
+            return "redirect:/seller/product-management";
         }
-        var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         int validatedPage = Math.max(0, page);
-        java.util.List<com.badat.study1.model.OrderItem> allOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
-        java.util.List<com.badat.study1.model.OrderItem> filteredOrderItems = allOrderItems.stream()
+        List<OrderItem> allOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
+        List<OrderItem> filteredOrderItems = allOrderItems.stream()
                 .filter(orderItem -> status == null || status.isEmpty() || orderItem.getStatus().name().equals(status.toUpperCase()))
-                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getWarehouse().getStall().getId()))
+                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getWarehouse().getProduct().getId()))
                 .filter(orderItem -> productId == null || productId.equals(orderItem.getProductId()))
                 .filter(orderItem -> {
                     if (dateFrom == null || dateFrom.isEmpty()) return true;
-                    return orderItem.getCreatedAt().toLocalDate().isAfter(java.time.LocalDate.parse(dateFrom).minusDays(1));
+                return orderItem.getCreatedAt().toLocalDate().isAfter(LocalDate.parse(dateFrom).minusDays(1));
                 })
                 .filter(orderItem -> {
                     if (dateTo == null || dateTo.isEmpty()) return true;
-                    return orderItem.getCreatedAt().toLocalDate().isBefore(java.time.LocalDate.parse(dateTo).plusDays(1));
+                return orderItem.getCreatedAt().toLocalDate().isBefore(LocalDate.parse(dateTo).plusDays(1));
                 })
-                .collect(java.util.stream.Collectors.toList());
+            .collect(Collectors.toList());
         // Group items by order
-        java.util.Map<com.badat.study1.model.Order, java.util.List<com.badat.study1.model.OrderItem>> byOrder = new java.util.LinkedHashMap<>();
-        for (com.badat.study1.model.OrderItem oi : filteredOrderItems) {
-            byOrder.computeIfAbsent(oi.getOrder(), k -> new java.util.ArrayList<>()).add(oi);
+        Map<Order, List<OrderItem>> byOrder = new LinkedHashMap<>();
+        for (OrderItem oi : filteredOrderItems) {
+            byOrder.computeIfAbsent(oi.getOrder(), k -> new ArrayList<>()).add(oi);
         }
         // Build per-order summaries
-        java.util.List<java.util.Map<String, Object>> groupedOrders = new java.util.ArrayList<>();
+        List<OrderSummary> groupedOrders = new ArrayList<>();
         for (var entry : byOrder.entrySet()) {
-            com.badat.study1.model.Order order = entry.getKey();
-            java.util.List<com.badat.study1.model.OrderItem> items = entry.getValue();
-            java.math.BigDecimal totalAmount = items.stream()
-                    .map(com.badat.study1.model.OrderItem::getTotalAmount)
-                    .filter(java.util.Objects::nonNull)
-                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            Order order = entry.getKey();
+            List<OrderItem> items = entry.getValue();
+            BigDecimal totalAmount = items.stream()
+                    .map(OrderItem::getTotalAmount)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             int totalQuantity = items.stream()
-                    .map(com.badat.study1.model.OrderItem::getQuantity)
-                    .filter(java.util.Objects::nonNull)
+                    .map(OrderItem::getQuantity)
+                    .filter(Objects::nonNull)
                     .mapToInt(Integer::intValue)
                     .sum();
-            String firstProductName = items.isEmpty() ? "" : items.get(0).getProduct().getName();
-            String stallName = items.isEmpty() ? "" : items.get(0).getWarehouse().getStall().getStallName();
-            java.math.BigDecimal firstUnitPrice = items.isEmpty() ? java.math.BigDecimal.ZERO : items.get(0).getUnitPrice();
+            String firstProductName = items.isEmpty() ? "" : (items.get(0).getProductVariant() != null ? items.get(0).getProductVariant().getName() : "N/A");
+            String stallName = items.isEmpty() ? "" : (items.get(0).getWarehouse().getProduct() != null ? items.get(0).getWarehouse().getProduct().getProductName() : "N/A");
+            BigDecimal firstUnitPrice = items.isEmpty() ? BigDecimal.ZERO : items.get(0).getUnitPrice();
             var firstStatus = items.isEmpty() ? null : items.get(0).getStatus();
-            java.time.LocalDateTime createdAt = items.isEmpty() ? null : items.get(0).getCreatedAt();
-            java.util.Map<String, Object> summary = new java.util.HashMap<>();
-            summary.put("order", order);
-            summary.put("items", items);
-            summary.put("totalAmount", totalAmount);
-            summary.put("totalQuantity", totalQuantity);
-            summary.put("firstProductName", firstProductName);
-            summary.put("stallName", stallName);
-            summary.put("unitPrice", firstUnitPrice);
-            summary.put("status", firstStatus);
-            summary.put("createdAt", createdAt);
+            LocalDateTime createdAt = items.isEmpty() ? null : items.get(0).getCreatedAt();
+            var summary = OrderSummary.builder()
+                    .order(order)
+                    .items(items)
+                    .totalAmount(totalAmount)
+                    .totalQuantity(totalQuantity)
+                    .firstProductName(firstProductName)
+                    .stallName(stallName)
+                    .unitPrice(firstUnitPrice)
+                    .status(firstStatus)
+                    .createdAt(createdAt)
+                    .build();
             groupedOrders.add(summary);
         }
         // Pagination on grouped orders
@@ -257,12 +266,12 @@ public class ShopServiceImpl implements ShopService {
         }
         int start = validatedPage * pageSize;
         int end = Math.min(start + pageSize, totalElements);
-        java.util.List<java.util.Map<String, Object>> pageContent = groupedOrders.subList(start, end);
-        model.addAttribute("stalls", stalls);
+        List<OrderSummary> pageContent = groupedOrders.subList(start, end);
+        model.addAttribute("stalls", products);
         model.addAttribute("products", products);
         model.addAttribute("orders", pageContent);
         // Filters
-        model.addAttribute("orderStatuses", com.badat.study1.model.OrderItem.Status.values());
+        model.addAttribute("orderStatuses", OrderItem.Status.values());
         model.addAttribute("selectedStatus", status);
         model.addAttribute("selectedStallId", stallId);
         model.addAttribute("selectedProductId", productId);
@@ -282,36 +291,31 @@ public class ShopServiceImpl implements ShopService {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        model.addAttribute("currentPage", page);
         // Load stats
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
-            return "redirect:/seller/stall-management";
+            return "redirect:/seller/product-management";
         }
-        var stalls = stallRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
+        var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         var stallStats = new java.util.ArrayList<java.util.Map<String, Object>>();
-        for (var stall : stalls) {
-            var stallReviews = reviewRepository.findByStallIdAndIsDeleteFalse(stall.getId());
+        for (var product : products) {
+            var productReviews = reviewRepository.findByProductIdAndIsDeleteFalse(product.getId());
             double averageRating = 0.0;
-            int reviewCount = stallReviews.size();
+            int reviewCount = productReviews.size();
             if (reviewCount > 0) {
-                averageRating = stallReviews.stream().mapToInt(com.badat.study1.model.Review::getRating).average().orElse(0.0);
+                averageRating = productReviews.stream().mapToInt(com.badat.study1.model.Review::getRating).average().orElse(0.0);
             }
-            int unreadCount = (int) stallReviews.stream().filter(review -> !review.getIsRead()).count();
+            int unreadCount = (int) productReviews.stream().filter(review -> !review.getIsRead()).count();
             var stallStat = new java.util.HashMap<String, Object>();
-            stallStat.put("stall", stall);
+            stallStat.put("stall", product);
             stallStat.put("averageRating", Math.round(averageRating * 10.0) / 10.0);
             stallStat.put("reviewCount", reviewCount);
             stallStat.put("unreadCount", unreadCount);
             stallStats.add(stallStat);
         }
-        Pageable pageable = PageRequest.of(page, 10);
+        Pageable pageable = PageRequest.of(0, 1000);
         Page<com.badat.study1.model.Review> reviewsPage = reviewRepository.findBySellerIdAndShopIdAndIsDeleteFalse(user.getId(), userShop.get().getId(), pageable);
         model.addAttribute("reviews", reviewsPage.getContent());
-        model.addAttribute("totalPages", reviewsPage.getTotalPages());
-        model.addAttribute("totalElements", reviewsPage.getTotalElements());
-        model.addAttribute("hasNext", reviewsPage.hasNext());
-        model.addAttribute("hasPrevious", reviewsPage.hasPrevious());
         model.addAttribute("stallStats", stallStats);
         return "seller/reviews";
     }
@@ -321,31 +325,25 @@ public class ShopServiceImpl implements ShopService {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        return "seller/shop";
+        return "seller/gross-sales";
     }
 
-    @Override
-    public String sellerProductsPage(User user, Model model) {
-        model.addAttribute("username", user.getUsername());
-        model.addAttribute("isAuthenticated", true);
-        model.addAttribute("userRole", user.getRole().name());
-        return "seller/shop";
-    }
+    // Removed duplicate products page; consolidated under productManagementOverview
 
     @Override
     public ResponseEntity<?> getReviewsByStall(User user, Long stallId) {
-        var stall = stallRepository.findById(stallId);
-        if (stall.isEmpty()) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Stall not found"));
+        var product = productRepository.findById(stallId);
+        if (product.isEmpty()) {
+            return ResponseEntity.status(404).body(java.util.Map.of("error", "Product not found"));
         }
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
             return ResponseEntity.status(404).body(java.util.Map.of("error", "Shop not found"));
         }
-        if (!stall.get().getShopId().equals(userShop.get().getId())) {
+        if (!product.get().getShopId().equals(userShop.get().getId())) {
             return ResponseEntity.status(403).body(java.util.Map.of("error", "Access denied"));
         }
-        var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stallId);
+        var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(stallId);
         var reviewDTOs = reviews.stream().map(review -> {
             var dto = new java.util.HashMap<String, Object>();
             dto.put("id", review.getId());
@@ -358,7 +356,7 @@ public class ShopServiceImpl implements ShopService {
             buyerInfo.put("username", review.getBuyer().getUsername());
             dto.put("buyer", buyerInfo);
             var productInfo = new java.util.HashMap<String, Object>();
-            productInfo.put("name", review.getProduct().getName());
+            productInfo.put("name", review.getProductVariant() != null ? review.getProductVariant().getName() : "N/A");
             dto.put("product", productInfo);
             return dto;
         }).collect(java.util.stream.Collectors.toList());
@@ -367,18 +365,18 @@ public class ShopServiceImpl implements ShopService {
 
     @Override
     public ResponseEntity<?> markReviewsAsRead(User user, Long stallId) {
-        var stall = stallRepository.findById(stallId);
-        if (stall.isEmpty()) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Stall not found"));
+        var product = productRepository.findById(stallId);
+        if (product.isEmpty()) {
+            return ResponseEntity.status(404).body(java.util.Map.of("error", "Product not found"));
         }
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
             return ResponseEntity.status(404).body(java.util.Map.of("error", "Shop not found"));
         }
-        if (!stall.get().getShopId().equals(userShop.get().getId())) {
+        if (!product.get().getShopId().equals(userShop.get().getId())) {
             return ResponseEntity.status(403).body(java.util.Map.of("error", "Access denied"));
         }
-        var reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stallId);
+        var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(stallId);
         int updated = 0;
         for (var review : reviews) {
             if (!review.getIsRead()) {
@@ -419,11 +417,10 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public String addStall(User user,
+    public String addProduct(User user,
                            String stallName,
-                           String businessType,
                            String stallCategory,
-                           Double discount,
+                           String productSubcategory,
                            String shortDescription,
                            String detailedDescription,
                            org.springframework.web.multipart.MultipartFile stallImageFile,
@@ -434,41 +431,34 @@ public class ShopServiceImpl implements ShopService {
         try {
             var userShop = shopRepository.findByUserId(user.getId()).orElse(null);
             if (userShop == null) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn chưa có shop. Vui lòng tạo shop trước khi tạo gian hàng!");
-                return "redirect:/seller/stall-management";
+                redirectAttributes.addFlashAttribute("errorMessage", "Bạn chưa có shop. Vui lòng tạo shop trước khi tạo sản phẩm!");
+                return "redirect:/seller/product-management";
             }
-            long currentStallCount = stallRepository.countByShopIdAndIsDeleteFalse(userShop.getId());
-            if (currentStallCount >= 5) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn đã đạt giới hạn tối đa 5 gian hàng. Không thể tạo thêm gian hàng mới!");
-                return "redirect:/seller/add-stall";
-            }
-            Stall stall = new Stall();
-            stall.setShopId(userShop.getId());
-            stall.setStallName(stallName);
-            stall.setBusinessType(businessType);
-            stall.setStallCategory(stallCategory);
-            stall.setDiscountPercentage(discount);
-            stall.setShortDescription(shortDescription);
-            stall.setDetailedDescription(detailedDescription);
+            Product product = new Product();
+            product.setShopId(userShop.getId());
+            product.setProductName(stallName);
+            product.setProductCategory(stallCategory);
+            product.setShortDescription(shortDescription);
+            product.setDetailedDescription(detailedDescription);
+            product.setProductSubcategory(productSubcategory);
             if (stallImageFile != null && !stallImageFile.isEmpty()) {
                 byte[] imageData = stallImageFile.getBytes();
-                stall.setStallImageData(imageData);
+                product.setProductImageData(imageData);
             }
-            stall.setStatus("PENDING");
-            stall.setActive(false);
-            stall.setCreatedAt(java.time.Instant.now());
-            stall.setDelete(false);
-            stallRepository.save(stall);
-            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được tạo thành công và đang chờ duyệt!");
-            return "redirect:/seller/stall-management";
+            product.setStatus("OPEN");
+            product.setCreatedAt(java.time.Instant.now());
+            product.setDelete(false);
+            productRepository.save(product);
+            redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được tạo thành công!");
+            return "redirect:/seller/product-management";
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi tạo gian hàng. Vui lòng thử lại!");
-            return "redirect:/seller/add-stall";
+            return "redirect:/seller/add-product";
         }
     }
 
     @Override
-    public String editStall(User user,
+    public String editProduct(User user,
                             Long id,
                             String stallName,
                             String status,
@@ -477,84 +467,69 @@ public class ShopServiceImpl implements ShopService {
                             org.springframework.web.multipart.MultipartFile stallImageFile,
                             RedirectAttributes redirectAttributes) {
         try {
-            var stallOptional = stallRepository.findById(id);
-            if (stallOptional.isEmpty()) {
+            var productOptional = productRepository.findById(id);
+            if (productOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            Stall stall = stallOptional.get();
+            Product product = productOptional.get();
             var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền sửa gian hàng này!");
-                return "redirect:/seller/stall-management";
-            }
-            if ("OPEN".equals(status)) {
-                long availableStock = warehouseRepository.countAvailableItemsByStallId(stall.getId());
-                if (availableStock <= 0) {
-                    redirectAttributes.addFlashAttribute("errorMessage", "Không thể mở gian hàng! Gian hàng phải có ít nhất 1 sản phẩm trong kho.");
-                    return "redirect:/seller/edit-stall/" + id;
-                }
-            }
+        if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền sửa gian hàng này!");
+            return "redirect:/seller/product-management";
+        }
+            // No stock gating: allow opening product regardless of current warehouse quantity
             // Apply updates (controller already validated no-op and readonly tampering)
-            stall.setStallName(stallName);
-            if ("REJECTED".equals(stall.getStatus())) {
-                // Controller enforces PENDING; reset review fields
-                stall.setStatus("PENDING");
-                stall.setActive(false);
-                stall.setApprovedAt(null);
-                stall.setApprovedBy(null);
-                stall.setApprovalReason(null);
-            } else {
-                stall.setStatus(status);
-            }
-            stall.setShortDescription(shortDescription);
-            stall.setDetailedDescription(detailedDescription);
+            product.setProductName(stallName);
+            product.setStatus(status);
+            product.setShortDescription(shortDescription);
+            product.setDetailedDescription(detailedDescription);
             if (stallImageFile != null && !stallImageFile.isEmpty()) {
                 try {
                     byte[] imageData = stallImageFile.getBytes();
-                    stall.setStallImageData(imageData);
+                    product.setProductImageData(imageData);
                 } catch (Exception e) {
                     redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi xử lý hình ảnh. Vui lòng thử lại!");
-                    return "redirect:/seller/edit-stall/" + id;
+                    return "redirect:/seller/edit-product/" + id;
                 }
             }
 
-            stallRepository.save(stall);
-            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được cập nhật thành công!");
+            productRepository.save(product);
+            redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được cập nhật thành công!");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!");
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi cập nhật sản phẩm. Vui lòng thử lại!");
         }
-        return "redirect:/seller/stall-management";
+        return "redirect:/seller/product-management";
     }
 
     @Override
     public String addProduct(User user, Long stallId, String productName, java.math.BigDecimal productPrice, RedirectAttributes redirectAttributes) {
         try {
-            var stallOptional = stallRepository.findById(stallId);
-            if (stallOptional.isEmpty()) {
+            var productOptional = productRepository.findById(stallId);
+            if (productOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            Stall stall = stallOptional.get();
+            Product parentProduct = productOptional.get();
             var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty() || !stall.getShopId().equals(userShop.get().getId())) {
+            if (userShop.isEmpty() || !parentProduct.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền thêm sản phẩm vào gian hàng này!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            Product product;
+            ProductVariant productVariant;
             String uniqueKey = "PROD_" + System.currentTimeMillis() + "_" + user.getId();
-            product = Product.builder()
-                    .shopId(stall.getShopId())
-                    .stallId(stallId)
+            productVariant = ProductVariant.builder()
+                    .shopId(parentProduct.getShopId())
+                    .productId(stallId)
                     .type("Khác")
                     .name(productName)
                     .description("")
                     .price(productPrice)
                     .quantity(0)
                     .uniqueKey(uniqueKey)
-                    .status(Product.Status.UNAVAILABLE)
+                    .status(ProductVariant.Status.UNAVAILABLE)
                     .build();
-            productRepository.save(product);
+            productVariantRepository.save(productVariant);
             redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được thêm thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi thêm sản phẩm. Vui lòng thử lại!");
@@ -565,55 +540,56 @@ public class ShopServiceImpl implements ShopService {
     @Override
     public String updateProductQuantity(User user, Long productId, Integer newQuantity, RedirectAttributes redirectAttributes) {
         try {
-            var productOptional = productRepository.findById(productId);
-            if (productOptional.isEmpty()) {
+            var productVariantOptional = productVariantRepository.findById(productId);
+            if (productVariantOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            Product product = productOptional.get();
+            ProductVariant productVariant = productVariantOptional.get();
             var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
+            if (userShop.isEmpty() || !productVariant.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền cập nhật sản phẩm này!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            product.setQuantity(newQuantity);
+            productVariant.setQuantity(newQuantity);
             if (newQuantity != null && newQuantity > 0) {
-                product.setStatus(Product.Status.AVAILABLE);
+                productVariant.setStatus(ProductVariant.Status.AVAILABLE);
             } else {
-                product.setStatus(Product.Status.UNAVAILABLE);
+                productVariant.setStatus(ProductVariant.Status.UNAVAILABLE);
             }
-            productRepository.save(product);
+            productVariantRepository.save(productVariant);
             redirectAttributes.addFlashAttribute("successMessage", "Cập nhật số lượng thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi cập nhật số lượng. Vui lòng thử lại!");
         }
-        Long stallId = productRepository.findById(productId).get().getStallId();
-        return "redirect:/seller/product-management/" + stallId;
+        Long parentProductId = productVariantRepository.findById(productId).map(ProductVariant::getProductId).orElse(null);
+        return "redirect:/seller/product-management/" + (parentProductId != null ? parentProductId : 0);
     }
 
     @Override
     public String updateProduct(User user, Long productId, String productName, java.math.BigDecimal productPrice, RedirectAttributes redirectAttributes) {
         try {
-            var productOptional = productRepository.findById(productId);
-            if (productOptional.isEmpty()) {
+            var productVariantOptional = productVariantRepository.findById(productId);
+            if (productVariantOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            Product product = productOptional.get();
+            ProductVariant productVariant = productVariantOptional.get();
             var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
+            if (userShop.isEmpty() || !productVariant.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền sửa sản phẩm này!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            product.setName(productName);
-            product.setPrice(productPrice);
-            product.setUpdatedAt(java.time.LocalDateTime.now());
-            productRepository.save(product);
+            productVariant.setName(productName);
+            productVariant.setPrice(productPrice);
+            productVariant.setUpdatedAt(java.time.LocalDateTime.now());
+            productVariantRepository.save(productVariant);
             redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được cập nhật thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi cập nhật sản phẩm. Vui lòng thử lại!");
         }
-        return "redirect:/seller/product-management/" + productRepository.findById(productId).get().getStallId();
+        Long parentProductId = productVariantRepository.findById(productId).map(ProductVariant::getProductId).orElse(null);
+        return "redirect:/seller/product-management/" + (parentProductId != null ? parentProductId : 0);
     }
 
     @Override
@@ -631,27 +607,27 @@ public class ShopServiceImpl implements ShopService {
                 redirectAttributes.addFlashAttribute("errorMessage", "File quá lớn! Vui lòng chọn file nhỏ hơn 1MB.");
                 return "redirect:/seller/add-quantity/" + productId;
             }
-            var productOptional = productRepository.findById(productId);
-            if (productOptional.isEmpty()) {
+            var productVariantOptional = productVariantRepository.findById(productId);
+            if (productVariantOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            Product product = productOptional.get();
+            ProductVariant productVariant = productVariantOptional.get();
             var userShop = shopRepository.findByUserId(user.getId());
             if (userShop.isEmpty()) {
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
-            Stall stall = stallRepository.findById(product.getStallId()).orElse(null);
-            if (stall == null || !stall.getShopId().equals(userShop.get().getId())) {
+            Product parentProduct = productRepository.findById(productVariant.getProductId()).orElse(null);
+            if (parentProduct == null || !parentProduct.getShopId().equals(userShop.get().getId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền cập nhật kho cho gian hàng này!");
-                return "redirect:/seller/stall-management";
+                return "redirect:/seller/product-management";
             }
             String content = new String(file.getBytes(), "UTF-8").trim();
             String[] lines = content.split("\\r?\\n");
             int successCount = 0;
             int failureCount = 0;
             StringBuilder resultDetails = new StringBuilder();
-            com.badat.study1.model.Warehouse.ItemType expectedType = determineItemTypeFromStall(stall.getStallCategory());
+            com.badat.study1.model.Warehouse.ItemType expectedType = determineItemTypeFromStall(parentProduct.getProductCategory());
             java.util.Set<String> processedItemsInFile = new java.util.HashSet<>();
             java.util.Set<String> processedItemKeys = new java.util.HashSet<>();
             for (int i = 0; i < lines.length; i++) {
@@ -762,9 +738,9 @@ public class ShopServiceImpl implements ShopService {
                         com.badat.study1.model.Warehouse warehouseItem = com.badat.study1.model.Warehouse.builder()
                                 .itemType(type)
                                 .itemData(itemData)
-                                .product(product)
+                                .productVariant(productVariant)
                                 .shop(userShop.get())
-                                .stall(stall)
+                                .product(parentProduct)
                                 .user(user)
                                 .build();
                         warehouseRepository.save(warehouseItem);
@@ -780,32 +756,32 @@ public class ShopServiceImpl implements ShopService {
                     resultDetails.append("Dòng ").append(i + 1).append(": Lỗi xử lý - ").append(ex.getMessage()).append("\n");
                 }
             }
-            long warehouseCount = productRepository.countWarehouseItemsByProductId(productId);
-            product.setQuantity((int) warehouseCount);
+            long warehouseCount = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productId);
+            productVariant.setQuantity((int) warehouseCount);
             if (warehouseCount > 0) {
-                product.setStatus(Product.Status.AVAILABLE);
+                productVariant.setStatus(ProductVariant.Status.AVAILABLE);
             } else {
-                product.setStatus(Product.Status.UNAVAILABLE);
+                productVariant.setStatus(ProductVariant.Status.UNAVAILABLE);
             }
-            productRepository.save(product);
+            productVariantRepository.save(productVariant);
             try {
                 if (userShop.isPresent()) {
-                    var allProducts = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
-                    for (Product shopProduct : allProducts) {
-                        long productWarehouseCount = productRepository.countWarehouseItemsByProductId(shopProduct.getId());
-                        shopProduct.setQuantity((int) productWarehouseCount);
-                        if (productWarehouseCount > 0) {
-                            shopProduct.setStatus(Product.Status.AVAILABLE);
+                    var allProductVariants = productVariantRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
+                    for (ProductVariant shopProductVariant : allProductVariants) {
+                        long productVariantWarehouseCount = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(shopProductVariant.getId());
+                        shopProductVariant.setQuantity((int) productVariantWarehouseCount);
+                        if (productVariantWarehouseCount > 0) {
+                            shopProductVariant.setStatus(ProductVariant.Status.AVAILABLE);
                         } else {
-                            shopProduct.setStatus(Product.Status.UNAVAILABLE);
+                            shopProductVariant.setStatus(ProductVariant.Status.UNAVAILABLE);
                         }
-                        productRepository.save(shopProduct);
+                        productVariantRepository.save(shopProductVariant);
                     }
                 }
             } catch (Exception ignore) {}
             try {
                 StringBuilder detailedResult = new StringBuilder();
-                detailedResult.append("Tên mặt hàng: ").append(product.getName()).append("\n");
+                detailedResult.append("Tên mặt hàng: ").append(productVariant.getName()).append("\n");
                 detailedResult.append("Tên file: ").append(file.getOriginalFilename()).append("\n");
                 detailedResult.append("Ngày upload: ").append(java.time.LocalDateTime.now().toString()).append("\n");
                 detailedResult.append("Tổng số dòng: ").append(lines.length).append("\n");
@@ -817,7 +793,7 @@ public class ShopServiceImpl implements ShopService {
                 }
                 com.badat.study1.model.UploadHistory uploadHistory = com.badat.study1.model.UploadHistory.builder()
                         .fileName(file.getOriginalFilename())
-                        .productName(product.getName())
+                        .productName(productVariant.getName())
                         .isSuccess(successCount > 0)
                         .result(successCount > 0 ? "SUCCESS" : "FAILED")
                         .status(successCount > 0 ? "COMPLETED" : "FAILED")
@@ -825,8 +801,8 @@ public class ShopServiceImpl implements ShopService {
                         .successCount(successCount)
                         .failureCount(failureCount)
                         .resultDetails(detailedResult.toString())
-                        .product(product)
-                        .stall(stall)
+                        .productVariant(productVariant)
+                        .product(parentProduct)
                         .user(user)
                         .build();
                 uploadHistoryRepository.save(uploadHistory);
@@ -839,11 +815,11 @@ public class ShopServiceImpl implements ShopService {
             return "redirect:/seller/add-quantity/" + productId;
         } catch (Exception e) {
             try {
-                var productOptional = productRepository.findById(productId);
-                if (productOptional.isPresent()) {
-                    Product failedProduct = productOptional.get();
+                var productVariantOptional = productVariantRepository.findById(productId);
+                if (productVariantOptional.isPresent()) {
+                    ProductVariant failedProductVariant = productVariantOptional.get();
                     StringBuilder detailedResult = new StringBuilder();
-                    detailedResult.append("Tên mặt hàng: ").append(failedProduct.getName()).append("\n");
+                    detailedResult.append("Tên mặt hàng: ").append(failedProductVariant.getName()).append("\n");
                     detailedResult.append("Tên file: ").append(file.getOriginalFilename()).append("\n");
                     detailedResult.append("Ngày upload: ").append(java.time.LocalDateTime.now().toString()).append("\n");
                     detailedResult.append("Tổng số dòng: 0\n");
@@ -851,11 +827,11 @@ public class ShopServiceImpl implements ShopService {
                     detailedResult.append("Thất bại: 1\n");
                     detailedResult.append("Trạng thái: THẤT BẠI\n");
                     detailedResult.append("\nChi tiết lỗi:\n").append("Lỗi xử lý file: ").append(e.getMessage());
-                    var failedStallOptional = stallRepository.findById(failedProduct.getStallId());
-                    if (failedStallOptional.isPresent()) {
+                    var failedParentProductOptional = productRepository.findById(failedProductVariant.getProductId());
+                    if (failedParentProductOptional.isPresent()) {
                         com.badat.study1.model.UploadHistory uploadHistory = com.badat.study1.model.UploadHistory.builder()
                                 .fileName(file.getOriginalFilename())
-                                .productName(failedProduct.getName())
+                                .productName(failedProductVariant.getName())
                                 .isSuccess(false)
                                 .result("FAILED")
                                 .status("FAILED")
@@ -863,8 +839,8 @@ public class ShopServiceImpl implements ShopService {
                                 .successCount(0)
                                 .failureCount(1)
                                 .resultDetails(detailedResult.toString())
-                                .product(failedProduct)
-                                .stall(failedStallOptional.get())
+                                .productVariant(failedProductVariant)
+                                .product(failedParentProductOptional.get())
                                 .user(user)
                                 .build();
                         uploadHistoryRepository.save(uploadHistory);
@@ -908,13 +884,13 @@ public class ShopServiceImpl implements ShopService {
             if (userShop.isEmpty()) {
                 return ResponseEntity.badRequest().body("User shop not found");
             }
-            var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
+            var productVariants = productVariantRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
             int updatedCount = 0;
-            for (Product product : products) {
-                long warehouseCount = productRepository.countWarehouseItemsByProductId(product.getId());
-                product.setQuantity((int) warehouseCount);
-                product.setStatus(warehouseCount > 0 ? Product.Status.AVAILABLE : Product.Status.UNAVAILABLE);
-                productRepository.save(product);
+            for (ProductVariant productVariant : productVariants) {
+                long warehouseCount = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productVariant.getId());
+                productVariant.setQuantity((int) warehouseCount);
+                productVariant.setStatus(warehouseCount > 0 ? ProductVariant.Status.AVAILABLE : ProductVariant.Status.UNAVAILABLE);
+                productVariantRepository.save(productVariant);
                 updatedCount++;
             }
             return ResponseEntity.ok("Đã cập nhật quantity cho " + updatedCount + " sản phẩm từ warehouse");

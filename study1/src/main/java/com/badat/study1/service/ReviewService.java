@@ -28,16 +28,16 @@ public class ReviewService {
         // Get seller and shop info from order
         Long sellerId = order.getSellerId();
         Long shopId = order.getShopId();
-        Long stallId = order.getStallId();
+        Long productIdFromOrder = order.getProductId();
         
         // Create review
         Review review = Review.builder()
             .orderId(orderId)
-            .productId(productId)
+            .productVariantId(productId)
             .buyerId(buyerId)
             .sellerId(sellerId)
             .shopId(shopId)
-            .stallId(stallId)
+            .productId(productIdFromOrder)
             .rating(rating)
             .title(title)
             .content(content)

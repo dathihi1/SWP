@@ -3,7 +3,7 @@ package com.badat.study1.controller;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.StallRepository;
+import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,10 +26,10 @@ import java.util.Map;
 public class AdminController {
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
+    private final ProductRepository productRepository;
     private final AuditLogService auditLogService;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final StallRepository stallRepository;
 
     // API thêm user
     @PostMapping("/users")
@@ -323,24 +323,23 @@ public class AdminController {
             shopEntity.setStatus(newStatus);
             shopEntity.setUpdatedAt(Instant.now());
             shopRepository.save(shopEntity);
-            java.util.List<com.badat.study1.model.Stall> stalls = stallRepository.findByShopId(shopEntity.getId());
+            java.util.List<com.badat.study1.model.Product> products = productRepository.findByShopId(shopEntity.getId());
             boolean newActiveStatus = newStatus == com.badat.study1.model.Shop.Status.ACTIVE;
-            for (com.badat.study1.model.Stall stall : stalls) {
-                stall.setActive(newActiveStatus);
+            for (com.badat.study1.model.Product product : products) {
                 if (newStatus == com.badat.study1.model.Shop.Status.INACTIVE) {
-                    stall.setStatus("CLOSED");
+                    product.setStatus("CLOSED");
                 } else {
-                    if ("CLOSED".equals(stall.getStatus())) {
-                        stall.setStatus("OPEN");
+                    if ("CLOSED".equals(product.getStatus())) {
+                        product.setStatus("OPEN");
                     }
                 }
-                stallRepository.save(stall);
+                productRepository.save(product);
             }
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Cập nhật trạng thái cửa hàng và gian hàng thành công",
                 "shopStatus", newStatus.name(),
-                "stallsUpdated", stalls.size()
+                "stallsUpdated", products.size()
             ));
         } catch (Exception e) {
             log.error("Error toggling seller lock for sellerId {}: {}", sellerId, e.getMessage(), e);

@@ -280,9 +280,9 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/stall-management" class="menu-item">
+            <a href="/seller/product-management" class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
-                Quản lý gian hàng
+                Quản lý sản phẩm
             </a>
             <a href="/seller/orders" class="menu-item active">
                 <i class="fas fa-file-invoice-dollar"></i>
@@ -439,7 +439,7 @@
                                 <td class="amount" th:text="${#numbers.formatDecimal(o.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
                                 <td class="amount" th:text="${#numbers.formatDecimal(o.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
                                 <td>
-                                    <span class="status-badge"
+                                    <span class="status-badge" 
                                           th:classappend="'status-' + ${o.status.name().toLowerCase()}"
                                           th:text="${T(com.badat.study1.util.StatusUtils).getStatusDisplayName(o.status)}">
                                         Trạng thái

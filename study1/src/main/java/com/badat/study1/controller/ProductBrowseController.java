@@ -3,16 +3,16 @@ package com.badat.study1.controller;
 import com.badat.study1.model.Product;
 import com.badat.study1.model.Review;
 import com.badat.study1.model.Shop;
-import com.badat.study1.model.Stall;
 import com.badat.study1.model.User;
 import com.badat.study1.model.Wallet;
 import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.repository.ProductVariantRepository;
 import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.StallRepository;
 import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.WarehouseRepository;
 import com.badat.study1.repository.UserRepository;
+import com.badat.study1.model.ProductVariant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,9 +37,9 @@ public class ProductBrowseController {
 
     private static final Logger log = LoggerFactory.getLogger(ProductBrowseController.class);
 	private final ProductRepository productRepository;
+	private final ProductVariantRepository productVariantRepository;
 	private final ReviewRepository reviewRepository;
 	private final ShopRepository shopRepository;
-	private final StallRepository stallRepository;
 	private final WalletRepository walletRepository;
     private final WarehouseRepository warehouseRepository;
     private final UserRepository userRepository;
@@ -60,48 +60,48 @@ public class ProductBrowseController {
 			Model model) {
         log.info("[Products] params q='{}', type='{}', shop='{}', ratingMin={}, productCountMin={}, sortBy='{}', order='{}', page={}, size={}",
                 query, type, shopName, ratingMin, productCountMin, sortBy, order, page, size);
-		List<Stall> stalls;
+		List<Product> products;
         if (query != null && !query.isBlank()) {
-            stalls = stallRepository.findByStallNameContainingIgnoreCaseAndIsDeleteFalseAndStatus(query.trim(), "OPEN");
+            products = productRepository.findByProductNameContainingIgnoreCaseAndIsDeleteFalseAndStatus(query.trim(), "OPEN");
         } else {
-            stalls = stallRepository.findByStatusAndIsDeleteFalse("OPEN");
+            products = productRepository.findByStatusAndIsDeleteFalse("OPEN");
         }
-        log.info("[Products] after base fetch (OPEN) stalls={} ", stalls.size());
+        log.info("[Products] after base fetch (OPEN) products={} ", products.size());
 
 		// filter by type
 		if (type != null && !type.isBlank()) {
 			String filterType = type.trim();
-			stalls = stalls.stream()
-					.filter(s -> filterType.equalsIgnoreCase(s.getStallCategory()))
+			products = products.stream()
+					.filter(p -> filterType.equalsIgnoreCase(p.getProductCategory()))
 					.toList();
-            log.info("[Products] after type filter type='{}' -> {} stalls", filterType, stalls.size());
+            log.info("[Products] after type filter type='{}' -> {} products", filterType, products.size());
 		}
 
         // preload shop map (exclude null values)
         java.util.Map<Long, Shop> shopMap = new java.util.HashMap<>();
-        stalls.stream()
-                .map(Stall::getShopId)
+        products.stream()
+                .map(Product::getShopId)
                 .distinct()
                 .forEach(id -> shopRepository.findById(id).ifPresent(shop -> shopMap.put(id, shop)));
 
 		// filter by shop name
 		if (shopName != null && !shopName.isBlank()) {
 			String filterShop = shopName.trim().toLowerCase();
-			stalls = stalls.stream()
-					.filter(s -> {
-						Shop shop = shopMap.get(s.getShopId());
+			products = products.stream()
+					.filter(p -> {
+						Shop shop = shopMap.get(p.getShopId());
 						return shop != null && shop.getShopName() != null && shop.getShopName().toLowerCase().contains(filterShop);
 					})
 					.toList();
-            log.info("[Products] after shop filter shop='{}' -> {} stalls", filterShop, stalls.size());
+            log.info("[Products] after shop filter shop='{}' -> {} products", filterShop, products.size());
 		}
 
 		// compute ratings
-		Map<Long, Double> stallRatings = stalls.stream().collect(Collectors.toMap(
-				Stall::getId,
-				s -> {
-					Long stallId = s.getId();
-					List<Review> reviews = reviewRepository.findByStallIdAndIsDeleteFalse(stallId);
+		Map<Long, Double> productRatings = products.stream().collect(Collectors.toMap(
+				Product::getId,
+				p -> {
+					Long productId = p.getId();
+					List<Review> reviews = reviewRepository.findByProductIdAndIsDeleteFalse(productId);
 					return reviews.stream()
 							.map(Review::getRating)
 							.filter(r -> r != null && r > 0)
@@ -111,31 +111,31 @@ public class ProductBrowseController {
 				}
 		));
 
-		// compute product counts
-		Map<Long, Integer> productCounts = stalls.stream().collect(Collectors.toMap(
-				Stall::getId,
-				s -> (int) warehouseRepository.countAvailableItemsByStallId(s.getId())
+		// compute product variant counts
+		Map<Long, Integer> productVariantCounts = products.stream().collect(Collectors.toMap(
+				Product::getId,
+				p -> (int) warehouseRepository.countAvailableItemsByProductId(p.getId())
 		));
 
 		// compute stock counts (same as available items)
-		Map<Long, Integer> stockCounts = productCounts;
+		Map<Long, Integer> stockCounts = productVariantCounts;
 
-        // compute price ranges (min/max of available product prices)
-        Map<Long, Map<String, BigDecimal>> priceRanges = stalls.stream().collect(Collectors.toMap(
-                Stall::getId,
-                s -> {
-                    List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(s.getId())
+        // compute price ranges (min/max of available product variant prices)
+        Map<Long, Map<String, BigDecimal>> priceRanges = products.stream().collect(Collectors.toMap(
+                Product::getId,
+                p -> {
+                    List<ProductVariant> productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(p.getId())
                             .stream()
-                            .filter(p -> p.getStatus() == Product.Status.AVAILABLE && p.getPrice() != null)
+                            .filter(pv -> pv.getStatus() == ProductVariant.Status.AVAILABLE && pv.getPrice() != null)
                             .toList();
                     java.util.Map<String, BigDecimal> range = new java.util.HashMap<>();
-                    if (products.isEmpty()) {
+                    if (productVariants.isEmpty()) {
                         range.put("min", null);
                         range.put("max", null);
                         return range;
                     }
-                    BigDecimal min = products.stream().map(Product::getPrice).min(BigDecimal::compareTo).orElse(null);
-                    BigDecimal max = products.stream().map(Product::getPrice).max(BigDecimal::compareTo).orElse(null);
+                    BigDecimal min = productVariants.stream().map(ProductVariant::getPrice).min(BigDecimal::compareTo).orElse(null);
+                    BigDecimal max = productVariants.stream().map(ProductVariant::getPrice).max(BigDecimal::compareTo).orElse(null);
                     range.put("min", min);
                     range.put("max", max);
                     return range;
@@ -145,44 +145,44 @@ public class ProductBrowseController {
 		// filter by rating
 		if (ratingMin != null) {
 			double threshold = ratingMin;
-			stalls = stalls.stream()
-					.filter(s -> stallRatings.getOrDefault(s.getId(), 0.0) >= threshold)
+			products = products.stream()
+					.filter(p -> productRatings.getOrDefault(p.getId(), 0.0) >= threshold)
 					.toList();
-            log.info("[Products] after ratingMin>={} -> {} stalls", threshold, stalls.size());
+            log.info("[Products] after ratingMin>={} -> {} products", threshold, products.size());
 		}
 
-		// filter by min product count
+		// filter by min product variant count
 		if (productCountMin != null) {
 			int minCount = productCountMin;
-			stalls = stalls.stream()
-					.filter(s -> productCounts.getOrDefault(s.getId(), 0) >= minCount)
+			products = products.stream()
+					.filter(p -> productVariantCounts.getOrDefault(p.getId(), 0) >= minCount)
 					.toList();
-            log.info("[Products] after productCountMin>={} -> {} stalls", minCount, stalls.size());
+            log.info("[Products] after productCountMin>={} -> {} products", minCount, products.size());
 		}
 
 		// filter by price range
 		if (minPrice != null || maxPrice != null) {
 			BigDecimal min = minPrice != null ? minPrice : BigDecimal.ZERO;
 			BigDecimal max = maxPrice != null ? maxPrice : new BigDecimal("999999999");
-			stalls = stalls.stream()
-					.filter(s -> {
-						List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(s.getId());
-						return products.stream()
-								.filter(p -> p.getStatus() == Product.Status.AVAILABLE)
-								.anyMatch(p -> p.getPrice() != null && p.getPrice().compareTo(min) >= 0 && p.getPrice().compareTo(max) <= 0);
+			products = products.stream()
+					.filter(p -> {
+						List<ProductVariant> productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(p.getId());
+						return productVariants.stream()
+								.filter(pv -> pv.getStatus() == ProductVariant.Status.AVAILABLE)
+								.anyMatch(pv -> pv.getPrice() != null && pv.getPrice().compareTo(min) >= 0 && pv.getPrice().compareTo(max) <= 0);
 					})
 					.toList();
-            log.info("[Products] after price range [{} - {}] -> {} stalls", min, max, stalls.size());
+            log.info("[Products] after price range [{} - {}] -> {} products", min, max, products.size());
 		}
 
 		// sorting (name/products/rating/price)
-        Map<Long, BigDecimal> minPricePerStall = stalls.stream().collect(Collectors.toMap(
-                Stall::getId,
-                s -> {
-                    List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(s.getId());
-                    return products.stream()
-                            .filter(p -> p.getStatus() == Product.Status.AVAILABLE && p.getPrice() != null)
-                            .map(Product::getPrice)
+        Map<Long, BigDecimal> minPricePerProduct = products.stream().collect(Collectors.toMap(
+                Product::getId,
+                p -> {
+                    List<ProductVariant> productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(p.getId());
+                    return productVariants.stream()
+                            .filter(pv -> pv.getStatus() == ProductVariant.Status.AVAILABLE && pv.getPrice() != null)
+                            .map(ProductVariant::getPrice)
                             .min(BigDecimal::compareTo)
                             .orElse(new BigDecimal("999999999"));
                 }
@@ -190,23 +190,23 @@ public class ProductBrowseController {
 
 		if (sortBy != null && !sortBy.isBlank()) {
 			boolean asc = "asc".equalsIgnoreCase(order);
-			java.util.Comparator<Stall> comparator;
+			java.util.Comparator<Product> comparator;
 			switch (sortBy.toLowerCase()) {
-				case "products" -> comparator = java.util.Comparator.comparing(s -> productCounts.getOrDefault(s.getId(), 0));
-				case "rating" -> comparator = java.util.Comparator.comparing(s -> stallRatings.getOrDefault(s.getId(), 0.0));
-                case "price" -> comparator = java.util.Comparator.comparing(s -> minPricePerStall.getOrDefault(s.getId(), new BigDecimal("999999999")));
-				case "name" -> comparator = java.util.Comparator.comparing(s -> s.getStallName() != null ? s.getStallName().toLowerCase() : "");
+				case "products" -> comparator = java.util.Comparator.comparing(p -> productVariantCounts.getOrDefault(p.getId(), 0));
+				case "rating" -> comparator = java.util.Comparator.comparing(p -> productRatings.getOrDefault(p.getId(), 0.0));
+                case "price" -> comparator = java.util.Comparator.comparing(p -> minPricePerProduct.getOrDefault(p.getId(), new BigDecimal("999999999")));
+				case "name" -> comparator = java.util.Comparator.comparing(p -> p.getProductName() != null ? p.getProductName().toLowerCase() : "");
 				default -> comparator = null;
 			}
 			if (comparator != null) {
-				stalls = asc ? stalls.stream().sorted(comparator).toList() : stalls.stream().sorted(comparator.reversed()).toList();
-                log.info("[Products] after sort by '{}' order='{}' -> {} stalls", sortBy, order, stalls.size());
+				products = asc ? products.stream().sorted(comparator).toList() : products.stream().sorted(comparator.reversed()).toList();
+                log.info("[Products] after sort by '{}' order='{}' -> {} products", sortBy, order, products.size());
 			}
 		}
 
         // categories for filter dropdown
-        List<String> categories = stallRepository.findByStatusAndIsDeleteFalse("OPEN").stream()
-				.map(Stall::getStallCategory)
+        List<String> categories = productRepository.findByStatusAndIsDeleteFalse("OPEN").stream()
+				.map(Product::getProductCategory)
 				.filter(c -> c != null && !c.isBlank())
 				.distinct()
 				.sorted(String.CASE_INSENSITIVE_ORDER)
@@ -215,13 +215,13 @@ public class ProductBrowseController {
         // Pagination (in-memory)
         Pageable pageable = PageRequest.of(page, size);
         int startIndex = page * size;
-        int endIndex = Math.min(startIndex + size, stalls.size());
-        List<Stall> paginatedStalls = startIndex >= stalls.size() ? List.of() : stalls.subList(startIndex, endIndex);
-        int totalPages = stalls.isEmpty() ? 1 : (int) Math.ceil((double) stalls.size() / size);
+        int endIndex = Math.min(startIndex + size, products.size());
+        List<Product> paginatedProducts = startIndex >= products.size() ? List.of() : products.subList(startIndex, endIndex);
+        int totalPages = products.isEmpty() ? 1 : (int) Math.ceil((double) products.size() / size);
         boolean hasPrev = page > 0;
         boolean hasNext = page < totalPages - 1;
         log.info("[Products] pagination page={}, size={}, start={}, end={}, total={}, totalPages={}, hasPrev={}, hasNext={}",
-                page, size, startIndex, endIndex, stalls.size(), totalPages, hasPrev, hasNext);
+                page, size, startIndex, endIndex, products.size(), totalPages, hasPrev, hasNext);
 
 		// auth info
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -242,9 +242,9 @@ public class ProductBrowseController {
 		}
 
         // model attributes
-        model.addAttribute("stalls", paginatedStalls);
+        model.addAttribute("stalls", paginatedProducts);
 		model.addAttribute("shopMap", shopMap);
-		model.addAttribute("productCounts", productCounts);
+		model.addAttribute("productCounts", productVariantCounts);
 		model.addAttribute("stockCounts", stockCounts);
 		model.addAttribute("priceRanges", priceRanges);
 		model.addAttribute("q", query);
@@ -252,7 +252,7 @@ public class ProductBrowseController {
 		model.addAttribute("minPrice", minPrice);
 		model.addAttribute("maxPrice", maxPrice);
 		model.addAttribute("shop", shopName);
-		model.addAttribute("stallRatings", stallRatings);
+		model.addAttribute("stallRatings", productRatings);
 		model.addAttribute("categories", categories);
 		model.addAttribute("ratingMin", ratingMin);
 		model.addAttribute("productCountMin", productCountMin);
@@ -262,7 +262,7 @@ public class ProductBrowseController {
         model.addAttribute("currentPage", page);
         model.addAttribute("pageSize", size);
         model.addAttribute("totalPages", totalPages);
-        model.addAttribute("totalElements", stalls.size());
+        model.addAttribute("totalElements", products.size());
         model.addAttribute("hasPrev", hasPrev);
         model.addAttribute("hasNext", hasNext);
 		return "products/list";
@@ -270,9 +270,68 @@ public class ProductBrowseController {
 
 	@GetMapping({"/products/{id}", "/product/{id}"})
 	public String productDetail(@PathVariable Long id, Model model) {
+		ProductVariant productVariant = productVariantRepository.findById(id)
+				.filter(pv -> Boolean.FALSE.equals(pv.getIsDelete()) && pv.getStatus() == ProductVariant.Status.AVAILABLE)
+				.orElseThrow(() -> new IllegalArgumentException("Product variant not found"));
+		List<Review> reviews = reviewRepository.findByProductVariantIdAndIsDeleteFalse(productVariant.getId());
+		double avgRating = reviews.stream()
+				.map(Review::getRating)
+				.filter(r -> r != null && r > 0)
+				.mapToInt(Integer::intValue)
+				.average()
+				.orElse(0.0);
+
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getName());
+		model.addAttribute("isAuthenticated", isAuthenticated);
+		model.addAttribute("walletBalance", BigDecimal.ZERO);
+		if (isAuthenticated) {
+			Object principal = authentication.getPrincipal();
+			if (principal instanceof User user) {
+				model.addAttribute("username", user.getUsername());
+				model.addAttribute("userRole", user.getRole().name());
+				BigDecimal walletBalance = walletRepository.findByUserId(user.getId()).map(Wallet::getBalance).orElse(BigDecimal.ZERO);
+				model.addAttribute("walletBalance", walletBalance);
+			} else {
+				model.addAttribute("username", authentication.getName());
+				model.addAttribute("userRole", "USER");
+			}
+		}
+
+		model.addAttribute("product", productVariant);
+		model.addAttribute("reviews", reviews);
+		model.addAttribute("avgRating", avgRating);
+		return "products/detail";
+	}
+
+	@GetMapping("/stall/{id}")
+	public String stallDetail(@PathVariable Long id, Model model) {
 		Product product = productRepository.findById(id)
-				.filter(p -> Boolean.FALSE.equals(p.getIsDelete()) && p.getStatus() == Product.Status.AVAILABLE)
-				.orElseThrow(() -> new IllegalArgumentException("Product not found"));
+				.filter(p -> !p.isDelete() && "OPEN".equals(p.getStatus()))
+				.orElseThrow(() -> new IllegalArgumentException("Product not found or not available"));
+
+		List<ProductVariant> productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(id)
+				.stream()
+				.filter(pv -> pv.getStatus() == ProductVariant.Status.AVAILABLE)
+				.toList();
+
+		// Tính tồn kho thực tế theo Warehouse cho từng product variant
+		java.util.Map<Long, Long> productVariantStocks = productVariants.stream()
+			.collect(java.util.stream.Collectors.toMap(
+				ProductVariant::getId,
+                pv -> warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(pv.getId())
+			));
+
+		Shop shop = shopRepository.findById(product.getShopId()).orElse(null);
+
+		// Determine seller username from shop owner
+		String sellerUsername = null;
+		try {
+			if (shop != null && shop.getUserId() != null) {
+				sellerUsername = userRepository.findById(shop.getUserId()).map(User::getUsername).orElse(null);
+			}
+		} catch (Exception ignored) {}
+
 		List<Review> reviews = reviewRepository.findByProductIdAndIsDeleteFalse(id);
 		double avgRating = reviews.stream()
 				.map(Review::getRating)
@@ -298,68 +357,9 @@ public class ProductBrowseController {
 			}
 		}
 
-		model.addAttribute("product", product);
-		model.addAttribute("reviews", reviews);
-		model.addAttribute("avgRating", avgRating);
-		return "products/detail";
-	}
-
-	@GetMapping("/stall/{id}")
-	public String stallDetail(@PathVariable Long id, Model model) {
-		Stall stall = stallRepository.findById(id)
-				.filter(s -> !s.isDelete() && "OPEN".equals(s.getStatus()))
-				.orElseThrow(() -> new IllegalArgumentException("Stall not found or not available"));
-
-		List<Product> products = productRepository.findByStallIdAndIsDeleteFalse(id)
-				.stream()
-				.filter(p -> p.getStatus() == Product.Status.AVAILABLE)
-				.toList();
-
-		// Tính tồn kho thực tế theo Warehouse cho từng sản phẩm trong stall (không sửa Product)
-		java.util.Map<Long, Long> productStocks = products.stream()
-			.collect(java.util.stream.Collectors.toMap(
-				Product::getId,
-                p -> warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(p.getId())
-			));
-
-		Shop shop = shopRepository.findById(stall.getShopId()).orElse(null);
-
-		// Determine seller username from shop owner
-		String sellerUsername = null;
-		try {
-			if (shop != null && shop.getUserId() != null) {
-				sellerUsername = userRepository.findById(shop.getUserId()).map(User::getUsername).orElse(null);
-			}
-		} catch (Exception ignored) {}
-
-		List<Review> reviews = reviewRepository.findByStallIdAndIsDeleteFalse(id);
-		double avgRating = reviews.stream()
-				.map(Review::getRating)
-				.filter(r -> r != null && r > 0)
-				.mapToInt(Integer::intValue)
-				.average()
-				.orElse(0.0);
-
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getName());
-		model.addAttribute("isAuthenticated", isAuthenticated);
-		model.addAttribute("walletBalance", BigDecimal.ZERO);
-		if (isAuthenticated) {
-			Object principal = authentication.getPrincipal();
-			if (principal instanceof User user) {
-				model.addAttribute("username", user.getUsername());
-				model.addAttribute("userRole", user.getRole().name());
-				BigDecimal walletBalance = walletRepository.findByUserId(user.getId()).map(Wallet::getBalance).orElse(BigDecimal.ZERO);
-				model.addAttribute("walletBalance", walletBalance);
-			} else {
-				model.addAttribute("username", authentication.getName());
-				model.addAttribute("userRole", "USER");
-			}
-		}
-
-		model.addAttribute("stall", stall);
-		model.addAttribute("products", products);
-		model.addAttribute("productStocks", productStocks);
+		model.addAttribute("stall", product);
+		model.addAttribute("products", productVariants);
+		model.addAttribute("productStocks", productVariantStocks);
 		model.addAttribute("shop", shop);
 		model.addAttribute("sellerUsername", sellerUsername);
 		model.addAttribute("reviews", reviews);
