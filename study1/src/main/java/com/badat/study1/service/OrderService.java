@@ -5,6 +5,7 @@ import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.ShopRepository;
+import com.badat.study1.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ShopRepository shopRepository;
 
     /**
@@ -90,6 +92,7 @@ public class OrderService {
                 Object quantityObj = cartItem.get("quantity");
                 Object priceObj = cartItem.get("price");
                 Object stallIdObj = cartItem.get("stallId");
+                Object variantNameObj = cartItem.get("name");
 
                 if (productIdObj == null || warehouseIdObj == null || quantityObj == null ||
                         priceObj == null || stallIdObj == null) {
@@ -119,7 +122,7 @@ public class OrderService {
                     // Tạo OrderItem với quantity = 1
                     OrderItem orderItem = OrderItem.builder()
                             .orderId(savedOrder.getId())
-                            .productId(productId)
+                            .productVariantId(productId)
                             .warehouseId(warehouseId) // Sẽ được cập nhật với warehouseId thực tế
                             .quantity(1) // Mỗi OrderItem có quantity = 1
                             .unitPrice(unitPrice)
@@ -129,7 +132,8 @@ public class OrderService {
                             .sellerAmount(itemSellerAmount)
                             .sellerId(itemSellerId) // Sẽ được cập nhật trong PaymentQueueService
                             .shopId(product.getShopId()) // Thêm shop_id
-                            .productId(stallId) // Thêm product_id
+                            .productId(stallId) // Thêm product_id (product parent)
+                            .productVariantName(variantNameObj != null ? variantNameObj.toString() : null)
                             .status(OrderItem.Status.PENDING)
                             .notes("Order item from cart - item " + (i + 1) + " of " + quantity)
                             .build();
@@ -219,9 +223,16 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
 
         // Tạo OrderItem
+        String variantName = null;
+        try {
+            variantName = productVariantRepository.findById(productId)
+                    .map(ProductVariant::getName)
+                    .orElse(null);
+        } catch (Exception ignored) {}
+
         OrderItem orderItem = OrderItem.builder()
                 .orderId(savedOrder.getId())
-                .productId(productId)
+                .productVariantId(productId)
                 .warehouseId(warehouseId)
                 .quantity(quantity)
                 .unitPrice(unitPrice)
@@ -231,7 +242,8 @@ public class OrderService {
                 .sellerAmount(sellerAmount)
                 .sellerId(sellerId) // Sử dụng sellerId được truyền vào
                 .shopId(shopId) // Thêm shop_id
-                .productId(stallId) // Thêm product_id
+                .productId(stallId) // Thêm product_id (product parent)
+                .productVariantName(variantName)
                 .status(OrderItem.Status.COMPLETED)
                 .notes("Simple order item")
                 .build();

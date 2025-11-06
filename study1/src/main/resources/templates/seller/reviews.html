@@ -475,7 +475,7 @@
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div class="flex-grow-1">
-                                            <h6 class="card-title text-primary small mb-1" th:text="${stallStat.stall.stallName}">Tên gian hàng</h6>
+                                            <h6 class="card-title text-primary small mb-1" th:text="${stallStat.stall.productName}">Tên gian hàng</h6>
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="stars" style="font-size: 0.7rem;">
                                         <span th:each="i : ${#numbers.sequence(1, 5)}" 
@@ -797,7 +797,7 @@
                         
                         <div class="review-content">
                             <div class="review-product">
-                                <strong>Sản phẩm:</strong> <span>${review.product.name}</span>
+                                <strong>Sản phẩm:</strong> <span>${review.product.productName}</span>
                             </div>
                             <div class="review-comment">${review.content}</div>
                         </div>
@@ -892,7 +892,7 @@
                         
                         <div class="review-content">
                             <div class="review-product">
-                                <strong>Sản phẩm:</strong> <span>${review.product.name}</span>
+                                <strong>Sản phẩm:</strong> <span>${review.product.productName}</span>
                             </div>
                             <div class="review-comment">${review.content}</div>
                         </div>

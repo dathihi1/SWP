@@ -268,7 +268,7 @@ public class ProductBrowseController {
 		return "products/list";
 	}
 
-	@GetMapping({"/products/{id}", "/product/{id}"})
+    @GetMapping({"/product-variant/{id}", "/product/{id}"})
 	public String productDetail(@PathVariable Long id, Model model) {
 		ProductVariant productVariant = productVariantRepository.findById(id)
 				.filter(pv -> Boolean.FALSE.equals(pv.getIsDelete()) && pv.getStatus() == ProductVariant.Status.AVAILABLE)
@@ -304,13 +304,13 @@ public class ProductBrowseController {
 		return "products/detail";
 	}
 
-	@GetMapping("/stall/{id}")
-	public String stallDetail(@PathVariable Long id, Model model) {
-		Product product = productRepository.findById(id)
+    @GetMapping("/products/{id}")
+    public String stallDetail(@PathVariable("id") Long productId, Model model) {
+        Product product = productRepository.findById(productId)
 				.filter(p -> !p.isDelete() && "OPEN".equals(p.getStatus()))
 				.orElseThrow(() -> new IllegalArgumentException("Product not found or not available"));
 
-		List<ProductVariant> productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(id)
+        List<ProductVariant> productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(productId)
 				.stream()
 				.filter(pv -> pv.getStatus() == ProductVariant.Status.AVAILABLE)
 				.toList();
@@ -332,7 +332,7 @@ public class ProductBrowseController {
 			}
 		} catch (Exception ignored) {}
 
-		List<Review> reviews = reviewRepository.findByProductIdAndIsDeleteFalse(id);
+        List<Review> reviews = reviewRepository.findByProductIdAndIsDeleteFalse(productId);
 		double avgRating = reviews.stream()
 				.map(Review::getRating)
 				.filter(r -> r != null && r > 0)
@@ -364,6 +364,6 @@ public class ProductBrowseController {
 		model.addAttribute("sellerUsername", sellerUsername);
 		model.addAttribute("reviews", reviews);
 		model.addAttribute("avgRating", avgRating);
-		return "stall/detail";
+        return "products/detail";
 	}
 }

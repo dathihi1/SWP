@@ -114,14 +114,14 @@ public class SellerController {
             return "redirect:/login?required=1";
         }
 
-        model.addAttribute("isAuthenticated", true);
-        model.addAttribute("walletBalance", BigDecimal.ZERO);
-
         if (authentication == null) {
             return "redirect:/login?required=1";
         }
+
         User user = (User) authentication.getPrincipal();
         model.addAttribute("authorities", authentication.getAuthorities());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("walletBalance", BigDecimal.ZERO);
         return sellerService.getSellerRegisterPage(user, model, redirectAttributes);
     }
 }

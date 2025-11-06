@@ -16,10 +16,9 @@ import java.time.LocalDateTime;
 public class ProductDTO {
     private Long id;
     private String name;
-    private String description;
     private BigDecimal price;
     private Integer quantity;
-    private String type;
+    private String subcategory;
     private String status;
     private String uniqueKey;
     private Long shopId;
@@ -36,10 +35,9 @@ public class ProductDTO {
         return ProductDTO.builder()
             .id(productVariant.getId())
             .name(productVariant.getName())
-            .description(productVariant.getDescription())
             .price(productVariant.getPrice())
             .quantity(productVariant.getQuantity())
-            .type(productVariant.getType())
+            .subcategory(productVariant.getSubcategory())
             .status(productVariant.getStatus() != null ? productVariant.getStatus().name() : null)
             .uniqueKey(productVariant.getUniqueKey())
             .shopId(productVariant.getShop() != null ? productVariant.getShop().getId() : null)

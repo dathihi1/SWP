@@ -367,26 +367,26 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="stallId" class="form-label">Gian hàng</label>
+                            <label for="stallId" class="form-label">Sản phẩm</label>
                             <select name="stallId" id="stallId" class="form-select">
-                                <option value="">Tất cả gian hàng</option>
+                                <option value="">Tất cả sản phẩm</option>
                                 <option th:each="stall : ${stalls}" 
                                         th:value="${stall.id}" 
-                                        th:text="${stall.stallName}"
+                                        th:text="${stall.productName}"
                                         th:selected="${stall.id == selectedStallId}">
-                                    Tên gian hàng
+                                    Tên sản phẩm
                                 </option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="productId" class="form-label">Sản phẩm</label>
+                            <label for="productId" class="form-label">Biến thể</label>
                             <select name="productId" id="productId" class="form-select">
-                                <option value="">Tất cả sản phẩm</option>
+                                <option value="">Tất cả biến thể</option>
                                 <option th:each="product : ${products}" 
                                         th:value="${product.id}" 
-                                        th:text="${product.name}"
+                                        th:text="${product.productName}"
                                         th:selected="${product.id == selectedProductId}">
-                                    Tên sản phẩm
+                                    Tên biến thể
                                 </option>
                             </select>
                         </div>
@@ -418,7 +418,7 @@
                             <tr>
                                 <th>Mã đơn hàng</th>
                                 <th>Sản phẩm</th>
-                                <th>Gian hàng</th>
+                                <th>Biến thể</th>
                                 <th>Số lượng</th>
                                 <th>Đơn giá</th>
                                 <th>Tổng tiền</th>
@@ -432,9 +432,11 @@
                                     <span class="order-code text-primary" th:text="${o.order.orderCode}">ORDER_CODE</span>
                                 </td>
                                 <td>
-                                    <span th:text="${o.firstProductName}">Tên sản phẩm</span>
+                                    <span th:text="${o.stallName}">Tên sản phẩm</span>
                                 </td>
-                                <td th:text="${o.stallName}">Tên gian hàng</td>
+                                <td>
+                                    <span th:text="${o.firstProductName}">Tên biến thể</span>
+                                </td>
                                 <td th:text="${o.totalQuantity}">1</td>
                                 <td class="amount" th:text="${#numbers.formatDecimal(o.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
                                 <td class="amount" th:text="${#numbers.formatDecimal(o.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>

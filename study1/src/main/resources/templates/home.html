@@ -173,14 +173,14 @@
 
     <section class="mb-4 mb-md-5">
         <div class="text-center mb-2">
-            <h5 class="text-primary mb-0">-- Gian hàng nổi bật --</h5>
+            <h5 class="text-primary mb-0">-- Sản phẩm nổi bật --</h5>
         </div>
         <br>
         <div class="d-flex justify-content-between align-items-center mb-2">
             <button id="prevPreview" class="btn btn-outline-secondary btn-sm" type="button"><i class="fa-solid fa-chevron-left"></i></button>
             <div id="previewTrack" class="preview-track flex-grow-1 mx-2">
                 <a th:if="${stalls}" th:each="s : ${stalls}"
-                   th:href="@{'/stall/' + ${s.stallId}}"
+                   th:href="@{'/products/' + ${s.stallId}}"
                    class="text-decoration-none text-dark">
                     <div class="preview-card me-2">
                         <div class="preview-img-frame">
@@ -230,28 +230,34 @@
         </div>
         <br>
         <div class="row g-3 g-md-4 justify-content-center">
-            <div class="col-12 col-md-6 col-lg-4">
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card category-card p-3 text-center h-100" onclick="viewCategory('email')" style="cursor: pointer;">
                     <div class="category-icon bg-success-subtle text-success mb-2"><i class="fa-solid fa-envelope fa-lg"></i></div>
                     <div class="category-title">Email</div>
                     <div class="text-muted small">Gmail, Yahoo, Hotmail...</div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('software')" style="cursor: pointer;">
-                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-gamepad fa-lg"></i></div>
-                    <div class="category-title">Thẻ game</div>
-                    <div class="text-muted small">Thẻ nạp game, gift card...</div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('tai-khoan')" style="cursor: pointer;">
+                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-user-lock fa-lg"></i></div>
+                    <div class="category-title">Tài khoản</div>
+                    <div class="text-muted small">Facebook, Twitter, Instagram...</div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('account')" style="cursor: pointer;">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('key-game')" style="cursor: pointer;">
                     <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-key fa-lg"></i></div>
                     <div class="category-title">Key game</div>
                     <div class="text-muted small">Key Steam, Origin, Epic...</div>
                 </div>
             </div>
-            
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('other')" style="cursor: pointer;">
+                    <div class="category-icon bg-secondary-subtle text-secondary mb-2"><i class="fa-solid fa-ellipsis fa-lg"></i></div>
+                    <div class="category-title">Khác</div>
+                    <div class="text-muted small">Các loại sản phẩm khác...</div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -436,23 +442,23 @@
         let type = '';
         switch(category) {
             case 'email':
-                type = 'Tài khoản Email';
+                type = 'Email';
                 break;
-            case 'software':
-                type = 'Thẻ cào (Điện thoại, Game)';
+            case 'tai-khoan':
+                type = 'Tài khoản';
                 break;
-            case 'account':
+            case 'key-game':
                 type = 'Key Game';
                 break;
             case 'other':
-                // Show all stalls
+                type = 'Khác';
+                break;
+            default:
                 window.location.href = '/products';
                 return;
-            default:
-                type = '';
         }
 
-        // Redirect to products page with category filter (match stallCategory)
+        // Redirect to products page with category filter (match productCategory)
         window.location.href = `/products?type=${encodeURIComponent(type)}`;
     }
 

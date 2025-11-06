@@ -215,6 +215,43 @@
             box-shadow: none;
         }
         
+        input[type="file"].form-control,
+        input[type="file"] {
+            background-color: white !important;
+            color: #495057 !important;
+            cursor: pointer !important;
+            opacity: 1 !important;
+        }
+        
+        input[type="file"].form-control:hover,
+        input[type="file"]:hover {
+            border-color: #0d6efd !important;
+            background-color: white !important;
+        }
+        
+        input[type="file"].form-control:focus,
+        input[type="file"]:focus {
+            background-color: white !important;
+            color: #495057 !important;
+            border-color: #0d6efd !important;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+        }
+        
+        input[type="file"].form-control:disabled,
+        input[type="file"]:disabled {
+            background-color: #e9ecef !important;
+            color: #6c757d !important;
+            cursor: not-allowed !important;
+        }
+        
+        /* Override any read-only styles for file inputs */
+        input[type="file"].form-control:read-only,
+        input[type="file"]:read-only {
+            background-color: white !important;
+            color: #495057 !important;
+            cursor: pointer !important;
+        }
+        
         .btn-submit {
             background: linear-gradient(135deg, #0d6efd, #0b5ed7);
             border: none;

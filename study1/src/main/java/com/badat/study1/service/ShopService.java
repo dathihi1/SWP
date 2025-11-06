@@ -41,7 +41,6 @@ public interface ShopService {
 
     String addProduct(User user, Long stallId, String productName, java.math.BigDecimal productPrice, RedirectAttributes redirectAttributes);
 
-    String updateProductQuantity(User user, Long productId, Integer newQuantity, RedirectAttributes redirectAttributes);
 
     String updateProduct(User user, Long productId, String productName, java.math.BigDecimal productPrice, RedirectAttributes redirectAttributes);
 
@@ -49,7 +48,6 @@ public interface ShopService {
 
     ResponseEntity<?> getUploadDetails(User user, Long uploadId);
 
-    ResponseEntity<?> updateProductQuantities(User user);
 
 }
 

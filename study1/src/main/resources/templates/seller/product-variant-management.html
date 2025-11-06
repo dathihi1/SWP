@@ -423,7 +423,7 @@
             <div class="page-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h1 class="page-title">Quản lý mặt hàng/kho</h1>
+                        <h1 class="page-title">Quản lý biến thể sản phẩm</h1>
                     </div>
                     <a th:href="@{/seller/product-management}" href="/seller/product-management" class="btn-back">
                         <i class="fas fa-arrow-left me-2"></i>
@@ -434,23 +434,25 @@
             
             <!-- Stall Information -->
             <div class="stall-info">
-                <div class="d-flex align-items-center">
-                    <strong>Gian hàng:</strong>
-                    <span class="stall-category" th:text="${stall.stallCategory}">Loại gian hàng</span>
-                    <span class="ms-2" th:text="${stall.stallName}">Tên gian hàng</span>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <strong>Sản phẩm:</strong>
+                        <span class="ms-2" th:text="${stall.productName}">Tên sản phẩm</span>
+                    </div>
+                    <span class="stall-category" th:text="${stall.productSubcategory}">Loại cụ thể</span>
                 </div>
             </div>
             
             <!-- Products Table -->
             <div class="table-container">
                 <div class="table-header">
-                    <h5 class="table-title">Danh sách mặt hàng</h5>
+                    <h5 class="table-title">Danh sách biến thể</h5>
                 </div>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Tên mặt hàng</th>
+                                <th>Tên biến thể</th>
                                 <th>Giá</th>
                                 <th>Trạng thái</th>
                                 <th>Tồn kho</th>
@@ -459,7 +461,7 @@
                         </thead>
                         <tbody>
                             <tr th:each="product : ${products}" th:attr="data-product-id=${product.id}">
-                                <td th:text="${product.name}">Tên mặt hàng</td>
+                                <td th:text="${product.name}">Tên biến thể</td>
                                 <td th:text="${#numbers.formatDecimal(product.price, 0, 'POINT', 0, 'COMMA')}">Giá</td>
                                 <td>
                                     <span class="status-badge" 
@@ -471,10 +473,10 @@
                                 <td th:text="${product.quantity}">Tồn kho</td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn btn-action btn-edit" title="Sửa thông tin mặt hàng" th:onclick="'editProduct(' + ${product.id} + ')'">
+                                        <button class="btn btn-action btn-edit" title="Cập nhật biến thể" th:onclick="'editProduct(' + ${product.id} + ')'">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <a th:href="@{/seller/add-quantity/{productId}(productId=${product.id})}" class="btn btn-action btn-add-quantity" title="Thêm số lượng">
+                                        <a th:href="@{/seller/add-quantity/{productId}(productId=${product.id})}" class="btn btn-action btn-add-quantity" title="Thêm tồn kho">
                                             <i class="fas fa-plus"></i>
                                         </a>
                                         
@@ -484,7 +486,7 @@
                             <tr th:if="${#lists.isEmpty(products)}">
                                 <td colspan="5" class="text-center text-muted py-4">
                                     <i class="fas fa-inbox fa-2x mb-2"></i><br>
-                                    Chưa có mặt hàng nào.
+                                    Chưa có sản phẩm nào
                                 </td>
                             </tr>
                         </tbody>
@@ -494,12 +496,12 @@
             
             <!-- Add Product Section -->
             <div class="add-product-section">
-                <h5 class="mb-3">Thêm mặt hàng</h5>
+                <h5 class="mb-3">Thêm biến thể</h5>
                 <form th:action="@{/seller/add-product/{stallId}(stallId=${stall.id})}" method="post" id="addProductForm">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="productName" class="form-label">Tên mặt hàng <span class="required">*</span></label>
-                            <input type="text" class="form-control" id="productName" name="productName" placeholder="Tên mặt hàng" required>
+                            <label for="productName" class="form-label">Tên biến thể<span class="required">*</span></label>
+                            <input type="text" class="form-control" id="productName" name="productName" placeholder="Tên biến thể" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="productPrice" class="form-label">Giá tiền <span class="required">*</span></label>
@@ -520,14 +522,14 @@
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title" id="editProductModalLabel">Sửa mặt hàng</h5>
+                            <h5 class="modal-title" id="editProductModalLabel">Cập nhật biến thể</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <form id="editProductForm" method="post">
                             <div class="modal-body">
                                 <div class="mb-3">
-                                    <label for="editProductName" class="form-label">Tên mặt hàng <span class="required">*</span></label>
-                                    <input type="text" class="form-control" id="editProductName" name="productName" placeholder="Tên mặt hàng" required>
+                                    <label for="editProductName" class="form-label">Tên biến thể <span class="required">*</span></label>
+                                    <input type="text" class="form-control" id="editProductName" name="productName" placeholder="Tên biến thể" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="editProductPrice" class="form-label">Giá tiền <span class="required">*</span></label>

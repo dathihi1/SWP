@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.ui.Model;
@@ -36,8 +35,6 @@ public class ShopController {
     private final ShopRepository shopRepository;
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
-    private final UploadHistoryRepository uploadHistoryRepository;
-    private final WarehouseRepository warehouseRepository;
     private final com.badat.study1.service.ShopService shopService;
     
 
@@ -45,8 +42,6 @@ public class ShopController {
         this.shopRepository = shopRepository;
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
-        this.uploadHistoryRepository = uploadHistoryRepository;
-        this.warehouseRepository = warehouseRepository;
         this.shopService = shopService;
     }
 
@@ -217,7 +212,7 @@ public class ShopController {
         return shopService.editProductPage(user, id, model);
     }
 
-    @GetMapping("/seller/product-management/{stallId}")
+    @GetMapping("/seller/product-variant-management/{stallId}")
     public String sellerProductManagementPage(@PathVariable Long stallId, Model model) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
@@ -299,7 +294,6 @@ public class ShopController {
     }
 
     @GetMapping("/api/seller/reviews/stall/{stallId}")
-    @ResponseBody
     public ResponseEntity<?> getReviewsByStall(@PathVariable Long stallId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
@@ -323,7 +317,6 @@ public class ShopController {
     }
 
     @PostMapping("/api/seller/reviews/mark-read")
-    @ResponseBody
     public ResponseEntity<?> markReviewsAsRead(@RequestParam Long stallId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
@@ -498,38 +491,17 @@ public class ShopController {
         
         if (productName == null || productName.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Tên mặt hàng là bắt buộc!");
-            return "redirect:/seller/product-management/" + stallId;
+            return "redirect:/seller/product-variant-management/" + stallId;
         }
         if (productPrice == null || productPrice.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             redirectAttributes.addFlashAttribute("errorMessage", "Giá tiền phải lớn hơn 0!");
-            return "redirect:/seller/product-management/" + stallId;
+            return "redirect:/seller/product-variant-management/" + stallId;
         }
         
         return shopService.addProduct(user, stallId, productName, productPrice, redirectAttributes);
     }
 
-    @PostMapping("/seller/update-product-quantity/{productId}")
-    public String updateProductQuantity(@PathVariable Long productId,
-                                      @RequestParam Integer newQuantity,
-                                      RedirectAttributes redirectAttributes) {
-        
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
-        if (!isAuthenticated) {
-            return "redirect:/login";
-        }
-        
-        User user = (User) authentication.getPrincipal();
-        
-        // Check if user has SELLER role
-        if (!user.getRole().equals(User.Role.SELLER)) {
-            return "redirect:/profile";
-        }
-        
-        return shopService.updateProductQuantity(user, productId, newQuantity, redirectAttributes);
-    }
+
 
     @PostMapping("/seller/update-product-quantity-file/{productId}")
     public String updateProductQuantityFromFile(@PathVariable Long productId,
@@ -576,19 +548,18 @@ public class ShopController {
         if (productName == null || productName.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Tên mặt hàng là bắt buộc!");
             Long parentProductId = productVariantRepository.findById(productId).map(ProductVariant::getProductId).orElse(0L);
-            return "redirect:/seller/product-management/" + parentProductId;
+            return "redirect:/seller/product-variant-management/" + parentProductId;
         }
         if (productPrice == null || productPrice.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             redirectAttributes.addFlashAttribute("errorMessage", "Giá tiền phải lớn hơn 0!");
             Long parentProductId = productVariantRepository.findById(productId).map(ProductVariant::getProductId).orElse(0L);
-            return "redirect:/seller/product-management/" + parentProductId;
+            return "redirect:/seller/product-variant-management/" + parentProductId;
         }
         
         return shopService.updateProduct(user, productId, productName, productPrice, redirectAttributes);
     }
 
     @GetMapping("/seller/upload-details/{uploadId}")
-    @ResponseBody
     public ResponseEntity<?> getUploadDetails(@PathVariable Long uploadId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
@@ -603,22 +574,7 @@ public class ShopController {
         return shopService.getUploadDetails(user, uploadId);
     }
 
-    // Endpoint để cập nhật quantity cho tất cả products từ warehouse
-    @PostMapping("/seller/update-product-quantities")
-    @ResponseBody
-    public ResponseEntity<?> updateProductQuantities() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() && 
-                                !authentication.getName().equals("anonymousUser");
-        
-        if (!isAuthenticated) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-        }
-        
-        User user = (User) authentication.getPrincipal();
-        
-        return shopService.updateProductQuantities(user);
-    }
+    
 
     
 

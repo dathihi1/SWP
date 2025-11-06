@@ -420,7 +420,7 @@
                                     <option value="" disabled selected>Chọn loại sản phẩm</option>
                                     <option value="Email">Email</option>
                                     <option value="Tài khoản">Tài khoản</option>
-                                    <option value="Thẻ cào (Game, Điện thoại)">Thẻ cào (Game, Điện thoại)</option>
+                                    <option value="Thẻ game">Thẻ game</option>
                                     <option value="Khác">Khác</option>
                                 </select>
                             </div>
@@ -710,9 +710,9 @@
         // Populate specific category based on product category
         (function() {
             const mapping = {
-                'Email': ['Gmail'],
-                'Tài khoản': ['Facebook', 'Twitter', 'Telegram', 'Instagram', 'Discord', 'Quizlet', 'Khác'],
-                'Thẻ cào (Game, Điện thoại)': ['Garena', 'Zing', 'Vcoin', 'Gate', 'Khác'],
+                'Email': ['Tài khoản Gmail'],
+                'Tài khoản': ['Tài khoản Facebook', 'Tài khoản Twitter', 'Tài khoản Telegram', 'Tài khoản Instagram', 'Tài khoản Discord', 'Tài khoản Quizlet', 'Khác'],
+                'Thẻ game': ['Thẻ Garena', 'Thẻ Zing', 'Thẻ Vcoin', 'Thẻ Gate', 'Khác'],
                 'Khác': ['Khác']
             };
             const productCategoryEl = document.getElementById('productCategory');

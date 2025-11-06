@@ -199,7 +199,12 @@
                                     <h5 class="text-primary mb-0">${formatMoney(order.totalAmount)} ₫</h5>
                                     <small class="text-muted">${itemCount} sản phẩm</small>
                                 </div>
-                                <div class="col-md-2 text-end">
+                                <div class="col-md-2 text-end d-flex justify-content-end gap-2">
+                                    ${order.status === 'COMPLETED' ? `
+                                    <button class=\"btn btn-outline-success btn-sm\" data-review-order-id=\"${order.id}\" onclick=\"openReviewModal(${order.id})\">
+                                        <i class=\"fa-solid fa-star me-1\"></i>Đánh giá
+                                    </button>
+                                    ` : ''}
                                     <button class="btn btn-outline-primary btn-sm" onclick="toggleOrderDetails('order${order.id}')">
                                         <i class="fa-solid fa-eye me-1"></i>Chi tiết
                                     </button>
@@ -254,13 +259,7 @@
                                                 <div class="fw-bold text-primary">${formatMoney(item.totalAmount)} ₫</div>
                                             </div>
                                         </div>
-                                        ${order.status === 'COMPLETED' ? `
-                                        <div class="mt-3 d-flex justify-content-end">
-                                            <button class="btn btn-outline-success btn-sm" onclick="openReviewModal(${order.id}, ${item.productId ?? 'null'})" ${!item.productId ? 'disabled' : ''}>
-                                                <i class="fa-solid fa-star me-1"></i>Đánh giá
-                                            </button>
-                                        </div>
-                                        ` : ''}
+                                        
                                         ${item.warehouse && item.warehouse.itemData ? `
                                             <div class="mt-3">
                                                 <button class="btn btn-outline-secondary btn-sm" onclick="toggleItemData('itemdata-${order.id}-${item.warehouseId}', this)">
@@ -311,11 +310,13 @@
                                     </div>
                                 </div>
                                 <div class="col-md-6 text-end">
-                                    <div class="mt-3">
-                                        <small class="text-muted">Phương thức thanh toán</small>
-                                        <div class="fw-bold">
-                                            <i class="fa-solid fa-wallet me-1"></i>
-                                            ${order.paymentMethod || 'Ví điện tử'}
+                                    <div class="mt-3 d-flex flex-column align-items-end gap-2">
+                                        <div>
+                                            <small class="text-muted">Phương thức thanh toán</small>
+                                            <div class="fw-bold">
+                                                <i class="fa-solid fa-wallet me-1"></i>
+                                                ${order.paymentMethod || 'Ví điện tử'}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -823,7 +824,6 @@
                 </style>
                 <form id="reviewForm" onsubmit="event.preventDefault(); submitReview();">
                     <input type="hidden" id="reviewOrderId" />
-                    <input type="hidden" id="reviewProductId" />
                     <div class="mb-3">
                         <label class="form-label">Chấm điểm</label>
                         <div id="ratingStars" class="rating-stars">
@@ -876,13 +876,8 @@
         });
         renderRatingStars();
     }
-    function openReviewModal(orderId, productId) {
-        if (!productId) {
-            showNotification('Không tìm thấy sản phẩm để đánh giá', 'error');
-            return;
-        }
+    function openReviewModal(orderId) {
         document.getElementById('reviewOrderId').value = orderId;
-        document.getElementById('reviewProductId').value = productId;
         selectedRating = 0;
         document.getElementById('reviewContent').value = '';
         const modalEl = document.getElementById('reviewModal');
@@ -893,7 +888,6 @@
 
     async function submitReview() {
         const orderId = document.getElementById('reviewOrderId').value;
-        const productId = document.getElementById('reviewProductId').value;
         const rating = selectedRating;
         if (!rating || rating < 1) {
             showNotification('Vui lòng chọn số sao đánh giá', 'error');
@@ -905,13 +899,17 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ orderId, productId, rating, content })
+                body: JSON.stringify({ orderId, rating, content })
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
                 throw new Error(data.message || 'Gửi đánh giá thất bại');
             }
             showNotification('Đã gửi đánh giá thành công', 'success');
+            const btn = document.querySelector(`[data-review-order-id="${orderId}"]`);
+            if (btn) {
+                btn.remove();
+            }
             if (reviewModalInstance) reviewModalInstance.hide();
         } catch (e) {
             showNotification(e.message, 'error');

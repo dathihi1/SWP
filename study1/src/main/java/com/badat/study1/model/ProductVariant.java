@@ -36,14 +36,12 @@ public class ProductVariant extends BaseEntity {
     @JoinColumn(name = "product_id", insertable = false, updatable = false)
     Product product;
     
-    @Column(name = "type", nullable = false, length = 50)
-    String type;
+    @Column(name = "subcategory", nullable = false, length = 100)
+    @Builder.Default
+    String subcategory = "Khác";
 
     @Column(name = "name", nullable = false, length = 100)
     String name;
-
-    @Column(name = "description", columnDefinition = "TEXT")
-    String description;
 
     @Column(name = "price", nullable = false, precision = 15, scale = 2)
     BigDecimal price;

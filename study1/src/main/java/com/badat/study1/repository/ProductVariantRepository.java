@@ -16,7 +16,7 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     List<ProductVariant> findByShopIdAndIsDeleteFalse(Long shopId);
     List<ProductVariant> findByIsDeleteFalse();
     List<ProductVariant> findByStatus(ProductVariant.Status status);
-    List<ProductVariant> findByType(String type);
+    List<ProductVariant> findBySubcategory(String subcategory);
     List<ProductVariant> findByNameContainingIgnoreCase(String name);
     Optional<ProductVariant> findByUniqueKey(String uniqueKey);
 
@@ -36,8 +36,6 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 	// Warehouse quantity methods
     @Query("SELECT COUNT(w) FROM Warehouse w WHERE w.productVariant.id = :productVariantId AND w.isDelete = false AND w.locked = false")
 	long countWarehouseItemsByProductVariantId(@Param("productVariantId") Long productVariantId);
-	
-    @Query("SELECT COUNT(w) FROM Warehouse w WHERE w.productVariant.id = :productVariantId AND w.itemType = :itemType AND w.isDelete = false AND w.locked = false")
-	long countWarehouseItemsByProductVariantIdAndType(@Param("productVariantId") Long productVariantId, @Param("itemType") String itemType);
+
 }
 

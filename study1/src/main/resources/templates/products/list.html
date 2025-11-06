@@ -50,19 +50,11 @@
             font-size: 0.875rem;
             font-weight: 500;
         }
-        /* Ticker styling */
-        .ticker-bar {
-            background: linear-gradient(90deg, #f8f9fa 0%, #eef5ff 50%, #f8f9fa 100%);
-        }
-        .ticker-content {
-            font-weight: 600;
-            color: #0d6efd;
-            letter-spacing: .2px;
-        }
-        .ticker-content .sep {
-            color: #6c757d;
-            margin: 0 .75rem;
-        }
+        /* Marquee styles (synced with home) */
+        .marquee-container { background: white; color: #0d6efd; padding: 8px 0; overflow: hidden; position: relative; z-index: 1000; border-bottom: 1px solid #e9ecef; }
+        .marquee { display: inline-block; white-space: nowrap; animation: marquee 40s linear infinite; font-size: 14px; font-weight: 500; color: #0d6efd; }
+        .marquee:hover { animation-play-state: paused; }
+        @keyframes marquee { 0% { transform: translateX(100%);} 100% { transform: translateX(-100%);} }
         /* Pagination styles giống trang Đơn hàng */
         .pagination { margin: 0; }
         .page-link {
@@ -224,26 +216,14 @@
     </div>
 </nav>
 
-<!-- Running ticker line full-width (same as stall detail) -->
-<div class="bg-light border-bottom">
-    <div class="container-fluid py-2 px-0">
-        <marquee behavior="scroll" direction="left" scrollamount="7" class="w-100 d-block">
-            <span class="text-primary fw-semibold">
-                <i class="fa-solid fa-bolt me-1"></i>Ưu đãi hot hôm nay: giảm giá phí giao dịch 10% cho đơn đầu tiên!
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-shield-halved me-1"></i>Giao dịch an toàn, bảo mật nhiều lớp
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-wallet me-1"></i>Nạp ví trong vài giây, thanh toán tức thì
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-headset me-1"></i>Hỗ trợ 24/7 qua chat và email
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-store me-1"></i>Hàng nghìn gian hàng uy tín được kiểm duyệt
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-gift me-1"></i>Voucher và ưu đãi mới mỗi ngày
-            </span>
-        </marquee>
+<!-- Marquee (synced with home) -->
+<div class="marquee-container">
+    <div class="container">
+        <div class="marquee">
+            <i class="fa-solid fa-bullhorn me-2"></i>
+            MMO Market - Mua bán sản phẩm số . Mọi giao dịch trên trang đều hoàn toàn tự động và được giữ tiền 3 ngày, thay thế cho hình thức trung gian, các bạn yên tâm giao dịch nhé.
+        </div>
     </div>
-    
 </div>
 
 <!-- Empty state -->
@@ -348,11 +328,11 @@
 
 <div class="row g-3" th:if="${!stalls.isEmpty()}">
     <div class="col-12 col-md-4" th:each="s: ${stalls}">
-        <a th:href="@{'/stall/' + ${s.id}}" class="text-decoration-none text-dark">
+        <a th:href="@{'/products/' + ${s.id}}" class="text-decoration-none text-dark">
             <div class="card h-100 border-0 shadow-sm hover-lift">
                 <!-- Stall Image -->
                 <div class="preview-img-frame" styles="height:200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <img th:alt="${s.stallName}" th:src="@{'/stall-image/' + ${s.id}}" 
+                    <img th:alt="${s.productName}" th:src="@{'/stall-image/' + ${s.id}}" 
                          style="object-fit:cover;height:200px; width: 100%; border-radius: 0.5rem 0.5rem 0 0;"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <!-- Fallback content if no image -->
@@ -360,14 +340,14 @@
                          style="display: none; border-radius: 0.5rem 0.5rem 0 0;">
                         <div class="text-center text-white">
                             <i class="fa-solid fa-store mb-2" style="font-size:48px; opacity: 0.8;"></i>
-                            <div class="fw-bold" th:text="${s.stallName}">Gian hàng</div>
+                            <div class="fw-bold" th:text="${s.productName}">Gian hàng</div>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Stall Content -->
                 <div class="p-3" style="line-height:1.5;">
-                    <div class="fw-semibold text-truncate mb-2" th:text="${s.stallName}">Tên gian hàng</div>
+                    <div class="fw-semibold text-truncate mb-2" th:text="${s.productName}">Tên gian hàng</div>
                     
                     <!-- Stock and Price Range -->
                     <div class="mb-2">
@@ -385,17 +365,12 @@
                     
                     <div class="small mb-2">
                         <div class="text-muted">Loại gian hàng</div>
-                        <div class="text-truncate" th:text="${s.stallCategory != null ? s.stallCategory : 'Khác'}">Danh mục</div>
+                        <div class="text-truncate" th:text="${s.productCategory != null ? s.productCategory : 'Khác'}">Danh mục</div>
                     </div>
                     
                     <div class="small mb-2">
                         <div class="text-muted">Tên shop</div>
                         <div class="text-truncate" th:text="${shopMap[s.shopId] != null ? shopMap[s.shopId].shopName : 'N/A'}">Shop</div>
-                    </div>
-                    
-                    <div class="small mb-2">
-                        <div class="text-muted">Loại kinh doanh</div>
-                        <div class="text-truncate" th:text="${s.businessType}">Business Type</div>
                     </div>
                     
                     <div class="small mt-2 d-flex justify-content-between align-items-center">

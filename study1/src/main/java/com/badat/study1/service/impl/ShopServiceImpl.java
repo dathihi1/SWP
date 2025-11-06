@@ -164,27 +164,32 @@ public class ShopServiceImpl implements ShopService {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        var productOptional = productRepository.findById(productId);
-        if (productOptional.isEmpty()) {
+        var productVariantOptional = productVariantRepository.findById(productId);
+        if (productVariantOptional.isEmpty()) {
             return "redirect:/seller/product-management";
         }
-        var product = productOptional.get();
+        var productVariant = productVariantOptional.get();
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
             return "redirect:/seller/product-management";
         }
-        if (!product.getShopId().equals(userShop.get().getId())) {
+        if (!productVariant.getShopId().equals(userShop.get().getId())) {
             return "redirect:/seller/product-management";
         }
-        model.addAttribute("product", product);
-        model.addAttribute("stall", product);
+        var product = productRepository.findById(productVariant.getProductId());
+        if (product.isEmpty()) {
+            return "redirect:/seller/product-management";
+        }
+        model.addAttribute("productVariant", productVariant);
+        model.addAttribute("product", product.get());
+        model.addAttribute("stall", product.get());
         int validatedPage = Math.max(0, page);
         Pageable pageable = PageRequest.of(validatedPage, 5);
-        Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
+        Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductVariantIdOrderByCreatedAtDesc(productId, pageable);
         if (validatedPage >= uploadHistoryPage.getTotalPages() && uploadHistoryPage.getTotalPages() > 0) {
             validatedPage = uploadHistoryPage.getTotalPages() - 1;
             pageable = PageRequest.of(validatedPage, 5);
-            uploadHistoryPage = uploadHistoryRepository.findByProductIdOrderByCreatedAtDesc(productId, pageable);
+            uploadHistoryPage = uploadHistoryRepository.findByProductVariantIdOrderByCreatedAtDesc(productId, pageable);
         }
         model.addAttribute("recentUploads", uploadHistoryPage.getContent());
         model.addAttribute("currentPage", validatedPage);
@@ -239,7 +244,7 @@ public class ShopServiceImpl implements ShopService {
                     .filter(Objects::nonNull)
                     .mapToInt(Integer::intValue)
                     .sum();
-            String firstProductName = items.isEmpty() ? "" : (items.get(0).getProductVariant() != null ? items.get(0).getProductVariant().getName() : "N/A");
+            String firstProductName = items.isEmpty() ? "" : (items.get(0).getProductVariantName() != null ? items.get(0).getProductVariantName() : "N/A");
             String stallName = items.isEmpty() ? "" : (items.get(0).getWarehouse().getProduct() != null ? items.get(0).getWarehouse().getProduct().getProductName() : "N/A");
             BigDecimal firstUnitPrice = items.isEmpty() ? BigDecimal.ZERO : items.get(0).getUnitPrice();
             var firstStatus = items.isEmpty() ? null : items.get(0).getStatus();
@@ -327,8 +332,6 @@ public class ShopServiceImpl implements ShopService {
         model.addAttribute("userRole", user.getRole().name());
         return "seller/gross-sales";
     }
-
-    // Removed duplicate products page; consolidated under productManagementOverview
 
     @Override
     public ResponseEntity<?> getReviewsByStall(User user, Long stallId) {
@@ -518,52 +521,23 @@ public class ShopServiceImpl implements ShopService {
             }
             ProductVariant productVariant;
             String uniqueKey = "PROD_" + System.currentTimeMillis() + "_" + user.getId();
+            String subcategoryValue = parentProduct.getProductSubcategory() != null ? parentProduct.getProductSubcategory() : "Khác";
             productVariant = ProductVariant.builder()
                     .shopId(parentProduct.getShopId())
                     .productId(stallId)
-                    .type("Khác")
+                    .subcategory(subcategoryValue)
                     .name(productName)
-                    .description("")
                     .price(productPrice)
                     .quantity(0)
                     .uniqueKey(uniqueKey)
                     .status(ProductVariant.Status.UNAVAILABLE)
                     .build();
             productVariantRepository.save(productVariant);
-            redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được thêm thành công!");
+            redirectAttributes.addFlashAttribute("successMessage", "Biến thể đã được thêm thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi thêm sản phẩm. Vui lòng thử lại!");
         }
-        return "redirect:/seller/product-management/" + stallId;
-    }
-
-    @Override
-    public String updateProductQuantity(User user, Long productId, Integer newQuantity, RedirectAttributes redirectAttributes) {
-        try {
-            var productVariantOptional = productVariantRepository.findById(productId);
-            if (productVariantOptional.isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-                return "redirect:/seller/product-management";
-            }
-            ProductVariant productVariant = productVariantOptional.get();
-            var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty() || !productVariant.getShopId().equals(userShop.get().getId())) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền cập nhật sản phẩm này!");
-                return "redirect:/seller/product-management";
-            }
-            productVariant.setQuantity(newQuantity);
-            if (newQuantity != null && newQuantity > 0) {
-                productVariant.setStatus(ProductVariant.Status.AVAILABLE);
-            } else {
-                productVariant.setStatus(ProductVariant.Status.UNAVAILABLE);
-            }
-            productVariantRepository.save(productVariant);
-            redirectAttributes.addFlashAttribute("successMessage", "Cập nhật số lượng thành công!");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi cập nhật số lượng. Vui lòng thử lại!");
-        }
-        Long parentProductId = productVariantRepository.findById(productId).map(ProductVariant::getProductId).orElse(null);
-        return "redirect:/seller/product-management/" + (parentProductId != null ? parentProductId : 0);
+        return "redirect:/seller/product-variant-management/" + stallId;
     }
 
     @Override
@@ -584,12 +558,12 @@ public class ShopServiceImpl implements ShopService {
             productVariant.setPrice(productPrice);
             productVariant.setUpdatedAt(java.time.LocalDateTime.now());
             productVariantRepository.save(productVariant);
-            redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được cập nhật thành công!");
+            redirectAttributes.addFlashAttribute("successMessage", "Biến thể đã được cập nhật thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi cập nhật sản phẩm. Vui lòng thử lại!");
         }
         Long parentProductId = productVariantRepository.findById(productId).map(ProductVariant::getProductId).orElse(null);
-        return "redirect:/seller/product-management/" + (parentProductId != null ? parentProductId : 0);
+        return "redirect:/seller/product-variant-management/" + (parentProductId != null ? parentProductId : 0);
     }
 
     @Override
@@ -627,116 +601,60 @@ public class ShopServiceImpl implements ShopService {
             int successCount = 0;
             int failureCount = 0;
             StringBuilder resultDetails = new StringBuilder();
-            com.badat.study1.model.Warehouse.ItemType expectedType = determineItemTypeFromStall(parentProduct.getProductCategory());
-            java.util.Set<String> processedItemsInFile = new java.util.HashSet<>();
             java.util.Set<String> processedItemKeys = new java.util.HashSet<>();
+            // Load existing identifiers (scoped by same subcategory) for this variant for duplicate check in DB
+            var existingItems = warehouseRepository.findByProductVariantIdAndIsDeleteFalse(productVariant.getId());
+            final String currentSubcategory = productVariant.getSubcategory();
+            java.util.Set<String> existingKeys = new java.util.HashSet<>();
+            for (var it : existingItems) {
+                // ensure same subcategory when checking duplicates in DB
+                if (it.getItemSubcategory() != null && currentSubcategory != null
+                        && it.getItemSubcategory().equalsIgnoreCase(currentSubcategory)) {
+                    String[] ep = it.getItemData().split("\\|");
+                    String key = extractIdentifier(currentSubcategory, ep);
+                    if (key != null) existingKeys.add(key);
+                }
+            }
             for (int i = 0; i < lines.length; i++) {
                 String line = lines[i].trim();
                 if (line.isEmpty()) continue;
                 try {
                     String[] parts = line.split("\\|");
-                    if (parts.length < 2) {
+                    // Yêu cầu đúng 2 phần theo định dạng đã công bố
+                    if (parts.length != 2) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ (cần ít nhất 2 phần)\n");
+                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
                         continue;
                     }
-                    String itemType = parts[0].toUpperCase();
+                    // Không chấp nhận format cũ có tiền tố loại (CARD|, EMAIL|, KEY|)
+                    String firstTokenUpper = parts[0].trim().toUpperCase();
+                    if ("CARD".equals(firstTokenUpper) || "EMAIL".equals(firstTokenUpper) || "KEY".equals(firstTokenUpper)) {
+                        failureCount++;
+                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
+                        continue;
+                    }
                     String itemData = line;
-                    if (processedItemsInFile.contains(itemData)) {
+                    String itemKey = extractIdentifier(productVariant.getSubcategory(), parts);
+                    // Kiểm tra khóa định danh bắt buộc theo subcategory
+                    if (itemKey == null || itemKey.isBlank()) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Item trùng lặp trong file (").append(itemType).append(")\n");
+                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
                         continue;
-                    }
-                    String itemKey = null;
-                    if (parts.length >= 2) {
-                        if ("CARD".equals(itemType) && parts.length >= 3) {
-                            itemKey = parts[2];
-                        } else if ("EMAIL".equals(itemType)) {
-                            itemKey = parts[1];
-                        } else if ("ACCOUNT".equals(itemType)) {
-                            itemKey = parts[1];
-                        } else if ("KEY".equals(itemType)) {
-                            itemKey = parts[1];
-                        }
                     }
                     if (itemKey != null && processedItemKeys.contains(itemKey)) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": ").append(itemType).append(" với ").append(itemKey).append(" đã tồn tại trong file\n");
+                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
                         continue;
                     }
-                    com.badat.study1.model.Warehouse.ItemType type;
-                    try {
-                        type = com.badat.study1.model.Warehouse.ItemType.valueOf(itemType);
-                    } catch (IllegalArgumentException e) {
+                    boolean existsInDb = (itemKey != null && existingKeys.contains(itemKey));
+                    if (existsInDb) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Loại sản phẩm không hợp lệ (").append(itemType).append(")\n");
+                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
                         continue;
                     }
-                    boolean isValidType = (type == expectedType);
-                    if (!isValidType) {
-                        failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Loại sản phẩm không khớp với gian hàng\n");
-                        continue;
-                    }
-                    java.util.List<com.badat.study1.model.Warehouse> existingItems = warehouseRepository.findByItemTypeOrderByCreatedAtDesc(type);
-                    com.badat.study1.model.Warehouse existingItem = null;
-                    for (com.badat.study1.model.Warehouse item : existingItems) {
-                        boolean isDuplicate = false;
-                        if (itemKey != null) {
-                            String[] existingParts = item.getItemData().split("\\|");
-                            String existingKey = null;
-                            if ("CARD".equals(itemType) && existingParts.length >= 3) {
-                                existingKey = existingParts[2];
-                            } else if ("EMAIL".equals(itemType) && existingParts.length >= 2) {
-                                existingKey = existingParts[1];
-                            } else if ("ACCOUNT".equals(itemType) && existingParts.length >= 2) {
-                                existingKey = existingParts[1];
-                            } else if ("KEY".equals(itemType) && existingParts.length >= 2) {
-                                existingKey = existingParts[1];
-                            }
-                            isDuplicate = (existingKey != null && existingKey.equals(itemKey));
-                        } else {
-                            isDuplicate = item.getItemData().equals(itemData);
-                        }
-                        if (isDuplicate) {
-                            existingItem = item;
-                            break;
-                        }
-                    }
-                    if (existingItem != null && !existingItem.getIsDelete()) {
-                        failureCount++;
-                        if (itemKey != null) {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong hệ thống (").append(itemType).append(" với ").append(itemKey).append(")\n");
-                        } else {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã tồn tại trong hệ thống (").append(itemType).append(")\n");
-                        }
-                        continue;
-                    }
-                    if (existingItem != null && existingItem.getIsDelete() && existingItem.getLocked()) {
-                        failureCount++;
-                        if (itemKey != null) {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã bị khóa và không thể khôi phục (").append(itemType).append(" với ").append(itemKey).append(")\n");
-                        } else {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Item đã bị khóa và không thể khôi phục (").append(itemType).append(")\n");
-                        }
-                        continue;
-                    }
-                    processedItemsInFile.add(itemData);
-                    if (itemKey != null) {
-                        processedItemKeys.add(itemKey);
-                    }
-                    if (existingItem != null && existingItem.getIsDelete() && !existingItem.getLocked()) {
-                        existingItem.setIsDelete(false);
-                        existingItem.setDeletedBy(null);
-                        warehouseRepository.save(existingItem);
-                        if (itemKey != null) {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Khôi phục item (").append(itemType).append(" với ").append(itemKey).append(")\n");
-                        } else {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Khôi phục item (").append(itemType).append(")\n");
-                        }
-                    } else {
+                    if (itemKey != null) processedItemKeys.add(itemKey);
                         com.badat.study1.model.Warehouse warehouseItem = com.badat.study1.model.Warehouse.builder()
-                                .itemType(type)
+                            .itemSubcategory(productVariant.getSubcategory())
                                 .itemData(itemData)
                                 .productVariant(productVariant)
                                 .shop(userShop.get())
@@ -744,16 +662,10 @@ public class ShopServiceImpl implements ShopService {
                                 .user(user)
                                 .build();
                         warehouseRepository.save(warehouseItem);
-                        if (itemKey != null) {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Thêm mới item (").append(itemType).append(" với ").append(itemKey).append(")\n");
-                        } else {
-                            resultDetails.append("Dòng ").append(i + 1).append(": Thêm mới item (").append(itemType).append(")\n");
-                        }
-                    }
                     successCount++;
                 } catch (Exception ex) {
                     failureCount++;
-                    resultDetails.append("Dòng ").append(i + 1).append(": Lỗi xử lý - ").append(ex.getMessage()).append("\n");
+                    resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
                 }
             }
             long warehouseCount = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productId);
@@ -781,7 +693,7 @@ public class ShopServiceImpl implements ShopService {
             } catch (Exception ignore) {}
             try {
                 StringBuilder detailedResult = new StringBuilder();
-                detailedResult.append("Tên mặt hàng: ").append(productVariant.getName()).append("\n");
+                detailedResult.append("Tên biến thể: ").append(productVariant.getName()).append("\n");
                 detailedResult.append("Tên file: ").append(file.getOriginalFilename()).append("\n");
                 detailedResult.append("Ngày upload: ").append(java.time.LocalDateTime.now().toString()).append("\n");
                 detailedResult.append("Tổng số dòng: ").append(lines.length).append("\n");
@@ -819,7 +731,7 @@ public class ShopServiceImpl implements ShopService {
                 if (productVariantOptional.isPresent()) {
                     ProductVariant failedProductVariant = productVariantOptional.get();
                     StringBuilder detailedResult = new StringBuilder();
-                    detailedResult.append("Tên mặt hàng: ").append(failedProductVariant.getName()).append("\n");
+                    detailedResult.append("Tên biến thể: ").append(failedProductVariant.getName()).append("\n");
                     detailedResult.append("Tên file: ").append(file.getOriginalFilename()).append("\n");
                     detailedResult.append("Ngày upload: ").append(java.time.LocalDateTime.now().toString()).append("\n");
                     detailedResult.append("Tổng số dòng: 0\n");
@@ -877,44 +789,27 @@ public class ShopServiceImpl implements ShopService {
         }
     }
 
-    @Override
-    public ResponseEntity<?> updateProductQuantities(User user) {
-        try {
-            var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty()) {
-                return ResponseEntity.badRequest().body("User shop not found");
-            }
-            var productVariants = productVariantRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
-            int updatedCount = 0;
-            for (ProductVariant productVariant : productVariants) {
-                long warehouseCount = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productVariant.getId());
-                productVariant.setQuantity((int) warehouseCount);
-                productVariant.setStatus(warehouseCount > 0 ? ProductVariant.Status.AVAILABLE : ProductVariant.Status.UNAVAILABLE);
-                productVariantRepository.save(productVariant);
-                updatedCount++;
-            }
-            return ResponseEntity.ok("Đã cập nhật quantity cho " + updatedCount + " sản phẩm từ warehouse");
-        } catch (Exception e) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+    private String extractIdentifier(String subcategory, String[] parts) {
+        if (parts == null) return null;
+        String sub = subcategory == null ? "" : subcategory.toLowerCase();
+        // Gmail: email|password -> key = email
+        if (sub.contains("gmail")) {
+            String email = parts.length >= 2 ? parts[0].trim() : null;
+            if (email == null || !email.contains("@")) return null;
+            return email;
         }
-    }
+        // Thẻ cào: code|serial -> key = serial
+        if (sub.contains("thẻ") || sub.contains("card")) {
+            return parts.length >= 2 ? parts[1].trim() : null;
+        }
+        // Tài khoản: username|password -> key = username
+        if (sub.contains("tài khoản") || sub.contains("account") || sub.contains("acc")) {
+            return parts.length >= 2 ? parts[0].trim() : null;
+        }
+        // Default fallback: first part as identifier
+        return parts.length >= 2 ? parts[0].trim() : null;
+        }
 
-    private com.badat.study1.model.Warehouse.ItemType determineItemTypeFromStall(String stallCategory) {
-        if (stallCategory == null) {
-            return com.badat.study1.model.Warehouse.ItemType.KEY;
-        }
-        String category = stallCategory.toLowerCase();
-        if (category.contains("tài khoản") || category.contains("account") || category.contains("acc")) {
-            return com.badat.study1.model.Warehouse.ItemType.EMAIL;
-        } else if (category.contains("thẻ") || category.contains("card") || category.contains("gift") ||
-                category.contains("điện thoại") || category.contains("phone")) {
-            return com.badat.study1.model.Warehouse.ItemType.CARD;
-        } else if (category.contains("key") || category.contains("game") || category.contains("software")) {
-            return com.badat.study1.model.Warehouse.ItemType.KEY;
-        } else {
-            return com.badat.study1.model.Warehouse.ItemType.KEY;
-        }
-    }
 }
 
 

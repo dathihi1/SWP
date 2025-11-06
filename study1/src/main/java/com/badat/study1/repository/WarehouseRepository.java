@@ -32,7 +32,8 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     /**
      * Find warehouse items by item type
      */
-    List<Warehouse> findByItemTypeOrderByCreatedAtDesc(Warehouse.ItemType itemType);
+    // Deprecated with item_subcategory string
+    // List<Warehouse> findByItemTypeOrderByCreatedAtDesc(Warehouse.ItemType itemType);
     
     /**
      * Count warehouse items by product ID
@@ -53,17 +54,25 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     /**
      * Count warehouse items by item type
      */
-    long countByItemType(Warehouse.ItemType itemType);
+    // Deprecated with item_subcategory string
+    // long countByItemType(Warehouse.ItemType itemType);
     
     /**
      * Find warehouse items by product ID and item type
      */
-    List<Warehouse> findByProductIdAndItemTypeOrderByCreatedAtDesc(Long productId, Warehouse.ItemType itemType);
+    // Deprecated with item_subcategory string
+    // List<Warehouse> findByProductIdAndItemTypeOrderByCreatedAtDesc(Long productId, Warehouse.ItemType itemType);
     
     /**
      * Find warehouse items by shop ID and item type
      */
-    List<Warehouse> findByShopIdAndItemTypeOrderByCreatedAtDesc(Long shopId, Warehouse.ItemType itemType);
+    // Deprecated with item_subcategory string
+    // List<Warehouse> findByShopIdAndItemTypeOrderByCreatedAtDesc(Long shopId, Warehouse.ItemType itemType);
+
+    /**
+     * Find all items by product variant (not deleted)
+     */
+    List<Warehouse> findByProductVariantIdAndIsDeleteFalse(Long productVariantId);
     
     /**
      * Find recent warehouse items for a specific product (last 50 records)

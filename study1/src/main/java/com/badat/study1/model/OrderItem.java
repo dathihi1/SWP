@@ -34,6 +34,9 @@ public class OrderItem extends BaseEntity {
     @JoinColumn(name = "product_variant_id", insertable = false, updatable = false)
     ProductVariant productVariant;
 
+    @Column(name = "product_variant_name", length = 150)
+    String productVariantName;
+
     @Column(name = "warehouse_id", nullable = false)
     Long warehouseId;
 
