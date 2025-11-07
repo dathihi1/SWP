@@ -31,7 +31,7 @@ public class JwtService {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         Date issueTime = new Date();
-        Date expirationTime = Date.from(issueTime.toInstant().plusSeconds(15 * 60)); // 1 hour
+        Date expirationTime = Date.from(issueTime.toInstant().plusSeconds(60 * 60)); // 1 hour
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                 .subject(user.getUsername())
                 .claim("role", user.getRole().name())
@@ -56,7 +56,7 @@ public class JwtService {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         Date issueTime = new Date();
-        Date expirationTime = Date.from(issueTime.toInstant().plusSeconds(60 * 60));
+        Date expirationTime = Date.from(issueTime.toInstant().plusSeconds(24 * 60 * 60));
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                 .subject(user.getUsername())
                 .claim("role", user.getRole().name())

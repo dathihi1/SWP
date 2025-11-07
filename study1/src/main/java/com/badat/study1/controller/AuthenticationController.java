@@ -68,72 +68,9 @@ public class AuthenticationController {
             log.info("Login attempt for username: {} from IP: {}", username, ipAddress);
             
             // IP lockout check is now handled by IpBlockingFilter (removed duplicate check here)
+            // Captcha validation is now handled by CaptchaValidationFilter (removed duplicate check here)
             
-            //  1. Check if IP is rate limited for captcha failures
-            if (captchaRateLimitService.isCaptchaRateLimited(ipAddress)) {
-                log.warn("Captcha rate limited - IP: {}", ipAddress);
-                return ResponseEntity.status(429).body(Map.of(
-                    "error", "Quá nhiều lần nhập sai captcha. Vui lòng thử lại sau 15 phút",
-                    "captchaRateLimited", true
-                ));
-            }
-            
-            //  2. Check captcha FIRST (validate correctness) - captchaId from HttpOnly cookie
-            String captchaCode = loginRequest.getCaptchaCode();
-            
-            // Fallback to simple captcha field for backward compatibility
-            if (captchaCode == null || captchaCode.trim().isEmpty()) {
-                captchaCode = loginRequest.getCaptcha();
-            }
-            
-            // Always require captcha input (not empty)
-            if (captchaCode == null || captchaCode.trim().isEmpty()) {
-                securityEventService.logCaptchaRequired(ipAddress, username);
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Vui lòng nhập mã xác thực",
-                    "message", "captcha required",
-                    "captchaRequired", true
-                ));
-            }
-            
-            // Validate captcha using ID from HttpOnly cookie (IMAGE captcha)
-            boolean captchaValid = captchaService.validateCaptcha(request, captchaCode);
-            log.info("Captcha validation (from cookie): {}", captchaValid ? "valid" : "invalid");
-            
-            // If captcha is invalid, return immediately without checking credentials
-            if (!captchaValid) {
-                captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
-                securityEventService.logCaptchaRequired(ipAddress, username);
-                // Generate new captcha with new cookie
-                Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
-                ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
-                        .httpOnly(true)
-                        .secure(false)
-                        .sameSite("Lax")
-                        .path("/")
-                        .maxAge(0)
-                        .build();
-                return ResponseEntity.status(400)
-                        .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
-                        .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
-                        .body(Map.of(
-                            "error", "Mã xác thực không đúng, vui lòng nhập lại",
-                            "message", "captcha incorrect",
-                            "captchaRequired", true,
-                            "captcha", newCaptchaResult.getKey()
-                        ));
-            }
-            
-            // Clear cookie after successful validation (one-time use)
-            ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
-                    .httpOnly(true)
-                    .secure(false)
-                    .sameSite("Lax")
-                    .path("/")
-                    .maxAge(0)
-                    .build();
-            
-            // 🔒 3. Only if captcha is valid, then check username/password
+            // Check username/password
             try {
                 LoginResponse loginResponse = authenticationService.login(loginRequest, ipAddress, userAgent);
                 
@@ -157,6 +94,15 @@ public class AuthenticationController {
                         .path("/")
                         .sameSite("Lax")
                         .maxAge(60L * 60L) // 1 hour, align with token expiry
+                        .build();
+
+                // Clear captcha cookie (already cleared by filter, but keep for safety)
+                ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                        .httpOnly(true)
+                        .secure(false)
+                        .sameSite("Lax")
+                        .path("/")
+                        .maxAge(0)
                         .build();
 
                 return ResponseEntity.ok()
@@ -280,54 +226,7 @@ public class AuthenticationController {
                 ));
             }
             
-            // Validate captcha - captchaId from HttpOnly cookie
-            if (request.getCaptchaCode() == null || request.getCaptchaCode().trim().isEmpty()) {
-                // Record failed attempt for missing captcha
-                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_REQUIRED, ipAddress, 
-                        "Registration without captcha");
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Vui lòng nhập mã xác thực",
-                    "captchaRequired", true
-                ));
-            }
-            
-            // Validate captcha using ID from HttpOnly cookie (IMAGE captcha)
-            boolean captchaValid = captchaService.validateCaptcha(http, request.getCaptchaCode());
-            
-            if (!captchaValid) {
-                // Record failed attempt for invalid captcha
-                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
-                captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
-                        "Registration with invalid captcha");
-                // Generate new captcha with new cookie
-                Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
-                ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
-                        .httpOnly(true)
-                        .secure(false)
-                        .sameSite("Lax")
-                        .path("/")
-                        .maxAge(0)
-                        .build();
-                return ResponseEntity.status(400)
-                        .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
-                        .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
-                        .body(Map.of(
-                            "error", "Mã xác thực không đúng, vui lòng nhập lại",
-                            "captchaRequired", true,
-                            "captcha", newCaptchaResult.getKey()
-                        ));
-            }
-            
-            // Clear cookie after successful validation
-            ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
-                    .httpOnly(true)
-                    .secure(false)
-                    .sameSite("Lax")
-                    .path("/")
-                    .maxAge(0)
-                    .build();
+            // Captcha validation is now handled by CaptchaValidationFilter (removed duplicate check here)
             
             // Add delay to prevent timing attacks
             Thread.sleep(500 + new Random().nextInt(500));
@@ -375,6 +274,15 @@ public class AuthenticationController {
                 ipAddress, 
                 "OTP sent to: " + request.getEmail()
             );
+            
+            // Clear captcha cookie (already cleared by filter, but keep for safety)
+            ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(0)
+                    .build();
             
             // Always return success to prevent email enumeration
             return ResponseEntity.ok()
@@ -572,73 +480,7 @@ public class AuthenticationController {
                 ));
             }
             
-            // Validate captcha - captchaId from HttpOnly cookie
-            if (request.getCaptchaCode() == null || request.getCaptchaCode().trim().isEmpty()) {
-                // Record failed attempt for missing captcha
-                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_REQUIRED, ipAddress, 
-                        "Forgot password without captcha");
-                return ResponseEntity.status(400).body(Map.of(
-                    "error", "Vui lòng nhập mã xác thực",
-                    "captchaRequired", true
-                ));
-            }
-            
-            // Validate captcha using ID from HttpOnly cookie (IMAGE captcha)
-            log.info("Forgot password captcha validation - User input: '{}', Email: {}", 
-                    request.getCaptchaCode(), request.getEmail());
-            
-            boolean captchaValid;
-            try {
-                captchaValid = captchaService.validateCaptcha(httpRequest, request.getCaptchaCode());
-                log.info("Forgot password captcha validation result: {} for email: {}", 
-                        captchaValid, request.getEmail());
-            } catch (Exception e) {
-                log.error("Exception during captcha validation for email: {} - {}", 
-                        request.getEmail(), e.getMessage(), e);
-                captchaValid = false;
-            }
-            
-            if (!captchaValid) {
-                // Record failed attempt for invalid captcha
-                ipLockoutService.recordFailedAttempt(ipAddress, request.getEmail() != null ? request.getEmail() : "unknown");
-                captchaRateLimitService.recordFailedCaptchaAttempt(ipAddress);
-                securityEventService.logSecurityEvent(SecurityEvent.EventType.CAPTCHA_FAILED, ipAddress, 
-                        "Forgot password with invalid captcha for email: " + request.getEmail());
-                
-                // CRITICAL: Generate new captcha with new cookie and RETURN IMMEDIATELY
-                // DO NOT proceed to send email
-                Map.Entry<CaptchaResponse, String> newCaptchaResult = captchaService.generateCaptchaWithCookie();
-                ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
-                        .httpOnly(true)
-                        .secure(false)
-                        .sameSite("Lax")
-                        .path("/")
-                        .maxAge(0)
-                        .build();
-                
-                log.warn("Captcha validation failed - returning error response without sending email for: {}", 
-                        request.getEmail());
-                
-                return ResponseEntity.status(400)
-                        .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
-                        .header(HttpHeaders.SET_COOKIE, newCaptchaResult.getValue())
-                        .body(Map.of(
-                            "success", false,
-                            "error", "Mã xác thực không đúng, vui lòng nhập lại",
-                            "captchaRequired", true,
-                            "captcha", newCaptchaResult.getKey()
-                        ));
-            }
-            
-            // Clear cookie after successful validation
-            ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
-                    .httpOnly(true)
-                    .secure(false)
-                    .sameSite("Lax")
-                    .path("/")
-                    .maxAge(0)
-                    .build();
+            // Captcha validation is now handled by CaptchaValidationFilter (removed duplicate check here)
             
             // Add delay to prevent timing attacks
             Thread.sleep(500 + new Random().nextInt(500));
@@ -654,6 +496,15 @@ public class AuthenticationController {
                 ipAddress, 
                 "Password reset email sent to: " + request.getEmail()
             );
+            
+            // Clear captcha cookie (already cleared by filter, but keep for safety)
+            ResponseCookie clearCookie = ResponseCookie.from("captcha_id", "")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(0)
+                    .build();
             
             // Always return success to prevent email enumeration
             return ResponseEntity.ok()

@@ -23,14 +23,14 @@ public class CartItem {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    private ProductVariant productVariant;
 
     @Column(nullable = false)
     private int quantity;
 
     public double getSubtotal() {
-        java.math.BigDecimal price = product != null && product.getPrice() != null
-                ? product.getPrice()
+        java.math.BigDecimal price = productVariant != null && productVariant.getPrice() != null
+                ? productVariant.getPrice()
                 : java.math.BigDecimal.ZERO;
         return price.multiply(java.math.BigDecimal.valueOf(quantity)).doubleValue();
     }

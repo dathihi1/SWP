@@ -22,7 +22,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
      * Tìm tất cả OrderItem theo Order ID với fetch join
      */
     @Query("SELECT oi FROM OrderItem oi " +
-           "LEFT JOIN FETCH oi.product p " +
+           "LEFT JOIN FETCH oi.productVariant p " +
            "LEFT JOIN FETCH oi.warehouse w " +
            "WHERE oi.orderId = :orderId " +
            "ORDER BY oi.createdAt ASC")
@@ -103,8 +103,8 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<OrderItem> findByStatusAndCreatedAtAfterOrderByCreatedAtAsc(OrderItem.Status status, LocalDateTime start);
 
     /**
-     * Sum quantity of completed items sold for a stall
+     * Sum quantity of completed items sold for a product
      */
-    @Query("SELECT COALESCE(SUM(oi.quantity), 0) FROM OrderItem oi WHERE oi.stallId = :stallId AND oi.status = com.badat.study1.model.OrderItem.Status.COMPLETED")
-    long sumCompletedQuantityByStallId(@Param("stallId") Long stallId);
+    @Query("SELECT COALESCE(SUM(oi.quantity), 0) FROM OrderItem oi WHERE oi.productId = :productId AND oi.status = com.badat.study1.model.OrderItem.Status.COMPLETED")
+    long sumCompletedQuantityByProductId(@Param("productId") Long productId);
 }

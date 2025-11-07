@@ -228,11 +228,39 @@ class AuthManager {
 // Global auth manager instance
 window.authManager = new AuthManager();
 
+const AUTH_SKIP_PATHS = [
+    '/api/auth/login',
+    '/api/auth/captcha',
+    '/api/auth/register',
+    '/api/auth/forgot-password',
+    '/api/auth/verify-otp',
+    '/api/auth/verify-register-otp',
+    '/api/auth/verify-forgot-password-otp',
+    '/api/auth/reset-password'
+];
+
+const shouldSkipAuthFlow = (reqUrl) => {
+    if (typeof reqUrl !== 'string') return false;
+    let path = reqUrl;
+    if (reqUrl.startsWith('http')) {
+        try {
+            path = new URL(reqUrl).pathname;
+        } catch (e) {
+            return false;
+        }
+    }
+    return AUTH_SKIP_PATHS.some(skipPath => path.startsWith(skipPath));
+};
+
 // Override fetch to automatically add auth headers
 const originalFetch = window.fetch;
 window.fetch = async function(url, options = {}) {
     // Track activity at call time (covers user-initiated network actions)
     try { window.authManager.updateLastActivity(); } catch (e) {}
+
+    if (shouldSkipAuthFlow(url)) {
+        return originalFetch.call(this, url, options);
+    }
 
     // If inactivity exceeded, force logout without attempting refresh
     if (window.authManager.shouldForceLogoutForInactivity(window.authManager.maxInactivityMinutes)) {
@@ -246,19 +274,23 @@ window.fetch = async function(url, options = {}) {
     try { await window.authManager.maybeRefreshByRefreshToken(5); } catch (e) {}
 
     // Only add auth headers for same-origin requests
+    let hasAuthHeader = false;
     if (typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin))) {
         const authHeaders = window.authManager.getAuthHeaders();
-        const headers = {
-            ...(options.headers || {}),
-            ...authHeaders
-        };
-        options.headers = headers;
+        if (authHeaders && Object.keys(authHeaders).length > 0) {
+            const headers = {
+                ...(options.headers || {}),
+                ...authHeaders
+            };
+            options.headers = headers;
+            hasAuthHeader = true;
+        }
     }
 
     let response = await originalFetch.call(this, url, options);
 
     // If unauthorized, check inactivity first; if within window, try one-off refresh then retry once
-    if (response.status === 401) {
+    if (response.status === 401 && hasAuthHeader) {
         // If user has been inactive too long, do not attempt refresh
         if (window.authManager.shouldForceLogoutForInactivity(window.authManager.maxInactivityMinutes)) {
             window.authManager.clearTokens();

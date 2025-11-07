@@ -95,7 +95,7 @@ jwt:
 security:
   captcha:
     expire-minutes: 5
-    length: 6
+    length: 1
     max-attempts-per-ip: 5      # NEW
     lockout-minutes: 15          # NEW
   rate-limit:
@@ -135,6 +135,9 @@ logging:
     com.badat.study1.service.ApiCallLogService: INFO
     org.springframework.web: WARN
     org.hibernate: WARN
+    com.badat.study1.service.impl: DEBUG
+    com.badat.study1.controller: DEBUG
+    root: INFO
 server:
   port: 8080
   tomcat:

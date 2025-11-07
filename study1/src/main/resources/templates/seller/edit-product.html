@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chỉnh sửa gian hàng - MMO Market</title>
+    <title>Chỉnh sửa sản phẩm - MMO Market</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
@@ -215,6 +215,43 @@
             box-shadow: none;
         }
         
+        input[type="file"].form-control,
+        input[type="file"] {
+            background-color: white !important;
+            color: #495057 !important;
+            cursor: pointer !important;
+            opacity: 1 !important;
+        }
+        
+        input[type="file"].form-control:hover,
+        input[type="file"]:hover {
+            border-color: #0d6efd !important;
+            background-color: white !important;
+        }
+        
+        input[type="file"].form-control:focus,
+        input[type="file"]:focus {
+            background-color: white !important;
+            color: #495057 !important;
+            border-color: #0d6efd !important;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+        }
+        
+        input[type="file"].form-control:disabled,
+        input[type="file"]:disabled {
+            background-color: #e9ecef !important;
+            color: #6c757d !important;
+            cursor: not-allowed !important;
+        }
+        
+        /* Override any read-only styles for file inputs */
+        input[type="file"].form-control:read-only,
+        input[type="file"]:read-only {
+            background-color: white !important;
+            color: #495057 !important;
+            cursor: pointer !important;
+        }
+        
         .btn-submit {
             background: linear-gradient(135deg, #0d6efd, #0b5ed7);
             border: none;
@@ -309,9 +346,9 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/stall-management" class="menu-item">
+            <a href="/seller/product-management" class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
-                Quản lý gian hàng
+                Quản lý sản phẩm
             </a>
             <a href="/seller/orders" class="menu-item">
                 <i class="fas fa-file-invoice-dollar"></i>
@@ -372,10 +409,10 @@
             <div class="page-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h1 class="page-title">Chỉnh sửa gian hàng</h1>
-                        <small class="text-muted" th:text="'Gian hàng: ' + ${stall.stallName}">Gian hàng: Tên gian hàng</small>
+                        <h1 class="page-title">Chỉnh sửa sản phẩm</h1>
+                        <small class="text-muted" th:text="'Sản phẩm: ' + ${product.productName}">Sản phẩm: Tên sản phẩm</small>
                     </div>
-                    <a th:href="@{/seller/stall-management}" href="/seller/stall-management" class="btn-back">
+                    <a th:href="@{/seller/product-management}" href="/seller/product-management" class="btn-back">
                         <i class="fas fa-arrow-left me-2"></i>
                         Quay lại
                     </a>
@@ -384,7 +421,7 @@
             
             <!-- Form Container -->
             <div class="form-container">
-                <form th:action="@{/seller/edit-stall/{id}(id=${stall.id})}" method="post" enctype="multipart/form-data" id="editStallForm">
+                <form th:action="@{/seller/edit-product/{id}(id=${product.id})}" method="post" enctype="multipart/form-data" id="editProductForm">
                     <!-- Basic Information -->
                     <div class="form-section">
                         <h5 class="section-title">
@@ -393,35 +430,26 @@
                         </h5>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="stallName" class="form-label">Tên gian hàng <span class="required">*</span></label>
-                                <input type="text" class="form-control" id="stallName" name="stallName" th:value="${stall.stallName}" required>
+                                <label for="productName" class="form-label">Tên sản phẩm <span class="required">*</span></label>
+                                <input type="text" class="form-control" id="productName" name="productName" th:value="${product.productName}">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="status" class="form-label">Trạng thái <span class="required">*</span></label>
-                                <select class="form-select" id="status" name="status" required th:disabled="${stall.status == 'REJECTED'}">
-                                    <option value="OPEN" th:selected="${stall.status == 'OPEN'}">Mở</option>
-                                    <option value="CLOSED" th:selected="${stall.status == 'CLOSED'}">Đóng</option>
+                                <label for="status" class="form-label">Trạng thái</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="OPEN" th:selected="${product.status == 'OPEN'}">Mở</option>
+                                    <option value="CLOSED" th:selected="${product.status == 'CLOSED'}">Đóng</option>
                                 </select>
-                                <!-- Hidden input for REJECTED stalls to ensure PENDING status is submitted -->
-                                <input type="hidden" name="status" value="PENDING" th:if="${stall.status == 'REJECTED'}">
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Loại hình kinh doanh</label>
-                                <input type="text" class="form-control" th:value="${stall.businessType}" readonly>
+                                <label class="form-label">Loại sản phẩm</label>
+                                <input type="text" class="form-control" th:value="${product.productCategory}" readonly>
                                 <div class="form-text">Không thể thay đổi</div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Loại gian hàng</label>
-                                <input type="text" class="form-control" th:value="${stall.stallCategory == 'Tài Khoản' ? 'Tài khoản Email' : stall.stallCategory}" readonly>
-                                <div class="form-text">Không thể thay đổi</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Chiết khấu</label>
-                                <input type="text" class="form-control" th:value="${stall.discountPercentage} + '%'" readonly>
+                                <label class="form-label">Loại cụ thể</label>
+                                <input type="text" class="form-control" th:value="${product.productSubcategory}" readonly>
                                 <div class="form-text">Không thể thay đổi</div>
                             </div>
                         </div>
@@ -431,35 +459,38 @@
                     <div class="form-section">
                         <h5 class="section-title">
                             <i class="fas fa-align-left"></i>
-                            Mô tả gian hàng
+                            Mô tả sản phẩm
                         </h5>
                         <div class="mb-3">
-                            <label for="shortDescription" class="form-label">Mô tả ngắn <span class="required">*</span></label>
-                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" required th:text="${stall.shortDescription}"></textarea>
-                            <div class="form-text">Mô tả ngắn gọn về gian hàng, sản phẩm chính</div>
+                            <label for="shortDescription" class="form-label">Mô tả ngắn</label>
+                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" th:text="${product.shortDescription}"></textarea>
+                            <div class="form-text">Mô tả ngắn gọn về sản phẩm</div>
                         </div>
                         <div class="mb-3">
-                            <label for="detailedDescription" class="form-label">Mô tả chi tiết <span class="required">*</span></label>
-                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" required th:text="${stall.detailedDescription}"></textarea>
-                            <div class="form-text">Mô tả chi tiết về gian hàng, dịch vụ, chính sách bán hàng</div>
+                            <label for="detailedDescription" class="form-label">Mô tả chi tiết</label>
+                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" th:text="${product.detailedDescription}"></textarea>
+                            <div class="form-text">Mô tả chi tiết về sản phẩm, dịch vụ, chính sách bán hàng</div>
                         </div>
                     </div>
                     
-                    <!-- Stall Image -->
+                    <!-- Product Image -->
                     <div class="form-section">
                         <h5 class="section-title">
                             <i class="fas fa-image"></i>
-                            Hình ảnh gian hàng
+                            Hình ảnh sản phẩm
                         </h5>
                         <div class="mb-3">
-                            <label for="stallImageFile" class="form-label">Tải lên hình ảnh gian hàng mới</label>
-                            <input type="file" class="form-control" id="stallImageFile" name="stallImageFile" accept="image/*" onchange="previewImage(this)">
-                            <div class="form-text">Chọn file hình ảnh đại diện cho gian hàng (JPG, PNG, GIF). Để trống nếu không muốn thay đổi.</div>
+                            <label for="productImageFile" class="form-label">Tải lên hình ảnh sản phẩm mới</label>
+                            <input type="file" class="form-control" id="productImageFile" name="productImageFile" accept="image/*" onchange="previewImage(this)">
+                            <div class="form-text">Chọn file hình ảnh đại diện cho sản phẩm (JPG, PNG, GIF). Để trống nếu không muốn thay đổi.</div>
                         </div>
-                        <div th:if="${stall.stallImageData != null}" class="mb-3">
+                        <div class="mb-3">
                             <label class="form-label">Hình ảnh hiện tại:</label>
                             <div class="text-center">
-                                <img th:src="@{/stall-image/{id}(id=${stall.id})}" alt="Current Image" style="max-width: 200px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <img th:src="@{/stall-image/{id}(id=${product.id})} + '?' + ${#dates.createNow().time}"
+                                     alt="Current Image"
+                                     style="max-width: 200px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+                                     onerror="this.style.display='none'">
                             </div>
                         </div>
                         <div id="imagePreview" class="mb-3" style="display: none;">
@@ -494,7 +525,7 @@
                     <div class="d-flex justify-content-end">
                         <button type="submit" class="btn btn-submit">
                             <i class="fas fa-save me-2"></i>
-                            Cập nhật gian hàng
+                            Cập nhật sản phẩm
                         </button>
                     </div>
                 </form>
@@ -625,20 +656,35 @@
             `;
             
             // Insert after the file input
-            const fileInput = document.getElementById('stallImageFile');
+            const fileInput = document.getElementById('productImageFile');
             fileInput.parentNode.insertBefore(finalPreview, fileInput.nextSibling);
             
             // Hide the cropping interface
             document.getElementById('imagePreview').style.display = 'none';
         });
 
+        // On form submit: if we have a cropped blob, replace the file input with the cropped image
+        document.getElementById('editProductForm').addEventListener('submit', function(e) {
+            try {
+                if (croppedImageData instanceof Blob) {
+                    const fileInput = document.getElementById('productImageFile');
+                    const croppedFile = new File([croppedImageData], 'cropped.jpg', { type: 'image/jpeg' });
+                    const dt = new DataTransfer();
+                    dt.items.add(croppedFile);
+                    fileInput.files = dt.files;
+                }
+            } catch (_) {
+                // no-op: if browser doesn't support DataTransfer, fall back to original file
+            }
+        });
+
         // Reset image crop function
         function resetImageCrop() {
             // Clear file input
-            document.getElementById('stallImageFile').value = '';
+            document.getElementById('productImageFile').value = '';
             
             // Remove final preview
-            const finalPreview = document.querySelector('#finalCroppedImg').closest('.mb-3');
+            const finalPreview = document.querySelector('#finalCroppedImg')?.closest('.mb-3');
             if (finalPreview) {
                 finalPreview.remove();
             }
@@ -654,67 +700,6 @@
             document.getElementById('imagePreview').style.display = 'none';
         }
         
-        // Form validation and submission
-        document.getElementById('editStallForm').addEventListener('submit', function(e) {
-            const shortDesc = document.getElementById('shortDescription').value.trim();
-            const detailedDesc = document.getElementById('detailedDescription').value.trim();
-            
-            if (shortDesc.length === 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập mô tả ngắn');
-                document.getElementById('shortDescription').focus();
-                return;
-            }
-            
-            if (detailedDesc.length === 0) {
-                e.preventDefault();
-                alert('Vui lòng nhập mô tả chi tiết');
-                document.getElementById('detailedDescription').focus();
-                return;
-            }
-            
-            if (shortDesc.length > 200) {
-                e.preventDefault();
-                alert('Mô tả ngắn không được vượt quá 200 ký tự');
-                document.getElementById('shortDescription').focus();
-                return;
-            }
-
-            // Handle cropped image data
-            if (croppedImageData) {
-                // Create a new FormData object
-                const formData = new FormData();
-                
-                // Add all form fields
-                formData.append('stallName', document.getElementById('stallName').value);
-                formData.append('status', document.getElementById('status').value);
-                formData.append('shortDescription', shortDesc);
-                formData.append('detailedDescription', detailedDesc);
-                
-                // Add cropped image as a file
-                formData.append('stallImageFile', croppedImageData, 'cropped-image.jpg');
-                
-                // Prevent default form submission
-                e.preventDefault();
-                
-                // Submit via fetch
-                fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (response.ok) {
-                        window.location.href = '/seller/stall-management';
-                    } else {
-                        alert('Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Có lỗi xảy ra khi cập nhật gian hàng. Vui lòng thử lại!');
-                });
-            }
-        });
     </script>
 </body>
 </html>

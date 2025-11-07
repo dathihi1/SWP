@@ -32,7 +32,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     
     // Additional review methods
     List<Review> findByShopIdAndIsDeleteFalse(Long shopId);
+    @EntityGraph(attributePaths = {"buyer", "productVariant"})
+    List<Review> findByProductVariantIdAndIsDeleteFalse(Long productVariantId);
     @EntityGraph(attributePaths = {"buyer", "product"})
-    List<Review> findByStallIdAndIsDeleteFalse(Long stallId);
     List<Review> findByOrderIdAndIsDeleteFalse(Long orderId);
 }

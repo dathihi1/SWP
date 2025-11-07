@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.redis.core.RedisTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.concurrent.TimeUnit;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,13 +56,10 @@ public class UserService {
     }
 
     /**
-     * Register new user - stores registration data in Redis and sends OTP email.
-     * Note: No database write operations here - user is only created after OTP verification.
-     * Transaction annotation not needed as this method only performs:
-     * - Read-only DB checks (duplicate email/username)
-     * - Redis write operations (not part of DB transaction)
-     * - Email sending (async operation)
+     * Register new user - creates user with PENDING status in database and sends OTP email.
+     * User will be activated (PENDING -> ACTIVE) after OTP verification.
      */
+    @Transactional
     public void register(UserCreateRequest request) {
         // Check duplicate EMAIL - THROW EXCEPTION
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -77,15 +73,27 @@ public class UserService {
             throw new RuntimeException("USERNAME_EXISTS"); // Specific error code
         }
 
-        // Store safe registration data in Redis (no password)
-        // Redis operations are not part of DB transaction scope
-        String registrationKey = "pending_registration:" + request.getEmail();
-        Map<String, Object> safeData = Map.of(
-            "email", request.getEmail(),
-            "username", request.getUsername(),
-            "passwordHash", passwordEncoder.encode(request.getPassword())
-        );
-        redisTemplate.opsForValue().set(registrationKey, safeData, 10, TimeUnit.MINUTES);
+        // Create user with PENDING status and save to database
+        User user = User.builder()
+                .email(request.getEmail())
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(User.Role.USER)
+                .status(User.Status.PENDING) // User starts as PENDING
+                .provider("LOCAL") // Đánh dấu là đăng ký manual
+                .build();
+        
+        // Set isDelete explicitly (since it's inherited from BaseEntity)
+        user.setIsDelete(false);
+        
+        // Save user - JPA Auditing will automatically set:
+        // - createdAt: current timestamp
+        // - createdBy: current authenticated user or "SYSTEM"
+        // - updatedAt: current timestamp
+        userRepository.save(user);
+        
+        log.info("User created with PENDING status: {} - createdBy: {}, createdAt: {}", 
+                user.getUsername(), user.getCreatedBy(), user.getCreatedAt());
         
         // Use OtpService to send OTP with rate limiting
         otpService.sendOtp(request.getEmail(), "register");
@@ -101,76 +109,59 @@ public class UserService {
             throw new RuntimeException("Mã OTP không hợp lệ hoặc đã hết hạn");
         }
         
-        // Get pending registration data from Redis
-        String registrationKey = "pending_registration:" + email;
-        Object rawData = redisTemplate.opsForValue().get(registrationKey);
-        if (rawData == null) {
-            throw new RuntimeException("Không tìm thấy thông tin đăng ký hoặc đã hết hạn");
+        // Find user with PENDING status by email
+        Optional<User> userOpt = userRepository.findByEmailAndIsDeleteFalse(email);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("Không tìm thấy thông tin đăng ký");
         }
         
-        log.info("Raw data type: {}", rawData.getClass().getName());
-        log.info("Raw data content: {}", rawData);
+        User user = userOpt.get();
         
-        // Convert safe data
-        Map<String, Object> safeData = convertToSafeData(rawData);
-        if (safeData == null) {
-            throw new RuntimeException("Dữ liệu đăng ký không hợp lệ");
+        // Verify user is in PENDING status
+        if (user.getStatus() != User.Status.PENDING) {
+            if (user.getStatus() == User.Status.ACTIVE) {
+                throw new RuntimeException("Tài khoản đã được kích hoạt");
+            } else {
+                throw new RuntimeException("Tài khoản không thể kích hoạt");
+            }
         }
         
-        // SECURITY FIX: Verify that the email in the request matches the email used for OTP
-        if (!email.equals(safeData.get("email"))) {
-            log.error("Email tampering detected! OTP email: {}, Request email: {}", email, safeData.get("email"));
-            throw new RuntimeException("Email không khớp với email đã đăng ký");
-        }
-        
-        // Double-check that user doesn't already exist (race condition protection)
-        if (userRepository.findByEmail((String) safeData.get("email")).isPresent()) {
-            throw new RuntimeException("Tài khoản với email này đã tồn tại");
-        }
-        if (userRepository.findByUsername((String) safeData.get("username")).isPresent()) {
-            throw new RuntimeException("Tên đăng nhập đã được sử dụng");
-        }
-        
-        // Create user with ACTIVE status
-        User user = User.builder()
-                .email((String) safeData.get("email"))
-                .username((String) safeData.get("username"))
-                .password((String) safeData.get("passwordHash")) // Use pre-hashed password
-                .role(User.Role.USER)
-                .status(User.Status.ACTIVE)
-                .provider("LOCAL") // Đánh dấu là đăng ký manual
-                .build();
-        
-        // Set isDelete explicitly (since it's inherited from BaseEntity)
-        user.setIsDelete(false);
-        
-        // Save user - JPA Auditing will automatically set:
-        // - createdAt: current timestamp
-        // - createdBy: current authenticated user or "SYSTEM"
-        // - updatedAt: current timestamp
+        // Activate user: PENDING -> ACTIVE
+        user.setStatus(User.Status.ACTIVE);
         userRepository.save(user);
         
-        log.info("User created and activated successfully: {} with audit fields - createdBy: {}, createdAt: {}", 
-                user.getUsername(), user.getCreatedBy(), user.getCreatedAt());
+        log.info("User activated successfully: {} - status changed from PENDING to ACTIVE", 
+                user.getUsername());
         
-        // Create wallet for user
-        Wallet wallet = Wallet.builder()
-                .userId(user.getId())
-                .balance(BigDecimal.ZERO)
-                .build();
-        walletRepository.save(wallet);
+        // Create wallet for user if not exists (should not exist for new registration)
+        Optional<Wallet> walletOpt = walletRepository.findByUserId(user.getId());
+        if (walletOpt.isEmpty()) {
+            Wallet wallet = Wallet.builder()
+                    .userId(user.getId())
+                    .balance(BigDecimal.ZERO)
+                    .build();
+            walletRepository.save(wallet);
+            log.info("Wallet created for user: {} after email verification", user.getUsername());
+        } else {
+            log.warn("Wallet already exists for user: {} - this should not happen for new registration", user.getUsername());
+        }
         
-        // Clean up OTP and pending registration
+        // Clean up OTP (OTP already deleted by OtpService after verification)
         otpStorage.remove(email);
-        // Clean up temporary data from Redis
-        redisTemplate.delete(registrationKey);
         
         log.info("User account activated for email: {}", email);
     }
     
     public void forgotPassword(String email) {
         // Check if user exists (but don't leak info)
-        if (userRepository.findByEmail(email).isPresent()) {
+        Optional<User> userOpt = userRepository.findByEmailAndIsDeleteFalse(email);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            // Check if account is PENDING (not activated)
+            if (user.getStatus() == User.Status.PENDING) {
+                log.warn("Forgot password requested for PENDING account: {}", email);
+                throw new RuntimeException("Tài khoản chưa được kích hoạt. Vui lòng xác thực email trước.");
+            }
             log.info("Password reset requested for existing email: {}", email);
             // Send OTP for password reset
             otpService.sendOtp(email, "forgot_password");
@@ -336,6 +327,12 @@ public class UserService {
         }
         
         User user = userOpt.get();
+        
+        // Check if account is PENDING (not activated)
+        if (user.getStatus() == User.Status.PENDING) {
+            log.warn("Forgot password requested for PENDING account: {}", email);
+            throw new RuntimeException("Tài khoản chưa được kích hoạt. Vui lòng xác thực email trước.");
+        }
         
         // Check if user is registered via Google OAuth2
         if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {

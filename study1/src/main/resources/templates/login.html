@@ -388,6 +388,7 @@
                 // Disable button and show loading
                 loginBtn.disabled = true;
                 loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang đăng nhập...';
+                let loginSuccessful = false;
                 
                 try {
                     const response = await fetch('/api/auth/login', {
@@ -406,6 +407,7 @@
                     const data = await response.json();
                     
                     if (response.ok) {
+                        loginSuccessful = true;
                         // Store tokens
                         localStorage.setItem('accessToken', data.accessToken);
                         localStorage.setItem('refreshToken', data.refreshToken);
@@ -485,9 +487,11 @@
                     loginBtn.disabled = false;
                     loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-2"></i>Đăng nhập';
                     
-                    // Always regenerate captcha after each attempt
-                    loadCaptchaFromBackend();
-                    document.getElementById('captcha').value = '';
+                    // Only regenerate captcha if login failed
+                    if (!loginSuccessful) {
+                        loadCaptchaFromBackend();
+                        document.getElementById('captcha').value = '';
+                    }
                 }
             });
             

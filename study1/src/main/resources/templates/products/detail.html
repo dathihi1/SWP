@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${stall.stallName} + ' - MMO Market'">Gian hàng - MMO Market</title>
+    <title th:text="${stall.productName} + ' - MMO Market'">Gian hàng - MMO Market</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <link rel="stylesheet" href="/css/product-styles.css"/>
@@ -400,7 +400,7 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/product-management}" href="/seller/product-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
@@ -420,24 +420,19 @@
     </div>
 </nav>
 
-<!-- Running ticker line full-width (button moved OUTSIDE this block) -->
-<div class="bg-light border-bottom">
-    <div class="container-fluid py-2 px-0">
-        <marquee behavior="scroll" direction="left" scrollamount="7" class="w-100 d-block">
-            <span class="text-primary fw-semibold">
-                <i class="fa-solid fa-bolt me-1"></i>Ưu đãi hot hôm nay: giảm giá phí giao dịch 10% cho đơn đầu tiên!
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-shield-halved me-1"></i>Giao dịch an toàn, bảo mật nhiều lớp
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-wallet me-1"></i>Nạp ví trong vài giây, thanh toán tức thì
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-headset me-1"></i>Hỗ trợ 24/7 qua chat và email
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-store me-1"></i>Hàng nghìn gian hàng uy tín được kiểm duyệt
-                &nbsp;•&nbsp;
-                <i class="fa-solid fa-gift me-1"></i>Voucher và ưu đãi mới mỗi ngày
-            </span>
-        </marquee>
+<!-- Marquee (synced with home) -->
+<style>
+    .marquee-container { background: white; color: #0d6efd; padding: 8px 0; overflow: hidden; position: relative; z-index: 1000; border-bottom: 1px solid #e9ecef; }
+    .marquee { display: inline-block; white-space: nowrap; animation: marquee 40s linear infinite; font-size: 14px; font-weight: 500; color: #0d6efd; }
+    .marquee:hover { animation-play-state: paused; }
+    @keyframes marquee { 0% { transform: translateX(100%);} 100% { transform: translateX(-100%);} }
+}</style>
+<div class="marquee-container">
+    <div class="container">
+        <div class="marquee">
+            <i class="fa-solid fa-bullhorn me-2"></i>
+            MMO Market - Mua bán sản phẩm số . Mọi giao dịch trên trang đều hoàn toàn tự động và được giữ tiền 3 ngày, thay thế cho hình thức trung gian, các bạn yên tâm giao dịch nhé.
+        </div>
     </div>
 </div>
 
@@ -459,7 +454,7 @@
                 <div class="text-center">
                     <div class="rounded-circle border border-light border-3 d-flex align-items-center justify-content-center" 
                          style="width: 120px; height: 120px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
-                        <img th:alt="${stall.stallName}" th:src="@{'/stall-image/' + ${stall.id}}" 
+                        <img th:alt="${stall.productName}" th:src="@{'/stall-image/' + ${stall.id}}" 
                              class="rounded-circle" 
                              style="width: 100px; height: 100px; object-fit: cover;"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -469,10 +464,9 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <h1 class="mb-2" th:text="${stall.stallName}">Tên gian hàng</h1>
+                <h1 class="mb-2" th:text="${stall.productName}">Tên gian hàng</h1>
                 <div class="mb-2">
-                    <span class="badge bg-light text-dark me-2" th:text="${stall.stallCategory}">Danh mục</span>
-                    <span class="badge bg-light text-dark" th:text="${stall.businessType}">Loại kinh doanh</span>
+                    <span class="badge bg-light text-dark me-2" th:text="${stall.productCategory}">Danh mục</span>
                 </div>
                 <p class="mb-0" th:text="${stall.shortDescription}">Mô tả gian hàng</p>
             </div>
@@ -509,7 +503,7 @@
         <!-- Left: Stall Image -->
         <div class="col-md-6">
             <div style="background: #f8f9fa; border-radius: 12px; min-height: 500px; display: flex; align-items: center; justify-content: center; padding: 20px;">
-                <img th:alt="${stall.stallName}" th:src="@{'/stall-image/' + ${stall.id}}" 
+                <img th:alt="${stall.productName}" th:src="@{'/stall-image/' + ${stall.id}}" 
                      class="w-100" style="object-fit:contain; max-height: 500px;"
                      onerror="this.src='/images/default-avatar.svg'">
             </div>
@@ -523,7 +517,7 @@
             </div>
             
             <!-- Product Title -->
-            <h2 class="mb-3" th:text="${stall.stallName}">Tên gian hàng</h2>
+            <h2 class="mb-3" th:text="${stall.productName}">Tên gian hàng</h2>
             
             <!-- Rating & Sales -->
             <div class="mb-3">
@@ -578,14 +572,14 @@
                             th:onclick="'selectProduct(' + ${product.id} + ')'"
                             th:id="'product-btn-' + ${product.id}"
                             th:data-product-id="${product.id}"
-                            th:data-product-name="${product.name}"
+               th:data-product-name="${product.name}"
                             th:data-product-price="${product.price}"
                             th:data-product-stock="${productStocks[product.id]}"
-                            th:data-stall-id="${product.stallId}"
+                            th:data-stall-id="${product.productId}"
                             th:data-shop-id="${product.shopId}"
                             th:data-seller-id="${product.shop != null ? product.shop.userId : product.shopId}"
                             >
-                        <span th:text="${product.name}" style="font-family: 'HEHEHE', sans-serif; color: #000;">Tên sản phẩm</span>
+        <span th:text="${product.name}" style="font-family: 'HEHEHE', sans-serif; color: #000;">Tên sản phẩm</span>
                     </button>
                 </div>
             </div>
@@ -665,7 +659,7 @@
                                             <small class="text-muted" th:text="${#temporals.format(rv.createdAt,'dd/MM/yyyy HH:mm')}">--/--/----</small>
                                         </div>
                                         <small class="text-muted" th:if="${rv.product != null}">
-                                            Sản phẩm: <span class="fw-semibold" th:text="${rv.product.name}">Tên SP</span>
+                                            Sản phẩm: <span class="fw-semibold" th:text="${rv.product.productName}">Tên SP</span>
                                         </small>
                                     </div>
                                     <div class="mb-1">

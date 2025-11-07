@@ -1,5 +1,6 @@
 package com.badat.study1.configuration;
 
+import com.badat.study1.filter.CaptchaValidationFilter;
 import com.badat.study1.service.CustomOAuth2UserService;
 import com.badat.study1.service.UserActivityLogService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -59,6 +60,7 @@ public class SecurityConfiguration {
     private final UserActivityLogService userActivityLogService;
     private final ApiCallLogFilter apiCallLogFilter;
     private final IpBlockingFilter ipBlockingFilter;
+    private final CaptchaValidationFilter captchaValidationFilter;
     private final JwtService jwtService;
     private final AdminAuthenticationSuccessHandler adminAuthenticationSuccessHandler;
     private final ClientRegistrationRepository clientRegistrationRepository;
@@ -103,14 +105,18 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
-        // Add IP blocking filter FIRST - chặn IP bị lock trước khi request đến controller/security layers
+        // Add filters in order: ApiCallLogFilter → IpBlockingFilter → CaptchaValidationFilter → JwtAuthenticationFilter
+        // Add API call logging filter FIRST
+        http.addFilterBefore(apiCallLogFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+        
+        // Add IP blocking filter SECOND - chặn IP bị lock trước khi request đến controller/security layers
         // Điều này giúp tiết kiệm tài nguyên server vì không cần xử lý request ở các layer sau
         http.addFilterBefore(ipBlockingFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
         
-        // Add API call logging filter
-        http.addFilterBefore(apiCallLogFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+        // Add Captcha validation filter THIRD - validate captcha before JWT authentication
+        http.addFilterBefore(captchaValidationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
         
-        // Add JWT filter before default authentication
+        // Add JWT filter FOURTH - before default authentication
         http.addFilterBefore(jwtAuthenticationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
         log.info("SecurityFilterChain configured successfully");

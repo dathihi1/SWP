@@ -36,8 +36,20 @@ public class OtpService {
     private static final String OTP_PREFIX = "otp:";
     private static final String RESET_TOKEN_PREFIX = "reset_token:";
     private static final String OTP_VERIFIED_PREFIX = "otp_verified:";
+    private static final String OTP_EMAIL_SENT_PREFIX = "otp_email_sent:";
     
     public void sendOtp(String email, String purpose) {
+        // Check if email was already sent recently (10 minutes rate limit)
+        String emailSentKey = OTP_EMAIL_SENT_PREFIX + purpose + ":" + email;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(emailSentKey))) {
+            // Get TTL to show remaining time
+            Long ttl = redisTemplate.getExpire(emailSentKey, TimeUnit.SECONDS);
+            long remainingMinutes = ttl != null && ttl > 0 ? (ttl / 60) + 1 : 10;
+            log.warn("Email OTP already sent recently for {} (purpose: {}). Remaining time: {} minutes", 
+                    email, purpose, remainingMinutes);
+            throw new RuntimeException("Email đã được gửi. Vui lòng đợi " + remainingMinutes + " phút trước khi yêu cầu lại.");
+        }
+        
         // Check rate limiting for all purposes (including forgot_password)
         // Use separate limit for forgot_password to allow legitimate users to recover their password
         if (rateLimitService.isEmailRateLimited(email, purpose)) {
@@ -57,6 +69,10 @@ public class OtpService {
             } catch (Exception ignore) {}
             throw new RuntimeException("Quá nhiều yêu cầu. Vui lòng thử lại sau 1 giờ.");
         }
+        
+        // Mark email as sent with 10 minutes TTL (rate limit)
+        redisTemplate.opsForValue().set(emailSentKey, "sent", 10, TimeUnit.MINUTES);
+        log.info("Email sent marker stored in Redis - key: {}, expire: 10 minutes", emailSentKey);
         
         // Generate OTP
         String otp = generateOtp();

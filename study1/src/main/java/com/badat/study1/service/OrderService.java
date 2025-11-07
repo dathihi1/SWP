@@ -3,8 +3,9 @@ package com.badat.study1.service;
 import com.badat.study1.model.*;
 import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.OrderItemRepository;
-import com.badat.study1.repository.StallRepository;
+import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.ShopRepository;
+import com.badat.study1.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,8 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final StallRepository stallRepository;
+    private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ShopRepository shopRepository;
 
     /**
@@ -51,20 +53,20 @@ public class OrderService {
         Map<String, Object> firstCartItem = cartItems.get(0);
         Long stallId = Long.valueOf(firstCartItem.get("stallId").toString());
 
-        // Lấy thông tin stall để lấy shopId
-        Stall stall = stallRepository.findById(stallId)
-                .orElseThrow(() -> new RuntimeException("Stall not found: " + stallId));
+        // Lấy thông tin product để lấy shopId
+        Product product = productRepository.findById(stallId)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + stallId));
 
         // Lấy sellerId từ shopId
-        Shop shop = shopRepository.findById(stall.getShopId())
-                .orElseThrow(() -> new RuntimeException("Shop not found: " + stall.getShopId()));
+        Shop shop = shopRepository.findById(product.getShopId())
+                .orElseThrow(() -> new RuntimeException("Shop not found: " + product.getShopId()));
         Long sellerId = shop.getUserId();
 
         // Tạo Order chính
         Order order = Order.builder()
                 .buyerId(buyerId)
-                .shopId(stall.getShopId())
-                .stallId(stallId)
+                .shopId(product.getShopId())
+                .productId(stallId)
                 .sellerId(sellerId)
                 .totalAmount(BigDecimal.ZERO)
                 .totalCommissionAmount(BigDecimal.ZERO)
@@ -90,6 +92,7 @@ public class OrderService {
                 Object quantityObj = cartItem.get("quantity");
                 Object priceObj = cartItem.get("price");
                 Object stallIdObj = cartItem.get("stallId");
+                Object variantNameObj = cartItem.get("name");
 
                 if (productIdObj == null || warehouseIdObj == null || quantityObj == null ||
                         priceObj == null || stallIdObj == null) {
@@ -119,7 +122,7 @@ public class OrderService {
                     // Tạo OrderItem với quantity = 1
                     OrderItem orderItem = OrderItem.builder()
                             .orderId(savedOrder.getId())
-                            .productId(productId)
+                            .productVariantId(productId)
                             .warehouseId(warehouseId) // Sẽ được cập nhật với warehouseId thực tế
                             .quantity(1) // Mỗi OrderItem có quantity = 1
                             .unitPrice(unitPrice)
@@ -128,8 +131,9 @@ public class OrderService {
                             .commissionAmount(itemCommissionAmount)
                             .sellerAmount(itemSellerAmount)
                             .sellerId(itemSellerId) // Sẽ được cập nhật trong PaymentQueueService
-                            .shopId(stall.getShopId()) // Thêm shop_id
-                            .stallId(stallId) // Thêm stall_id
+                            .shopId(product.getShopId()) // Thêm shop_id
+                            .productId(stallId) // Thêm product_id (product parent)
+                            .productVariantName(variantNameObj != null ? variantNameObj.toString() : null)
                             .status(OrderItem.Status.PENDING)
                             .notes("Order item from cart - item " + (i + 1) + " of " + quantity)
                             .build();
@@ -205,7 +209,7 @@ public class OrderService {
         Order order = Order.builder()
                 .buyerId(buyerId)
                 .shopId(shopId)
-                .stallId(stallId)
+                .productId(stallId)
                 .sellerId(sellerId)
                 .totalAmount(totalAmount)
                 .totalCommissionAmount(commissionAmount)
@@ -219,9 +223,16 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
 
         // Tạo OrderItem
+        String variantName = null;
+        try {
+            variantName = productVariantRepository.findById(productId)
+                    .map(ProductVariant::getName)
+                    .orElse(null);
+        } catch (Exception ignored) {}
+
         OrderItem orderItem = OrderItem.builder()
                 .orderId(savedOrder.getId())
-                .productId(productId)
+                .productVariantId(productId)
                 .warehouseId(warehouseId)
                 .quantity(quantity)
                 .unitPrice(unitPrice)
@@ -231,7 +242,8 @@ public class OrderService {
                 .sellerAmount(sellerAmount)
                 .sellerId(sellerId) // Sử dụng sellerId được truyền vào
                 .shopId(shopId) // Thêm shop_id
-                .stallId(stallId) // Thêm stall_id
+                .productId(stallId) // Thêm product_id (product parent)
+                .productVariantName(variantName)
                 .status(OrderItem.Status.COMPLETED)
                 .notes("Simple order item")
                 .build();
@@ -314,8 +326,8 @@ public class OrderService {
      */
     @Transactional(readOnly = true)
     public List<Order> getOrdersByBuyerWithFilters(Long buyerId, String startDate, String endDate, 
-                                                   String searchStall, String searchProduct, String sortBy) {
-        return orderRepository.findByBuyerIdWithFilters(buyerId, startDate, endDate, searchStall, searchProduct, sortBy);
+                                                   String searchSeller, String searchProduct, String sortBy) {
+        return orderRepository.findByBuyerIdWithFilters(buyerId, startDate, endDate, searchSeller, searchProduct, sortBy);
     }
 
     /**
@@ -352,23 +364,27 @@ public class OrderService {
     }
 
     /**
-     * Lấy commission rate từ stall
+     * Lấy commission rate từ shop
      */
-    private BigDecimal getCommissionRate(Long stallId) {
+    private BigDecimal getCommissionRate(Long productId) {
         try {
-            Stall stall = stallRepository.findById(stallId)
-                    .orElseThrow(() -> new RuntimeException("Stall not found: " + stallId));
+            Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
 
-            // Nếu stall có discount_percentage, sử dụng làm commission rate
-            if (stall.getDiscountPercentage() != null) {
-                return BigDecimal.valueOf(stall.getDiscountPercentage());
+            // Lấy shop để lấy commission rate
+            Shop shop = shopRepository.findById(product.getShopId())
+                    .orElseThrow(() -> new RuntimeException("Shop not found: " + product.getShopId()));
+
+            // Sử dụng commission rate từ shop
+            if (shop.getCommissionRate() != null) {
+                return shop.getCommissionRate();
             }
 
             // Mặc định commission rate là 5%
             return BigDecimal.valueOf(5.0);
 
         } catch (Exception e) {
-            log.warn("Failed to get commission rate for stall {}, using default 5%", stallId);
+            log.warn("Failed to get commission rate for product {}, using default 5%", productId);
             return BigDecimal.valueOf(5.0);
         }
     }
