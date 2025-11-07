@@ -1,1 +1,0 @@
-2025-11-02 21:49:53.660 INFO  com.badat.study1.audit - ACCOUNT_LOCKED_LOGIN_ATTEMPTS userId=null ip=0:0:0:0:0:0:0:1 success=true details="IP locked for captcha failures: attempts=5" reason=null ua="System" category=SECURITY_EVENT endpoint=/api/auth/login method=POST
