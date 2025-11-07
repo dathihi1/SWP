@@ -30,7 +30,7 @@ public class SellerServiceImpl implements SellerService {
 
     @Override
     public String submitSellerRegistration(String ownerName,
-                                           String shopOwnerName,
+                                           String shortDescription,
                                            MultipartFile cccdFront,
                                            MultipartFile cccdBack,
                                            String agree,
@@ -39,23 +39,38 @@ public class SellerServiceImpl implements SellerService {
         // Validate tên shop phải duy nhất (case-insensitive, chỉ tính shop chưa bị xóa)
         String trimmedShopName = ownerName.trim();
         Optional<Shop> existingShop = shopRepository.findByShopNameIgnoreCaseAndIsDelete(trimmedShopName, false);
-        if (existingShop.isPresent()) {
+        if (existingShop.isPresent() && !existingShop.get().getUserId().equals(user.getId())) {
             redirectAttributes.addFlashAttribute("submitError", "Tên shop đã tồn tại. Vui lòng chọn tên khác.");
-            log.warn("Shop name already exists: {} for user: {}", trimmedShopName, user.getId());
             return "redirect:/seller/register";
         }
 
         try {
-        Shop shop = new Shop();
-        shop.setUserId(user.getId());
-        shop.setShopName(ownerName);
-            shop.setShopOwnerName(shopOwnerName);
+        // Check if user already has a shop (for resubmission)
+        Optional<Shop> existingUserShop = shopRepository.findByUserId(user.getId());
+        Shop shop;
+        if (existingUserShop.isPresent()) {
+            // Update existing shop
+            shop = existingUserShop.get();
+            shop.setShopName(ownerName);
+            shop.setShortDescription(shortDescription);
+            shop.setStatus(Shop.Status.PENDING); // Reset to PENDING when resubmitting
+            shop.setRejectionReason(null); // Clear rejection reason when resubmitting
+        } else {
+            // Create new shop
+            shop = new Shop();
+            shop.setUserId(user.getId());
+            shop.setShopName(ownerName);
+            shop.setShortDescription(shortDescription);
+            shop.setStatus(Shop.Status.PENDING);
+            shop.setCreatedAt(Instant.now());
+            shop.setIsDelete(false);
+        }
             
             // Convert and store CCCD front image as byte array
             if (cccdFront != null && !cccdFront.isEmpty()) {
                 byte[] frontImageBytes = cccdFront.getBytes();
                 shop.setCccdFrontImage(frontImageBytes);
-                log.info("CCCD front image converted to byte array. Size: {} bytes for user: {}", 
+                log.info("CCCD front image converted to byte array. Size: {} bytes for user: {}",
                         frontImageBytes.length, user.getId());
             }
             
@@ -63,25 +78,19 @@ public class SellerServiceImpl implements SellerService {
             if (cccdBack != null && !cccdBack.isEmpty()) {
                 byte[] backImageBytes = cccdBack.getBytes();
                 shop.setCccdBackImage(backImageBytes);
-                log.info("CCCD back image converted to byte array. Size: {} bytes for user: {}", 
+                log.info("CCCD back image converted to byte array. Size: {} bytes for user: {}",
                         backImageBytes.length, user.getId());
             }
             
-        shop.setCreatedAt(Instant.now());
-        shop.setIsDelete(false);
+        shop.setUpdatedAt(Instant.now());
             
             // Save shop with image data to database
             Shop savedShop = shopRepository.save(shop);
-            log.info("Shop registration saved successfully. Shop ID: {}, User ID: {}", 
+            log.info("Shop registration saved successfully. Shop ID: {}, User ID: {}, Status: PENDING (waiting for approval)", 
                     savedShop.getId(), user.getId());
 
-        if (shopRepository.findByUserId(user.getId()).isPresent()) {
-            if (user.getRole() != User.Role.SELLER) {
-                user.setRole(User.Role.SELLER);
-                userRepository.save(user);
-            }
-        }
-        redirectAttributes.addFlashAttribute("submitSuccess", false);
+            // Do NOT automatically add SELLER role - wait for admin approval
+        redirectAttributes.addFlashAttribute("submitSuccess", true);
         return "redirect:/seller/register";
         } catch (IOException e) {
             redirectAttributes.addFlashAttribute("submitError", "Có lỗi xảy ra khi xử lý ảnh CCCD: " + e.getMessage());
@@ -95,11 +104,30 @@ public class SellerServiceImpl implements SellerService {
         model.addAttribute("userRole", user.getRole().name());
 
         boolean isSeller = user.getRole() == User.Role.SELLER;
-        boolean hasShop = shopRepository.findByUserId(user.getId()).isPresent();
-        boolean alreadySeller = isSeller || hasShop;
+        Optional<Shop> userShop = shopRepository.findByUserId(user.getId());
+        boolean hasShop = userShop.isPresent();
+        
+        // Check shop status
+        boolean isRejected = false;
+        boolean isPending = false;
+        Shop shop = null;
+        
+        if (hasShop && userShop.isPresent()) {
+            shop = userShop.get();
+            isPending = shop.getStatus() == Shop.Status.PENDING;
+            isRejected = shop.getStatus() == Shop.Status.INACTIVE;
+            model.addAttribute("shop", shop); // Add shop info for history view
+        }
+        
+        // If shop is INACTIVE (rejected), allow re-registration (don't treat as alreadySeller)
+        // Only treat as alreadySeller if user has SELLER role OR shop is ACTIVE
+        boolean alreadySeller = isSeller || (hasShop && shop != null && shop.getStatus() == Shop.Status.ACTIVE);
+        
         model.addAttribute("alreadySeller", alreadySeller);
+        model.addAttribute("isPendingApproval", isPending);
+        model.addAttribute("isRejected", isRejected);
 
-        // Chỉ thiết lập submitSuccess mặc định khi đã có shop/SELLER
+        // Chỉ thiết lập submitSuccess mặc định khi đã có shop/SELLER và không bị từ chối
         if (alreadySeller && !model.containsAttribute("submitSuccess")) {
             model.addAttribute("submitSuccess", false);
         }

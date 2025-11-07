@@ -404,7 +404,7 @@
                         <div class="row g-4 mb-3">
                             <div class="col-md-6">
                                 <label for="productName" class="form-label">Tên sản phẩm <span class="required">*</span></label>
-                                <input type="text" class="form-control" id="productName" name="stallName">
+                                <input type="text" class="form-control" id="productName" name="productName">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Chiết khấu sản phẩm</label>
@@ -416,7 +416,7 @@
                         <div class="row g-4 mb-4">
                             <div class="col-md-6">
                                 <label for="productCategory" class="form-label">Loại sản phẩm <span class="required">*</span></label>
-                                <select class="form-select" id="productCategory" name="stallCategory" required>
+                                <select class="form-select" id="productCategory" name="productCategory" required>
                                     <option value="" disabled selected>Chọn loại sản phẩm</option>
                                     <option value="Email">Email</option>
                                     <option value="Tài khoản">Tài khoản</option>
@@ -459,7 +459,7 @@
                         </h5>
                         <div class="mb-3">
                             <label for="productImageFile" class="form-label">Tải lên hình ảnh sản phẩm <span class="required">*</span></label>
-                            <input type="file" class="form-control" id="productImageFile" name="stallImageFile" accept="image/*" onchange="previewImage(this)">
+                            <input type="file" class="form-control" id="productImageFile" name="productImageFile" accept="image/*" onchange="previewImage(this)">
                             <div class="form-text">Chọn file hình ảnh đại diện cho sản phẩm (JPG, PNG, GIF) - Bắt buộc</div>
                         </div>
                         <div id="imagePreview" class="mb-3" style="display: none;">

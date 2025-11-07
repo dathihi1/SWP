@@ -62,7 +62,7 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public String productManagementOverview(User user, Model model) {
+    public String productManagementPage(User user, Model model) {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
@@ -130,16 +130,16 @@ public class ShopServiceImpl implements ShopService {
                 // silently ignore, redirect handled below
             }
         });
-        model.addAttribute("stall", product.get());
+        model.addAttribute("product", product.get());
         return "seller/edit-product";
     }
 
     @Override
-    public String productManagementPage(User user, Long stallId, Model model) {
+    public String productVariantManagementPage(User user, Long productId, Model model) {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        var productOptional = productRepository.findById(stallId);
+        var productOptional = productRepository.findById(productId);
         if (productOptional.isEmpty()) {
             return "redirect:/seller/product-management";
         }
@@ -148,8 +148,8 @@ public class ShopServiceImpl implements ShopService {
         if (userShop.isEmpty() || !product.getShopId().equals(userShop.get().getId())) {
             return "redirect:/seller/product-management";
         }
-        model.addAttribute("stall", product);
-        var productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(stallId);
+        model.addAttribute("product", product);
+        var productVariants = productVariantRepository.findByProductIdAndIsDeleteFalse(productId);
         for (ProductVariant pv : productVariants) {
             long stock = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(pv.getId());
             pv.setQuantity((int) stock);
@@ -160,11 +160,11 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public String addQuantityPage(User user, Long productId, int page, Model model) {
+    public String addQuantityPage(User user, Long productVariantId, int page, Model model) {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
-        var productVariantOptional = productVariantRepository.findById(productId);
+        var productVariantOptional = productVariantRepository.findById(productVariantId);
         if (productVariantOptional.isEmpty()) {
             return "redirect:/seller/product-management";
         }
@@ -182,14 +182,13 @@ public class ShopServiceImpl implements ShopService {
         }
         model.addAttribute("productVariant", productVariant);
         model.addAttribute("product", product.get());
-        model.addAttribute("stall", product.get());
         int validatedPage = Math.max(0, page);
         Pageable pageable = PageRequest.of(validatedPage, 5);
-        Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductVariantIdOrderByCreatedAtDesc(productId, pageable);
+        Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductVariantIdOrderByCreatedAtDesc(productVariantId, pageable);
         if (validatedPage >= uploadHistoryPage.getTotalPages() && uploadHistoryPage.getTotalPages() > 0) {
             validatedPage = uploadHistoryPage.getTotalPages() - 1;
             pageable = PageRequest.of(validatedPage, 5);
-            uploadHistoryPage = uploadHistoryRepository.findByProductVariantIdOrderByCreatedAtDesc(productId, pageable);
+            uploadHistoryPage = uploadHistoryRepository.findByProductVariantIdOrderByCreatedAtDesc(productVariantId, pageable);
         }
         model.addAttribute("recentUploads", uploadHistoryPage.getContent());
         model.addAttribute("currentPage", validatedPage);
@@ -201,7 +200,7 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public String ordersPage(User user, int page, String status, Long stallId, Long productId, String dateFrom, String dateTo, Model model) {
+    public String ordersPage(User user, int page, String status, Long productId, Long productVariantId, String dateFrom, String dateTo, Model model) {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
@@ -210,12 +209,13 @@ public class ShopServiceImpl implements ShopService {
             return "redirect:/seller/product-management";
         }
         var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
+        var productVariants = productVariantRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
         int validatedPage = Math.max(0, page);
         List<OrderItem> allOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
         List<OrderItem> filteredOrderItems = allOrderItems.stream()
                 .filter(orderItem -> status == null || status.isEmpty() || orderItem.getStatus().name().equals(status.toUpperCase()))
-                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getWarehouse().getProduct().getId()))
-                .filter(orderItem -> productId == null || productId.equals(orderItem.getProductId()))
+                .filter(orderItem -> productId == null || productId.equals(orderItem.getWarehouse().getProduct().getId()))
+                .filter(orderItem -> productVariantId == null || productVariantId.equals(orderItem.getProductVariantId()))
                 .filter(orderItem -> {
                     if (dateFrom == null || dateFrom.isEmpty()) return true;
                 return orderItem.getCreatedAt().toLocalDate().isAfter(LocalDate.parse(dateFrom).minusDays(1));
@@ -244,8 +244,8 @@ public class ShopServiceImpl implements ShopService {
                     .filter(Objects::nonNull)
                     .mapToInt(Integer::intValue)
                     .sum();
-            String firstProductName = items.isEmpty() ? "" : (items.get(0).getProductVariantName() != null ? items.get(0).getProductVariantName() : "N/A");
-            String stallName = items.isEmpty() ? "" : (items.get(0).getWarehouse().getProduct() != null ? items.get(0).getWarehouse().getProduct().getProductName() : "N/A");
+            String firstProductVariantName = items.isEmpty() ? "" : (items.get(0).getProductVariantName() != null ? items.get(0).getProductVariantName() : "N/A");
+            String productName = items.isEmpty() ? "" : (items.get(0).getWarehouse().getProduct() != null ? items.get(0).getWarehouse().getProduct().getProductName() : "N/A");
             BigDecimal firstUnitPrice = items.isEmpty() ? BigDecimal.ZERO : items.get(0).getUnitPrice();
             var firstStatus = items.isEmpty() ? null : items.get(0).getStatus();
             LocalDateTime createdAt = items.isEmpty() ? null : items.get(0).getCreatedAt();
@@ -254,8 +254,8 @@ public class ShopServiceImpl implements ShopService {
                     .items(items)
                     .totalAmount(totalAmount)
                     .totalQuantity(totalQuantity)
-                    .firstProductName(firstProductName)
-                    .stallName(stallName)
+                    .firstProductVariantName(firstProductVariantName)
+                    .productName(productName)
                     .unitPrice(firstUnitPrice)
                     .status(firstStatus)
                     .createdAt(createdAt)
@@ -272,14 +272,14 @@ public class ShopServiceImpl implements ShopService {
         int start = validatedPage * pageSize;
         int end = Math.min(start + pageSize, totalElements);
         List<OrderSummary> pageContent = groupedOrders.subList(start, end);
-        model.addAttribute("stalls", products);
         model.addAttribute("products", products);
+        model.addAttribute("productVariants", productVariants);
         model.addAttribute("orders", pageContent);
         // Filters
         model.addAttribute("orderStatuses", OrderItem.Status.values());
         model.addAttribute("selectedStatus", status);
-        model.addAttribute("selectedStallId", stallId);
         model.addAttribute("selectedProductId", productId);
+        model.addAttribute("selectedProductVariantId", productVariantId);
         model.addAttribute("selectedDateFrom", dateFrom);
         model.addAttribute("selectedDateTo", dateTo);
         // Pagination
@@ -302,7 +302,7 @@ public class ShopServiceImpl implements ShopService {
             return "redirect:/seller/product-management";
         }
         var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
-        var stallStats = new java.util.ArrayList<java.util.Map<String, Object>>();
+        var productStats = new java.util.ArrayList<java.util.Map<String, Object>>();
         for (var product : products) {
             var productReviews = reviewRepository.findByProductIdAndIsDeleteFalse(product.getId());
             double averageRating = 0.0;
@@ -311,17 +311,17 @@ public class ShopServiceImpl implements ShopService {
                 averageRating = productReviews.stream().mapToInt(com.badat.study1.model.Review::getRating).average().orElse(0.0);
             }
             int unreadCount = (int) productReviews.stream().filter(review -> !review.getIsRead()).count();
-            var stallStat = new java.util.HashMap<String, Object>();
-            stallStat.put("stall", product);
-            stallStat.put("averageRating", Math.round(averageRating * 10.0) / 10.0);
-            stallStat.put("reviewCount", reviewCount);
-            stallStat.put("unreadCount", unreadCount);
-            stallStats.add(stallStat);
+            var productStat = new java.util.HashMap<String, Object>();
+            productStat.put("product", product);
+            productStat.put("averageRating", Math.round(averageRating * 10.0) / 10.0);
+            productStat.put("reviewCount", reviewCount);
+            productStat.put("unreadCount", unreadCount);
+            productStats.add(productStat);
         }
         Pageable pageable = PageRequest.of(0, 1000);
         Page<com.badat.study1.model.Review> reviewsPage = reviewRepository.findBySellerIdAndShopIdAndIsDeleteFalse(user.getId(), userShop.get().getId(), pageable);
         model.addAttribute("reviews", reviewsPage.getContent());
-        model.addAttribute("stallStats", stallStats);
+        model.addAttribute("productStats", productStats);
         return "seller/reviews";
     }
 
@@ -334,19 +334,20 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public ResponseEntity<?> getReviewsByStall(User user, Long stallId) {
-        var product = productRepository.findById(stallId);
-        if (product.isEmpty()) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Product not found"));
+    public ResponseEntity<?> getReviewsByProduct(User user, Long productId) {
+        // Logic nghiệp vụ: kiểm tra product thuộc shop của user
+        var product = productRepository.findById(productId).orElse(null);
+        if (product == null) {
+            return ResponseEntity.status(404).body(java.util.Map.of("error", "Không tìm thấy sản phẩm"));
         }
-        var userShop = shopRepository.findByUserId(user.getId());
-        if (userShop.isEmpty()) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Shop not found"));
+        var userShop = shopRepository.findByUserId(user.getId()).orElse(null);
+        if (userShop == null) {
+            return ResponseEntity.status(404).body(java.util.Map.of("error", "Không tìm thấy shop"));
         }
-        if (!product.get().getShopId().equals(userShop.get().getId())) {
-            return ResponseEntity.status(403).body(java.util.Map.of("error", "Access denied"));
+        if (!product.getShopId().equals(userShop.getId())) {
+            return ResponseEntity.status(403).body(java.util.Map.of("error", "Không có quyền truy cập"));
         }
-        var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(stallId);
+        var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(productId);
         var reviewDTOs = reviews.stream().map(review -> {
             var dto = new java.util.HashMap<String, Object>();
             dto.put("id", review.getId());
@@ -358,28 +359,29 @@ public class ShopServiceImpl implements ShopService {
             var buyerInfo = new java.util.HashMap<String, Object>();
             buyerInfo.put("username", review.getBuyer().getUsername());
             dto.put("buyer", buyerInfo);
-            var productInfo = new java.util.HashMap<String, Object>();
-            productInfo.put("name", review.getProductVariant() != null ? review.getProductVariant().getName() : "N/A");
-            dto.put("product", productInfo);
+            var productVariantInfo = new java.util.HashMap<String, Object>();
+            productVariantInfo.put("name", review.getProductVariant() != null ? review.getProductVariant().getName() : "N/A");
+            dto.put("productVariant", productVariantInfo);
             return dto;
         }).collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(reviewDTOs);
     }
 
     @Override
-    public ResponseEntity<?> markReviewsAsRead(User user, Long stallId) {
-        var product = productRepository.findById(stallId);
-        if (product.isEmpty()) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Product not found"));
+    public ResponseEntity<?> markReviewsAsRead(User user, Long productId) {
+        // Logic nghiệp vụ: kiểm tra product thuộc shop của user
+        var product = productRepository.findById(productId).orElse(null);
+        if (product == null) {
+            return ResponseEntity.status(404).body(java.util.Map.of("error", "Không tìm thấy sản phẩm"));
         }
-        var userShop = shopRepository.findByUserId(user.getId());
-        if (userShop.isEmpty()) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Shop not found"));
+        var userShop = shopRepository.findByUserId(user.getId()).orElse(null);
+        if (userShop == null) {
+            return ResponseEntity.status(404).body(java.util.Map.of("error", "Không tìm thấy shop"));
         }
-        if (!product.get().getShopId().equals(userShop.get().getId())) {
-            return ResponseEntity.status(403).body(java.util.Map.of("error", "Access denied"));
+        if (!product.getShopId().equals(userShop.getId())) {
+            return ResponseEntity.status(403).body(java.util.Map.of("error", "Không có quyền truy cập"));
         }
-        var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(stallId);
+        var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(productId);
         int updated = 0;
         for (var review : reviews) {
             if (!review.getIsRead()) {
@@ -388,27 +390,28 @@ public class ShopServiceImpl implements ShopService {
                 updated++;
             }
         }
-        return ResponseEntity.ok(java.util.Map.of("message", "Reviews marked as read", "count", updated));
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã đánh dấu đánh giá là đã đọc", "count", updated));
     }
 
     @Override
     public String replyToReview(User user, Long reviewId, String sellerReply, RedirectAttributes redirectAttributes) {
-        var userShop = shopRepository.findByUserId(user.getId());
-        if (userShop.isEmpty()) {
+        // Logic nghiệp vụ: kiểm tra user có quyền trả lời review này không
+        var userShop = shopRepository.findByUserId(user.getId()).orElse(null);
+        if (userShop == null) {
             redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy shop của bạn!");
             return "redirect:/seller/reviews";
         }
+        var reviewOptional = reviewRepository.findById(reviewId);
+        if (reviewOptional.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy đánh giá!");
+            return "redirect:/seller/reviews";
+        }
+        var review = reviewOptional.get();
+        if (!review.getSellerId().equals(user.getId()) || !review.getShopId().equals(userShop.getId())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền trả lời đánh giá này!");
+            return "redirect:/seller/reviews";
+        }
         try {
-            var reviewOptional = reviewRepository.findById(reviewId);
-            if (reviewOptional.isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy đánh giá!");
-                return "redirect:/seller/reviews";
-            }
-            var review = reviewOptional.get();
-            if (!review.getSellerId().equals(user.getId()) || !review.getShopId().equals(userShop.get().getId())) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền trả lời đánh giá này!");
-                return "redirect:/seller/reviews";
-            }
             review.setReplyContent(sellerReply);
             review.setReplyAt(java.time.LocalDateTime.now());
             reviewRepository.save(review);
@@ -421,12 +424,12 @@ public class ShopServiceImpl implements ShopService {
 
     @Override
     public String addProduct(User user,
-                           String stallName,
-                           String stallCategory,
+                           String productName,
+                           String productCategory,
                            String productSubcategory,
                            String shortDescription,
                            String detailedDescription,
-                           org.springframework.web.multipart.MultipartFile stallImageFile,
+                           org.springframework.web.multipart.MultipartFile productImageFile,
                            Boolean uniqueProducts,
                            String isCropped,
                            RedirectAttributes redirectAttributes) {
@@ -439,13 +442,13 @@ public class ShopServiceImpl implements ShopService {
             }
             Product product = new Product();
             product.setShopId(userShop.getId());
-            product.setProductName(stallName);
-            product.setProductCategory(stallCategory);
+            product.setProductName(productName);
+            product.setProductCategory(productCategory);
             product.setShortDescription(shortDescription);
             product.setDetailedDescription(detailedDescription);
             product.setProductSubcategory(productSubcategory);
-            if (stallImageFile != null && !stallImageFile.isEmpty()) {
-                byte[] imageData = stallImageFile.getBytes();
+            if (productImageFile != null && !productImageFile.isEmpty()) {
+                byte[] imageData = productImageFile.getBytes();
                 product.setProductImageData(imageData);
             }
             product.setStatus("OPEN");
@@ -455,7 +458,7 @@ public class ShopServiceImpl implements ShopService {
             redirectAttributes.addFlashAttribute("successMessage", "Sản phẩm đã được tạo thành công!");
             return "redirect:/seller/product-management";
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi tạo gian hàng. Vui lòng thử lại!");
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi tạo sản phẩm. Vui lòng thử lại!");
             return "redirect:/seller/add-product";
         }
     }
@@ -463,11 +466,11 @@ public class ShopServiceImpl implements ShopService {
     @Override
     public String editProduct(User user,
                             Long id,
-                            String stallName,
+                            String productName,
                             String status,
                             String shortDescription,
                             String detailedDescription,
-                            org.springframework.web.multipart.MultipartFile stallImageFile,
+                            org.springframework.web.multipart.MultipartFile productImageFile,
                             RedirectAttributes redirectAttributes) {
         try {
             var productOptional = productRepository.findById(id);
@@ -483,13 +486,13 @@ public class ShopServiceImpl implements ShopService {
         }
             // No stock gating: allow opening product regardless of current warehouse quantity
             // Apply updates (controller already validated no-op and readonly tampering)
-            product.setProductName(stallName);
+            product.setProductName(productName);
             product.setStatus(status);
             product.setShortDescription(shortDescription);
             product.setDetailedDescription(detailedDescription);
-            if (stallImageFile != null && !stallImageFile.isEmpty()) {
+            if (productImageFile != null && !productImageFile.isEmpty()) {
                 try {
-                    byte[] imageData = stallImageFile.getBytes();
+                    byte[] imageData = productImageFile.getBytes();
                     product.setProductImageData(imageData);
                 } catch (Exception e) {
                     redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi xử lý hình ảnh. Vui lòng thử lại!");
@@ -506,9 +509,10 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public String addProduct(User user, Long stallId, String productName, java.math.BigDecimal productPrice, RedirectAttributes redirectAttributes) {
+    public String addProductVariant(User user, Long productId, String productName, java.math.BigDecimal productPrice, RedirectAttributes redirectAttributes) {
         try {
-            var productOptional = productRepository.findById(stallId);
+            // Logic nghiệp vụ: tạo product variant
+            var productOptional = productRepository.findById(productId);
             if (productOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
                 return "redirect:/seller/product-management";
@@ -524,7 +528,7 @@ public class ShopServiceImpl implements ShopService {
             String subcategoryValue = parentProduct.getProductSubcategory() != null ? parentProduct.getProductSubcategory() : "Khác";
             productVariant = ProductVariant.builder()
                     .shopId(parentProduct.getShopId())
-                    .productId(stallId)
+                    .productId(productId)
                     .subcategory(subcategoryValue)
                     .name(productName)
                     .price(productPrice)
@@ -537,12 +541,13 @@ public class ShopServiceImpl implements ShopService {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi thêm sản phẩm. Vui lòng thử lại!");
         }
-        return "redirect:/seller/product-variant-management/" + stallId;
+        return "redirect:/seller/product-variant-management/" + productId;
     }
 
     @Override
-    public String updateProduct(User user, Long productId, String productName, java.math.BigDecimal productPrice, RedirectAttributes redirectAttributes) {
+    public String editProductVariant(User user, Long productId, String productName, java.math.BigDecimal productPrice, RedirectAttributes redirectAttributes) {
         try {
+            // Logic nghiệp vụ: cập nhật product variant
             var productVariantOptional = productVariantRepository.findById(productId);
             if (productVariantOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
@@ -567,21 +572,10 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public String updateProductQuantityFromFile(User user, Long productId, org.springframework.web.multipart.MultipartFile file, RedirectAttributes redirectAttributes) {
+    public String updateProductQuantityFromFile(User user, Long productVariantId, org.springframework.web.multipart.MultipartFile file, RedirectAttributes redirectAttributes) {
         try {
-            if (file.isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file TXT!");
-                return "redirect:/seller/add-quantity/" + productId;
-            }
-            if (!file.getOriginalFilename().toLowerCase().endsWith(".txt")) {
-                redirectAttributes.addFlashAttribute("errorMessage", "File phải có định dạng TXT!");
-                return "redirect:/seller/add-quantity/" + productId;
-            }
-            if (file.getSize() > 1024 * 1024) {
-                redirectAttributes.addFlashAttribute("errorMessage", "File quá lớn! Vui lòng chọn file nhỏ hơn 1MB.");
-                return "redirect:/seller/add-quantity/" + productId;
-            }
-            var productVariantOptional = productVariantRepository.findById(productId);
+            // Logic nghiệp vụ: xử lý file và cập nhật kho
+            var productVariantOptional = productVariantRepository.findById(productVariantId);
             if (productVariantOptional.isEmpty()) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
                 return "redirect:/seller/product-management";
@@ -626,30 +620,24 @@ public class ShopServiceImpl implements ShopService {
                         resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
                         continue;
                     }
-                    // Không chấp nhận format cũ có tiền tố loại (CARD|, EMAIL|, KEY|)
-                    String firstTokenUpper = parts[0].trim().toUpperCase();
-                    if ("CARD".equals(firstTokenUpper) || "EMAIL".equals(firstTokenUpper) || "KEY".equals(firstTokenUpper)) {
-                        failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
-                        continue;
-                    }
+                    
                     String itemData = line;
                     String itemKey = extractIdentifier(productVariant.getSubcategory(), parts);
                     // Kiểm tra khóa định danh bắt buộc theo subcategory
                     if (itemKey == null || itemKey.isBlank()) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
+                        resultDetails.append("Dòng ").append(i + 1).append(": Không có khóa định danh hợp lệ.\n");
                         continue;
                     }
                     if (itemKey != null && processedItemKeys.contains(itemKey)) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
+                        resultDetails.append("Dòng ").append(i + 1).append(": Dòng trùng lặp trong file.\n");
                         continue;
                     }
                     boolean existsInDb = (itemKey != null && existingKeys.contains(itemKey));
                     if (existsInDb) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
+                        resultDetails.append("Dòng ").append(i + 1).append(": Đã tồn tại trong hệ thống.\n");
                         continue;
                     }
                     if (itemKey != null) processedItemKeys.add(itemKey);
@@ -665,10 +653,10 @@ public class ShopServiceImpl implements ShopService {
                     successCount++;
                 } catch (Exception ex) {
                     failureCount++;
-                    resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
+                    resultDetails.append("Dòng ").append(i + 1).append(": Lỗi xử lý - ").append(ex.getMessage() != null ? ex.getMessage() : "Lỗi không xác định").append(".\n");
                 }
             }
-            long warehouseCount = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productId);
+            long warehouseCount = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productVariantId);
             productVariant.setQuantity((int) warehouseCount);
             if (warehouseCount > 0) {
                 productVariant.setStatus(ProductVariant.Status.AVAILABLE);
@@ -724,10 +712,10 @@ public class ShopServiceImpl implements ShopService {
             } else {
                 redirectAttributes.addFlashAttribute("errorMessage", "Upload thất bại! Không có sản phẩm nào được thêm vào kho. Vui lòng kiểm tra định dạng file.");
             }
-            return "redirect:/seller/add-quantity/" + productId;
+            return "redirect:/seller/add-quantity/" + productVariantId;
         } catch (Exception e) {
             try {
-                var productVariantOptional = productVariantRepository.findById(productId);
+                var productVariantOptional = productVariantRepository.findById(productVariantId);
                 if (productVariantOptional.isPresent()) {
                     ProductVariant failedProductVariant = productVariantOptional.get();
                     StringBuilder detailedResult = new StringBuilder();
@@ -760,13 +748,14 @@ public class ShopServiceImpl implements ShopService {
                 }
             } catch (Exception ignored) {}
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi xử lý file. Vui lòng thử lại!");
-            return "redirect:/seller/add-quantity/" + productId;
+            return "redirect:/seller/add-quantity/" + productVariantId;
         }
     }
 
     @Override
     public ResponseEntity<?> getUploadDetails(User user, Long uploadId) {
         try {
+            // Logic nghiệp vụ: kiểm tra quyền truy cập upload details
             var uploadOptional = uploadHistoryRepository.findById(uploadId);
             if (uploadOptional.isEmpty()) {
                 return ResponseEntity.notFound().build();

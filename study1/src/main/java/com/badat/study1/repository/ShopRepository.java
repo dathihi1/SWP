@@ -22,6 +22,7 @@ public interface ShopRepository extends JpaRepository<Shop, Long> {
     // List methods for dropdowns
     List<Shop> findByStatus(Shop.Status status);
     List<Shop> findByIsDelete(Boolean isDelete);
+    List<Shop> findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status status, Boolean isDelete);
 }
 
 

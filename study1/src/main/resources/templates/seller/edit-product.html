@@ -410,7 +410,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h1 class="page-title">Chỉnh sửa sản phẩm</h1>
-                        <small class="text-muted" th:text="'Sản phẩm: ' + ${stall.productName}">Sản phẩm: Tên sản phẩm</small>
+                        <small class="text-muted" th:text="'Sản phẩm: ' + ${product.productName}">Sản phẩm: Tên sản phẩm</small>
                     </div>
                     <a th:href="@{/seller/product-management}" href="/seller/product-management" class="btn-back">
                         <i class="fas fa-arrow-left me-2"></i>
@@ -421,7 +421,7 @@
             
             <!-- Form Container -->
             <div class="form-container">
-                <form th:action="@{/seller/edit-product/{id}(id=${stall.id})}" method="post" enctype="multipart/form-data" id="editProductForm">
+                <form th:action="@{/seller/edit-product/{id}(id=${product.id})}" method="post" enctype="multipart/form-data" id="editProductForm">
                     <!-- Basic Information -->
                     <div class="form-section">
                         <h5 class="section-title">
@@ -431,25 +431,25 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="productName" class="form-label">Tên sản phẩm <span class="required">*</span></label>
-                                <input type="text" class="form-control" id="productName" name="stallName" th:value="${stall.productName}">
+                                <input type="text" class="form-control" id="productName" name="productName" th:value="${product.productName}">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="status" class="form-label">Trạng thái</label>
                                 <select class="form-select" id="status" name="status">
-                                    <option value="OPEN" th:selected="${stall.status == 'OPEN'}">Mở</option>
-                                    <option value="CLOSED" th:selected="${stall.status == 'CLOSED'}">Đóng</option>
+                                    <option value="OPEN" th:selected="${product.status == 'OPEN'}">Mở</option>
+                                    <option value="CLOSED" th:selected="${product.status == 'CLOSED'}">Đóng</option>
                                 </select>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Loại sản phẩm</label>
-                                <input type="text" class="form-control" th:value="${stall.productCategory}" readonly>
+                                <input type="text" class="form-control" th:value="${product.productCategory}" readonly>
                                 <div class="form-text">Không thể thay đổi</div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Loại cụ thể</label>
-                                <input type="text" class="form-control" th:value="${stall.productSubcategory}" readonly>
+                                <input type="text" class="form-control" th:value="${product.productSubcategory}" readonly>
                                 <div class="form-text">Không thể thay đổi</div>
                             </div>
                         </div>
@@ -463,12 +463,12 @@
                         </h5>
                         <div class="mb-3">
                             <label for="shortDescription" class="form-label">Mô tả ngắn</label>
-                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" th:text="${stall.shortDescription}"></textarea>
+                            <textarea class="form-control" id="shortDescription" name="shortDescription" rows="3" th:text="${product.shortDescription}"></textarea>
                             <div class="form-text">Mô tả ngắn gọn về sản phẩm</div>
                         </div>
                         <div class="mb-3">
                             <label for="detailedDescription" class="form-label">Mô tả chi tiết</label>
-                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" th:text="${stall.detailedDescription}"></textarea>
+                            <textarea class="form-control" id="detailedDescription" name="detailedDescription" rows="5" th:text="${product.detailedDescription}"></textarea>
                             <div class="form-text">Mô tả chi tiết về sản phẩm, dịch vụ, chính sách bán hàng</div>
                         </div>
                     </div>
@@ -481,13 +481,13 @@
                         </h5>
                         <div class="mb-3">
                             <label for="productImageFile" class="form-label">Tải lên hình ảnh sản phẩm mới</label>
-                            <input type="file" class="form-control" id="productImageFile" name="stallImageFile" accept="image/*" onchange="previewImage(this)">
+                            <input type="file" class="form-control" id="productImageFile" name="productImageFile" accept="image/*" onchange="previewImage(this)">
                             <div class="form-text">Chọn file hình ảnh đại diện cho sản phẩm (JPG, PNG, GIF). Để trống nếu không muốn thay đổi.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Hình ảnh hiện tại:</label>
                             <div class="text-center">
-                                <img th:src="@{/stall-image/{id}(id=${stall.id})} + '?' + ${#dates.createNow().time}"
+                                <img th:src="@{/stall-image/{id}(id=${product.id})} + '?' + ${#dates.createNow().time}"
                                      alt="Current Image"
                                      style="max-width: 200px; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
                                      onerror="this.style.display='none'">

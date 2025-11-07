@@ -16,8 +16,8 @@ public class OrderSummary {
     List<OrderItem> items;
     BigDecimal totalAmount;
     int totalQuantity;
-    String firstProductName;
-    String stallName;
+    String firstProductVariantName;
+    String productName;
     BigDecimal unitPrice;
     OrderItem.Status status;
     LocalDateTime createdAt;

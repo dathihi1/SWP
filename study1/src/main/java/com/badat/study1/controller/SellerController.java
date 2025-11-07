@@ -24,7 +24,7 @@ public class SellerController {
 
     @PostMapping("/seller/register")
     public String submitSellerRegistration(@RequestParam("ownerName") String ownerName,
-                                           @RequestParam("shopOwnerName") String shopOwnerName,
+                                           @RequestParam("shortDescription") String shortDescription,
                                            @RequestParam("cccdFront") MultipartFile cccdFront,
                                            @RequestParam("cccdBack") MultipartFile cccdBack,
                                            @RequestParam(value = "agree", required = false) String agree,
@@ -49,12 +49,17 @@ public class SellerController {
         }
         String ownerNameTrim = ownerName.trim();
 
-        // Validate tên chủ shop
-        if (shopOwnerName == null || shopOwnerName.trim().isEmpty()) {
-            redirectAttributes.addFlashAttribute("submitError", "Vui lòng nhập tên chủ shop.");
+        // Validate mô tả ngắn
+        if (shortDescription == null || shortDescription.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("submitError", "Vui lòng nhập mô tả ngắn.");
             return "redirect:/seller/register";
         }
-        String shopOwnerNameTrim = shopOwnerName.trim();
+        String shortDescriptionTrim = shortDescription.trim();
+        // Validate độ dài mô tả ngắn (tối đa 50 ký tự)
+        if (shortDescriptionTrim.length() > 50) {
+            redirectAttributes.addFlashAttribute("submitError", "Mô tả ngắn không được vượt quá 50 ký tự.");
+            return "redirect:/seller/register";
+        }
 
         // Validate ảnh CCCD mặt trước
         if (cccdFront == null || cccdFront.isEmpty()) {
@@ -101,7 +106,7 @@ public class SellerController {
         model.addAttribute("username", user.getUsername());
         model.addAttribute("userRole", user.getRole().name());
 
-        return sellerService.submitSellerRegistration(ownerNameTrim, shopOwnerNameTrim, cccdFront, cccdBack, agree, user, redirectAttributes);
+        return sellerService.submitSellerRegistration(ownerNameTrim, shortDescriptionTrim, cccdFront, cccdBack, agree, user, redirectAttributes);
     }
 
     @GetMapping("/seller/register")

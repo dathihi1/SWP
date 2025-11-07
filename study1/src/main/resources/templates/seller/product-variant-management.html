@@ -432,14 +432,14 @@
                 </div>
             </div>
             
-            <!-- Stall Information -->
+            <!-- Product Information -->
             <div class="stall-info">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <strong>Sản phẩm:</strong>
-                        <span class="ms-2" th:text="${stall.productName}">Tên sản phẩm</span>
+                        <span class="ms-2" th:text="${product.productName}">Tên sản phẩm</span>
                     </div>
-                    <span class="stall-category" th:text="${stall.productSubcategory}">Loại cụ thể</span>
+                    <span class="stall-category" th:text="${product.productSubcategory}">Loại cụ thể</span>
                 </div>
             </div>
             
@@ -476,7 +476,7 @@
                                         <button class="btn btn-action btn-edit" title="Cập nhật biến thể" th:onclick="'editProduct(' + ${product.id} + ')'">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <a th:href="@{/seller/add-quantity/{productId}(productId=${product.id})}" class="btn btn-action btn-add-quantity" title="Thêm tồn kho">
+                                        <a th:href="@{/seller/add-quantity/{productVariantId}(productVariantId=${product.id})}" class="btn btn-action btn-add-quantity" title="Thêm tồn kho">
                                             <i class="fas fa-plus"></i>
                                         </a>
                                         
@@ -497,7 +497,7 @@
             <!-- Add Product Section -->
             <div class="add-product-section">
                 <h5 class="mb-3">Thêm biến thể</h5>
-                <form th:action="@{/seller/add-product/{stallId}(stallId=${stall.id})}" method="post" id="addProductForm">
+                <form th:action="@{/seller/add-product/{productId}(productId=${product.id})}" method="post" id="addProductForm">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="productName" class="form-label">Tên biến thể<span class="required">*</span></label>

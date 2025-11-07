@@ -25,8 +25,8 @@ public class Shop {
     @Column(name = "shop_name", nullable = false, length = 100)
     String shopName;
 
-    @Column(name = "shop_owner_name", length = 100)
-    String shopOwnerName;
+    @Column(name = "short_description", length = 100)
+    String shortDescription;
 
     @Lob
     @Column(name = "cccd_front_image", columnDefinition = "LONGBLOB")
@@ -55,8 +55,11 @@ public class Shop {
     @Builder.Default
     BigDecimal commissionRate = BigDecimal.valueOf(5.0);
 
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    String rejectionReason;
+
     public enum Status {
-        ACTIVE, INACTIVE
+        PENDING, ACTIVE, INACTIVE
     }
 
 }

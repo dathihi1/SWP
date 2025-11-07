@@ -443,7 +443,7 @@
                     <div>
                         <h1 class="page-title">Thêm tồn kho</h1>
                     </div>
-                    <a th:href="@{/seller/product-variant-management/{stallId}(stallId=${stall.id})}" href="/seller/product-variant-management" class="btn-back">
+                    <a th:href="@{/seller/product-variant-management/{productId}(productId=${product.id})}" href="/seller/product-variant-management" class="btn-back">
                         <i class="fas fa-arrow-left me-2"></i>
                         Quay lại
                     </a>
@@ -454,10 +454,10 @@
             <div class="info-bar">
                 <div class="row align-items-center">
                     <div class="col-md-4">
-                        <h6 class="mb-0"><strong>Sản phẩm:</strong> <span th:text="${stall.productName}">Tên sản phẩm</span></h6>
+                        <h6 class="mb-0"><strong>Sản phẩm:</strong> <span th:text="${product.productName}">Tên sản phẩm</span></h6>
                     </div>
                     <div class="col-md-4 text-center">
-                        <h6 class="mb-0"><strong>Loại:</strong> <span class="badge bg-info" th:text="${stall.productCategory}">Loại gian hàng</span></h6>
+                        <h6 class="mb-0"><strong>Loại:</strong> <span class="badge bg-info" th:text="${product.productCategory}">Loại gian hàng</span></h6>
                     </div>
                     <div class="col-md-4 text-end">
                         <h6 class="mb-0"><strong>Biến thể:</strong> <span class="badge bg-success" th:text="${productVariant.name}">Tên biến thể</span></h6>
@@ -471,7 +471,7 @@
                     <div class="col-md-6">
                         <h5 class="mb-4">Chọn file(txt)</h5>
                 
-                        <form th:action="@{/seller/update-product-quantity-file/{productId}(productId=${product.id})}" method="post" enctype="multipart/form-data" id="uploadForm">
+                        <form th:action="@{/seller/update-product-quantity-file/{productVariantId}(productVariantId=${productVariant.id})}" method="post" enctype="multipart/form-data" id="uploadForm">
                             <div class="mb-3">
                                 <label for="quantityFile" class="form-label">Chọn file TXT</label>
                                 <input type="file" class="form-control" id="quantityFile" name="file">
@@ -575,19 +575,19 @@
                     <nav>
                         <ul class="pagination mb-0" style="font-size: 16px;">
                             <li class="page-item" th:classappend="${!hasPrevious} ? 'disabled'">
-                                <a class="page-link" th:href="@{/seller/add-quantity/{productId}(productId=${product.id}, page=${currentPage - 1})}" 
+                                <a class="page-link" th:href="@{/seller/add-quantity/{productVariantId}(productVariantId=${productVariant.id}, page=${currentPage - 1})}" 
                                    th:if="${hasPrevious}">Trước</a>
                                 <span class="page-link" th:unless="${hasPrevious}">Trước</span>
                             </li>
                             
                             <li class="page-item" th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}"
                                 th:classappend="${pageNum == currentPage} ? 'active'">
-                                <a class="page-link" th:href="@{/seller/add-quantity/{productId}(productId=${product.id}, page=${pageNum})}"
+                                <a class="page-link" th:href="@{/seller/add-quantity/{productVariantId}(productVariantId=${productVariant.id}, page=${pageNum})}"
                                    th:text="${pageNum + 1}">1</a>
                             </li>
                             
                             <li class="page-item" th:classappend="${!hasNext} ? 'disabled'">
-                                <a class="page-link" th:href="@{/seller/add-quantity/{productId}(productId=${product.id}, page=${currentPage + 1})}" 
+                                <a class="page-link" th:href="@{/seller/add-quantity/{productVariantId}(productVariantId=${productVariant.id}, page=${currentPage + 1})}" 
                                    th:if="${hasNext}">Sau</a>
                                 <span class="page-link" th:unless="${hasNext}">Sau</span>
                             </li>

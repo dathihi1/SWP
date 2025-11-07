@@ -6,7 +6,7 @@ import com.badat.study1.model.User;
 
 public interface SellerService {
     String submitSellerRegistration(String ownerName,
-                                    String shopOwnerName,
+                                    String shortDescription,
                                     MultipartFile cccdFront,
                                     MultipartFile cccdBack,
                                     String agree,

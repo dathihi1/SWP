@@ -240,34 +240,34 @@
             font-family: inherit;
         }
         
-        /* Stall Statistics Styles */
-        .stall-stats-section {
+        /* Product Statistics Styles */
+        .product-stats-section {
             background: #f8f9fa;
             border-radius: 8px;
             padding: 20px;
         }
         
-        .stall-stats-section .card {
+        .product-stats-section .card {
             border: 1px solid #e9ecef;
             transition: box-shadow 0.2s ease;
         }
         
-        .stall-stats-section .card:hover {
+        .product-stats-section .card:hover {
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             transform: translateY(-2px);
             transition: all 0.3s ease;
         }
         
-        .stall-card {
+        .product-card {
             transition: all 0.3s ease;
         }
         
-        .stall-card:hover {
+        .product-card:hover {
             box-shadow: 0 6px 12px rgba(0,0,0,0.15);
             transform: translateY(-3px);
         }
         
-        .stall-card.active {
+        .product-card.active {
             border-color: #0d6efd;
             box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
         }
@@ -291,15 +291,15 @@
             background: #a8a8a8;
         }
         
-        .stall-stats-section .stars {
+        .product-stats-section .stars {
             font-size: 1.1rem;
         }
         
-        .stall-stats-section .rating-display {
+        .product-stats-section .rating-display {
             flex: 1;
         }
         
-        .stall-stats-section .review-count {
+        .product-stats-section .review-count {
             margin-left: 10px;
         }
         
@@ -457,32 +457,32 @@
                     </div>
                 </div>
             </div>
-            <!-- Stall Statistics Section -->
+            <!-- Product Statistics Section -->
             <div class="mb-4">
                 <div class="bg-white rounded-3 p-4 shadow-sm border">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0 text-dark">
-                            <i class="fas fa-store me-2 text-dark"></i>Danh sách gian hàng
+                            <i class="fas fa-store me-2 text-dark"></i>Danh sách sản phẩm
                         </h5>
                     </div>
                 <div class="row">
-                        <div th:each="stallStat : ${stallStats}" class="col-md-6 col-lg-4 mb-2">
-                            <div class="card stall-card" th:data-stall-id="${stallStat.stall.id}" style="cursor: pointer; position: relative;">
+                        <div th:each="productStat : ${productStats}" class="col-md-6 col-lg-4 mb-2">
+                            <div class="card product-card" th:data-product-id="${productStat.product.id}" style="cursor: pointer; position: relative;">
                                 <div class="card-body p-2">
                                     <!-- Unread count badge positioned at top-right -->
-                                    <div th:if="${stallStat.unreadCount > 0}" class="position-absolute top-0 end-0 m-2">
-                                        <span class="badge bg-danger text-white small" th:text="${stallStat.unreadCount} + ' mới'">3 mới</span>
+                                    <div th:if="${productStat.unreadCount > 0}" class="position-absolute top-0 end-0 m-2">
+                                        <span class="badge bg-danger text-white small" th:text="${productStat.unreadCount} + ' mới'">3 mới</span>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div class="flex-grow-1">
-                                            <h6 class="card-title text-primary small mb-1" th:text="${stallStat.stall.productName}">Tên gian hàng</h6>
+                                            <h6 class="card-title text-primary small mb-1" th:text="${productStat.product.productName}">Tên sản phẩm</h6>
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="stars" style="font-size: 0.7rem;">
                                         <span th:each="i : ${#numbers.sequence(1, 5)}" 
-                                              th:class="${i <= stallStat.averageRating} ? 'text-warning' : 'text-muted'"
+                                              th:class="${i <= productStat.averageRating} ? 'text-warning' : 'text-muted'"
                                               th:text="'★'">★</span>
                                     </div>
-                                                <small class="text-muted small" th:text="${stallStat.averageRating} + '/5'">4.5/5</small>
+                                                <small class="text-muted small" th:text="${productStat.averageRating} + '/5'">4.5/5</small>
                                             </div>
                                         </div>
                                         <div class="text-end">
@@ -566,7 +566,7 @@
         // Global variables for filtering and sorting
         let allReviews = [];
         let filteredReviews = [];
-        let currentStallId = null;
+        let currentProductId = null;
         let currentStarFilter = 'all'; // default star filter
         let reviewsPerPage = 5; // Limit reviews per page
         let currentPage = 0;
@@ -588,12 +588,12 @@
                 }
             });
             
-            // Add click handlers to stall cards
-            const stallCards = document.querySelectorAll('.stall-card');
-            stallCards.forEach(card => {
+            // Add click handlers to product cards
+            const productCards = document.querySelectorAll('.product-card');
+            productCards.forEach(card => {
                 card.addEventListener('click', function() {
-                    const stallId = this.getAttribute('data-stall-id');
-                    loadDetailedReviews(stallId);
+                    const productId = this.getAttribute('data-product-id');
+                    loadDetailedReviews(productId);
                 });
             });
             
@@ -606,10 +606,10 @@
             });
         });
         
-        // Function to load detailed reviews for a specific stall
-        async function loadDetailedReviews(stallId) {
+        // Function to load detailed reviews for a specific product
+        async function loadDetailedReviews(productId) {
             try {
-                currentStallId = stallId;
+                currentProductId = productId;
                 
                 // Show loading state
                 document.getElementById('reviewsContainer').innerHTML = `
@@ -633,7 +633,7 @@
                 });
                 
                 // Fetch reviews from server
-                const response = await fetch(`/api/seller/reviews/stall/${stallId}`);
+                const response = await fetch(`/api/seller/reviews/product/${productId}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch reviews');
                 }
@@ -797,7 +797,7 @@
                         
                         <div class="review-content">
                             <div class="review-product">
-                                <strong>Sản phẩm:</strong> <span>${review.product.productName}</span>
+                                <strong>Biến thể:</strong> <span>${review.productVariant.name}</span>
                             </div>
                             <div class="review-comment">${review.content}</div>
                         </div>
@@ -892,7 +892,7 @@
                         
                         <div class="review-content">
                             <div class="review-product">
-                                <strong>Sản phẩm:</strong> <span>${review.product.productName}</span>
+                                <strong>Biến thể:</strong> <span>${review.productVariant.name}</span>
                             </div>
                             <div class="review-comment">${review.content}</div>
                         </div>
@@ -963,8 +963,8 @@
         
         // Function to mark all reviews as read
         async function markAllAsRead() {
-            if (!currentStallId) {
-                alert('Không có gian hàng nào được chọn');
+            if (!currentProductId) {
+                alert('Không có sản phẩm nào được chọn');
                 return;
             }
             
@@ -974,7 +974,7 @@
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: `stallId=${currentStallId}`
+                    body: `productId=${currentProductId}`
                 });
                 
                 if (!response.ok) {
@@ -1001,8 +1001,8 @@
             document.getElementById('filterSection').style.display = 'none'; // Hide filter section
             document.getElementById('defaultMessage').style.display = 'block';
             
-            // Clear current stall selection but keep filters
-            currentStallId = null;
+            // Clear current product selection but keep filters
+            currentProductId = null;
             allReviews = [];
             filteredReviews = [];
         }
@@ -1025,9 +1025,9 @@
                 });
                 
                 if (response.ok) {
-                    // Reload reviews for current stall
-                    if (currentStallId) {
-                        loadDetailedReviews(currentStallId);
+                    // Reload reviews for current product
+                    if (currentProductId) {
+                        loadDetailedReviews(currentProductId);
                     }
                 } else {
                     alert('Có lỗi xảy ra khi gửi phản hồi');

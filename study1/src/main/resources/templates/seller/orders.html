@@ -367,25 +367,25 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="stallId" class="form-label">Sản phẩm</label>
-                            <select name="stallId" id="stallId" class="form-select">
+                            <label for="productId" class="form-label">Sản phẩm</label>
+                            <select name="productId" id="productId" class="form-select">
                                 <option value="">Tất cả sản phẩm</option>
-                                <option th:each="stall : ${stalls}" 
-                                        th:value="${stall.id}" 
-                                        th:text="${stall.productName}"
-                                        th:selected="${stall.id == selectedStallId}">
+                                <option th:each="product : ${products}" 
+                                        th:value="${product.id}" 
+                                        th:text="${product.productName}"
+                                        th:selected="${product.id == selectedProductId}">
                                     Tên sản phẩm
                                 </option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="productId" class="form-label">Biến thể</label>
-                            <select name="productId" id="productId" class="form-select">
+                            <label for="productVariantId" class="form-label">Biến thể</label>
+                            <select name="productVariantId" id="productVariantId" class="form-select">
                                 <option value="">Tất cả biến thể</option>
-                                <option th:each="product : ${products}" 
-                                        th:value="${product.id}" 
-                                        th:text="${product.productName}"
-                                        th:selected="${product.id == selectedProductId}">
+                                <option th:each="productVariant : ${productVariants}" 
+                                        th:value="${productVariant.id}" 
+                                        th:text="${productVariant.name}"
+                                        th:selected="${productVariant.id == selectedProductVariantId}">
                                     Tên biến thể
                                 </option>
                             </select>
@@ -432,10 +432,10 @@
                                     <span class="order-code text-primary" th:text="${o.order.orderCode}">ORDER_CODE</span>
                                 </td>
                                 <td>
-                                    <span th:text="${o.stallName}">Tên sản phẩm</span>
+                                    <span th:text="${o.productName}">Tên sản phẩm</span>
                                 </td>
                                 <td>
-                                    <span th:text="${o.firstProductName}">Tên biến thể</span>
+                                    <span th:text="${o.firstProductVariantName}">Tên biến thể</span>
                                 </td>
                                 <td th:text="${o.totalQuantity}">1</td>
                                 <td class="amount" th:text="${#numbers.formatDecimal(o.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
@@ -469,19 +469,19 @@
                     <nav>
                         <ul class="pagination mb-0" style="font-size: 16px;">
                             <li class="page-item" th:classappend="${!hasPrevious} ? 'disabled'">
-                                <a class="page-link" th:href="@{/seller/orders(page=${currentPage - 1}, status=${selectedStatus}, stallId=${selectedStallId}, productId=${selectedProductId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}" 
+                                <a class="page-link" th:href="@{/seller/orders(page=${currentPage - 1}, status=${selectedStatus}, productId=${selectedProductId}, productVariantId=${selectedProductVariantId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}" 
                                    th:if="${hasPrevious}">Trước</a>
                                 <span class="page-link" th:unless="${hasPrevious}">Trước</span>
                             </li>
                             
                             <li class="page-item" th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}"
                                 th:classappend="${pageNum == currentPage} ? 'active'">
-                                <a class="page-link" th:href="@{/seller/orders(page=${pageNum}, status=${selectedStatus}, stallId=${selectedStallId}, productId=${selectedProductId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}"
+                                <a class="page-link" th:href="@{/seller/orders(page=${pageNum}, status=${selectedStatus}, productId=${selectedProductId}, productVariantId=${selectedProductVariantId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}"
                                    th:text="${pageNum + 1}">1</a>
                             </li>
                             
                             <li class="page-item" th:classappend="${!hasNext} ? 'disabled'">
-                                <a class="page-link" th:href="@{/seller/orders(page=${currentPage + 1}, status=${selectedStatus}, stallId=${selectedStallId}, productId=${selectedProductId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}" 
+                                <a class="page-link" th:href="@{/seller/orders(page=${currentPage + 1}, status=${selectedStatus}, productId=${selectedProductId}, productVariantId=${selectedProductVariantId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}" 
                                    th:if="${hasNext}">Sau</a>
                                 <span class="page-link" th:unless="${hasNext}">Sau</span>
                             </li>

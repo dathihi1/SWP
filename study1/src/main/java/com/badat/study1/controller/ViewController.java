@@ -164,15 +164,15 @@ public class ViewController {
         // Load top 8 products with highest product variant counts for homepage preview
         try {
             var activeProducts = productRepository.findByStatusAndIsDeleteFalse("OPEN");
-            List<Map<String, Object>> stallCards = new ArrayList<>();
+            List<Map<String, Object>> productCards = new ArrayList<>();
             
             // Calculate product variant counts for all products
-            List<Map<String, Object>> stallsWithCounts = new ArrayList<>();
+            List<Map<String, Object>> productsWithCounts = new ArrayList<>();
             for (Product product : activeProducts) {
                 Map<String, Object> vm = new HashMap<>();
-                vm.put("stallId", product.getId());
-                vm.put("stallName", product.getProductName());
-                vm.put("stallCategory", product.getProductCategory());
+                vm.put("productId", product.getId());
+                vm.put("productName", product.getProductName());
+                vm.put("productCategory", product.getProductCategory());
 
                 // Compute product variant count by counting warehouse items (not locked, not deleted)
                 int totalStock = (int) warehouseRepository.countAvailableItemsByProductId(product.getId());
@@ -247,11 +247,11 @@ public class ViewController {
                     vm.put("imageBase64", null);
                 }
 
-                stallsWithCounts.add(vm);
+                productsWithCounts.add(vm);
             }
             
             // Sort by average rating (descending), then by review count (descending), then by product count (descending) and take top 8
-            stallCards = stallsWithCounts.stream()
+            productCards = productsWithCounts.stream()
                     .sorted((a, b) -> {
                         // First compare by average rating (higher is better)
                         double ratingA = ((Number) a.getOrDefault("averageRating", 0.0)).doubleValue();
@@ -277,12 +277,28 @@ public class ViewController {
                     .limit(8)
                     .collect(Collectors.toList());
                     
-            model.addAttribute("stalls", stallCards);
+            model.addAttribute("products", productCards);
         } catch (Exception e) {
-            log.error("Error loading stalls for homepage: {}", e.getMessage(), e);
-            // Add empty stalls list to prevent template errors
-            model.addAttribute("stalls", new ArrayList<>());
+            log.error("Error loading products for homepage: {}", e.getMessage(), e);
+            // Add empty products list to prevent template errors
+            model.addAttribute("products", new ArrayList<>());
         }
+        
+        // Load categories for featured categories section
+        try {
+            List<String> categories = productRepository.findByStatusAndIsDeleteFalse("OPEN").stream()
+                    .map(Product::getProductCategory)
+                    .filter(c -> c != null && !c.isBlank())
+                    .distinct()
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .limit(4) // Limit to top 4 categories for featured section
+                    .toList();
+            model.addAttribute("featuredCategories", categories);
+        } catch (Exception e) {
+            log.error("Error loading categories for homepage: {}", e.getMessage(), e);
+            model.addAttribute("featuredCategories", new ArrayList<>());
+        }
+        
         return "home";
     }
 
