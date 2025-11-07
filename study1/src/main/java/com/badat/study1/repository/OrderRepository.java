@@ -42,21 +42,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findAllById(@Param("orderIds") List<Long> orderIds);
     
     // Method để lấy orders với OrderItem details
-    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems oi LEFT JOIN FETCH oi.product p LEFT JOIN FETCH oi.warehouse w WHERE o.id = :orderId")
+    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems oi LEFT JOIN FETCH oi.productVariant p LEFT JOIN FETCH oi.warehouse w WHERE o.id = :orderId")
     Optional<Order> findByIdWithOrderItems(@Param("orderId") Long orderId);
     
-    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems oi LEFT JOIN FETCH oi.product p LEFT JOIN FETCH oi.warehouse w LEFT JOIN FETCH w.user u WHERE o.buyerId = :buyerId ORDER BY o.createdAt DESC")
+    @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems oi LEFT JOIN FETCH oi.productVariant p LEFT JOIN FETCH oi.warehouse w LEFT JOIN FETCH w.user u WHERE o.buyerId = :buyerId ORDER BY o.createdAt DESC")
     List<Order> findByBuyerIdWithOrderItems(@Param("buyerId") Long buyerId);
     
     @Query("SELECT DISTINCT o FROM Order o " +
            "LEFT JOIN FETCH o.orderItems oi " +
-           "LEFT JOIN FETCH oi.product p " +
+           "LEFT JOIN FETCH oi.productVariant p " +
            "LEFT JOIN FETCH oi.warehouse w " +
            "LEFT JOIN FETCH w.user u " +
            "WHERE o.buyerId = :buyerId " +
            "AND (:startDate IS NULL OR DATE(o.createdAt) >= :startDate) " +
            "AND (:endDate IS NULL OR DATE(o.createdAt) <= :endDate) " +
-           "AND (:searchStall IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :searchStall, '%'))) " +
+           "AND (:searchSeller IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :searchSeller, '%'))) " +
            "AND (:searchProduct IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :searchProduct, '%'))) " +
            "ORDER BY " +
            "CASE WHEN :sortBy = 'createdAt_desc' THEN o.createdAt END DESC, " +
@@ -68,7 +68,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByBuyerIdWithFilters(@Param("buyerId") Long buyerId, 
                                          @Param("startDate") String startDate, 
                                          @Param("endDate") String endDate, 
-                                         @Param("searchStall") String searchStall, 
+                                         @Param("searchSeller") String searchSeller, 
                                          @Param("searchProduct") String searchProduct, 
                                          @Param("sortBy") String sortBy);
 

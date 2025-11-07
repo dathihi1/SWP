@@ -25,11 +25,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<Warehouse> findByShopIdOrderByCreatedAtDesc(Long shopId);
     
     /**
-     * Find warehouse items by stall ID
-     */
-    List<Warehouse> findByStallIdOrderByCreatedAtDesc(Long stallId);
-    
-    /**
      * Find warehouse items by user ID
      */
     List<Warehouse> findByUserIdOrderByCreatedAtDesc(Long userId);
@@ -37,7 +32,8 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     /**
      * Find warehouse items by item type
      */
-    List<Warehouse> findByItemTypeOrderByCreatedAtDesc(Warehouse.ItemType itemType);
+    // Deprecated with item_subcategory string
+    // List<Warehouse> findByItemTypeOrderByCreatedAtDesc(Warehouse.ItemType itemType);
     
     /**
      * Count warehouse items by product ID
@@ -48,11 +44,7 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      * Count warehouse items by shop ID
      */
     long countByShopId(Long shopId);
-    
-    /**
-     * Count warehouse items by stall ID
-     */
-    long countByStallId(Long stallId);
+
     
     /**
      * Count warehouse items by user ID
@@ -62,17 +54,25 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     /**
      * Count warehouse items by item type
      */
-    long countByItemType(Warehouse.ItemType itemType);
+    // Deprecated with item_subcategory string
+    // long countByItemType(Warehouse.ItemType itemType);
     
     /**
      * Find warehouse items by product ID and item type
      */
-    List<Warehouse> findByProductIdAndItemTypeOrderByCreatedAtDesc(Long productId, Warehouse.ItemType itemType);
+    // Deprecated with item_subcategory string
+    // List<Warehouse> findByProductIdAndItemTypeOrderByCreatedAtDesc(Long productId, Warehouse.ItemType itemType);
     
     /**
      * Find warehouse items by shop ID and item type
      */
-    List<Warehouse> findByShopIdAndItemTypeOrderByCreatedAtDesc(Long shopId, Warehouse.ItemType itemType);
+    // Deprecated with item_subcategory string
+    // List<Warehouse> findByShopIdAndItemTypeOrderByCreatedAtDesc(Long shopId, Warehouse.ItemType itemType);
+
+    /**
+     * Find all items by product variant (not deleted)
+     */
+    List<Warehouse> findByProductVariantIdAndIsDeleteFalse(Long productVariantId);
     
     /**
      * Find recent warehouse items for a specific product (last 50 records)
@@ -96,6 +96,16 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     long countByProductIdAndLockedFalseAndIsDeleteFalse(Long productId);
     
     /**
+     * Count available warehouse items for product variant (not locked, not deleted)
+     */
+    long countByProductVariantIdAndLockedFalseAndIsDeleteFalse(Long productVariantId);
+    
+    /**
+     * Find first available warehouse item for product variant (not locked, not deleted)
+     */
+    Optional<Warehouse> findFirstByProductVariantIdAndLockedFalseAndIsDeleteFalse(Long productVariantId);
+    
+    /**
      * Find available items for reservation with database lock (SELECT FOR UPDATE)
      * Sử dụng để chống race condition khi reserve inventory
      */
@@ -108,12 +118,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      */
     @Query(value = "SELECT COUNT(*) FROM warehouse WHERE product_id = :productId AND locked = false AND is_delete = false", nativeQuery = true)
     long countAvailableItemsByProductId(@Param("productId") Long productId);
-    
-    /**
-     * Count available warehouse items for a stall (not locked, not deleted)
-     */
-    @Query(value = "SELECT COUNT(*) FROM warehouse WHERE stall_id = :stallId AND locked = false AND is_delete = false", nativeQuery = true)
-    long countAvailableItemsByStallId(@Param("stallId") Long stallId);
     
     /**
      * Count available warehouse items for a shop (not locked, not deleted)

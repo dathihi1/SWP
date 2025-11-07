@@ -1,12 +1,7 @@
 package com.badat.study1.controller;
 
-import com.badat.study1.model.BankAccount;
-import com.badat.study1.model.Shop;
 import com.badat.study1.model.User;
-import com.badat.study1.repository.BankAccountRepository;
-import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.WalletRepository;
-import com.badat.study1.repository.UserRepository;
+import com.badat.study1.service.SellerService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -14,33 +9,24 @@ import org.springframework.ui.Model;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.dao.DataIntegrityViolationException;
-
-import java.time.Instant;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.multipart.MultipartFile;
+import java.math.BigDecimal;
 
 @Controller
 public class SellerController {
 
-    private final ShopRepository shopRepository;
-    private final BankAccountRepository bankAccountRepository;
-    private final WalletRepository walletRepository;
-    private final UserRepository userRepository;
+    private final SellerService sellerService;
 
-    public SellerController(ShopRepository shopRepository,
-                            BankAccountRepository bankAccountRepository,
-                            WalletRepository walletRepository,
-                            UserRepository userRepository) {
-        this.shopRepository = shopRepository;
-        this.bankAccountRepository = bankAccountRepository;
-        this.walletRepository = walletRepository;
-        this.userRepository = userRepository;
+    public SellerController(SellerService sellerService) {
+        this.sellerService = sellerService;
     }
 
     @PostMapping("/seller/register")
     public String submitSellerRegistration(@RequestParam("ownerName") String ownerName,
-                                           @RequestParam("identity") String identity,
-                                           @RequestParam("bankAccountNumber") String bankAccountNumber,
-                                           @RequestParam("bankName") String bankName,
+                                           @RequestParam("shortDescription") String shortDescription,
+                                           @RequestParam("cccdFront") MultipartFile cccdFront,
+                                           @RequestParam("cccdBack") MultipartFile cccdBack,
                                            @RequestParam(value = "agree", required = false) String agree,
                                            Model model,
                                            RedirectAttributes redirectAttributes) {
@@ -51,83 +37,97 @@ public class SellerController {
             return "redirect:/login";
         }
 
+        if (authentication == null) {
+            return "redirect:/login";
+        }
         User user = (User) authentication.getPrincipal();
+
+        // Validate tên shop
+        if (ownerName == null || ownerName.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("submitError", "Vui lòng nhập tên shop.");
+            return "redirect:/seller/register";
+        }
+        String ownerNameTrim = ownerName.trim();
+
+        // Validate mô tả ngắn
+        if (shortDescription == null || shortDescription.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("submitError", "Vui lòng nhập mô tả ngắn.");
+            return "redirect:/seller/register";
+        }
+        String shortDescriptionTrim = shortDescription.trim();
+        // Validate độ dài mô tả ngắn (tối đa 50 ký tự)
+        if (shortDescriptionTrim.length() > 50) {
+            redirectAttributes.addFlashAttribute("submitError", "Mô tả ngắn không được vượt quá 50 ký tự.");
+            return "redirect:/seller/register";
+        }
+
+        // Validate ảnh CCCD mặt trước
+        if (cccdFront == null || cccdFront.isEmpty()) {
+            redirectAttributes.addFlashAttribute("submitError", "Vui lòng upload ảnh CCCD mặt trước.");
+            return "redirect:/seller/register";
+        }
+        String frontFileName = cccdFront.getOriginalFilename();
+        if (frontFileName == null || frontFileName.isEmpty()) {
+            redirectAttributes.addFlashAttribute("submitError", "Vui lòng upload ảnh CCCD mặt trước.");
+            return "redirect:/seller/register";
+        }
+        // Kiểm tra file có phải là ảnh không
+        String frontContentType = cccdFront.getContentType();
+        if (frontContentType == null || !frontContentType.startsWith("image/")) {
+            redirectAttributes.addFlashAttribute("submitError", "File CCCD mặt trước phải là file ảnh.");
+            return "redirect:/seller/register";
+        }
+
+        // Validate ảnh CCCD mặt sau
+        if (cccdBack == null || cccdBack.isEmpty()) {
+            redirectAttributes.addFlashAttribute("submitError", "Vui lòng upload ảnh CCCD mặt sau.");
+            return "redirect:/seller/register";
+        }
+        String backFileName = cccdBack.getOriginalFilename();
+        if (backFileName == null || backFileName.isEmpty()) {
+            redirectAttributes.addFlashAttribute("submitError", "Vui lòng upload ảnh CCCD mặt sau.");
+            return "redirect:/seller/register";
+        }
+        // Kiểm tra file có phải là ảnh không
+        String backContentType = cccdBack.getContentType();
+        if (backContentType == null || !backContentType.startsWith("image/")) {
+            redirectAttributes.addFlashAttribute("submitError", "File CCCD mặt sau phải là file ảnh.");
+            return "redirect:/seller/register";
+        }
+
+        // Validate đồng ý điều khoản
+        if (agree == null || !"on".equals(agree)) {
+            redirectAttributes.addFlashAttribute("submitError", "Bạn phải đồng ý với Điều khoản & Chính sách để tiếp tục.");
+            return "redirect:/seller/register";
+        }
 
         // Prepare header bar data
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("username", user.getUsername());
         model.addAttribute("userRole", user.getRole().name());
-        model.addAttribute("walletBalance", walletRepository.findByUserId(user.getId()).map(w -> w.getBalance()).orElse(null));
 
-        // Server-side validation for checkbox agreement
-        if (agree == null || !agree.equals("on")) {
-            redirectAttributes.addFlashAttribute("submitError", "Bạn phải đồng ý với Điều khoản & Chính sách để tiếp tục.");
-            return "redirect:/seller/register";
+        return sellerService.submitSellerRegistration(ownerNameTrim, shortDescriptionTrim, cccdFront, cccdBack, agree, user, redirectAttributes);
+    }
+
+    @GetMapping("/seller/register")
+    public String sellerRegisterPage(Model model, RedirectAttributes redirectAttributes) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAuthenticated = authentication != null && authentication.isAuthenticated() &&
+                !"anonymousUser".equals(authentication.getName());
+
+        if (!isAuthenticated) {
+            return "redirect:/login?required=1";
         }
 
-        // Server-side validation for shop name uniqueness
-        if (shopRepository.findByShopName(ownerName.trim()).isPresent()) {
-            redirectAttributes.addFlashAttribute("submitError", "Tên shop đã tồn tại. Vui lòng chọn tên khác.");
-            return "redirect:/seller/register";
+        if (authentication == null) {
+            return "redirect:/login?required=1";
         }
 
-        // If shop already exists, just show success info-like state
-        if (shopRepository.findByUserId(user.getId()).isPresent()) {
-            redirectAttributes.addFlashAttribute("submitSuccess", true);
-            return "redirect:/seller/register";
-        }
-
-        // Check duplicate CCCD across shops
-        if (shopRepository.findByCccd(identity.trim()).isPresent()) {
-            redirectAttributes.addFlashAttribute("submitError", "Số CCCD đã tồn tại.");
-            return "redirect:/seller/register";
-        }
-
-        // Build combined bank_account string: "<number> <name>"
-        String combined = (bankAccountNumber == null ? "" : bankAccountNumber.trim()) + " " + (bankName == null ? "" : bankName.trim());
-        // Check duplicate only on full combined value
-        if (bankAccountRepository.findByBankAccount(combined).isPresent()) {
-            redirectAttributes.addFlashAttribute("submitError", "Số tài khoản đã tồn tại.");
-            return "redirect:/seller/register";
-        }
-
-        // Save bank account
-        BankAccount bankAccount = new BankAccount();
-        bankAccount.setUserId(user.getId());
-        bankAccount.setAccountNumber(bankAccountNumber.trim());
-        bankAccount.setBankName((bankName == null || bankName.isBlank()) ? "UNKNOWN" : bankName.trim());
-        bankAccount.setBankAccount(combined);
-        bankAccount.setCreatedAt(Instant.now());
-        bankAccount.setDelete(false);
-        try {
-            bankAccount = bankAccountRepository.save(bankAccount);
-        } catch (DataIntegrityViolationException ex) {
-            // Fallback: DB unique constraint (account_number) may still reject
-            redirectAttributes.addFlashAttribute("submitError", "Số tài khoản đã tồn tại.");
-            return "redirect:/seller/register";
-        }
-
-        // Save shop
-        Shop shop = new Shop();
-        shop.setUserId(user.getId());
-        // Use ownerName as default shop name
-        shop.setShopName(ownerName);
-        shop.setCccd(identity);
-        shop.setBankAccountId(bankAccount.getId());
-        // set required not-null fields per DB
-        shop.setCreatedAt(Instant.now());
-        shop.setIsDelete(false);
-        shopRepository.save(shop);
-
-        // Update user role to SELLER immediately
-        if (user.getRole() != User.Role.SELLER) {
-            user.setRole(User.Role.SELLER);
-            userRepository.save(user);
-        }
-
-        // Render register page with success notice
-        redirectAttributes.addFlashAttribute("submitSuccess", true);
-        return "redirect:/seller/register";
+        User user = (User) authentication.getPrincipal();
+        model.addAttribute("authorities", authentication.getAuthorities());
+        model.addAttribute("isAuthenticated", true);
+        model.addAttribute("walletBalance", BigDecimal.ZERO);
+        return sellerService.getSellerRegisterPage(user, model, redirectAttributes);
     }
 }
 

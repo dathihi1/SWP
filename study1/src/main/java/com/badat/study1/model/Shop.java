@@ -3,6 +3,7 @@ package com.badat.study1.model;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -24,14 +25,16 @@ public class Shop {
     @Column(name = "shop_name", nullable = false, length = 100)
     String shopName;
 
-    @Column(name = "cccd")
-    String cccd;
+    @Column(name = "short_description", length = 100)
+    String shortDescription;
 
-    @Column(name = "bank_account_id", nullable = false)
-    Long bankAccountId;
+    @Lob
+    @Column(name = "cccd_front_image", columnDefinition = "LONGBLOB")
+    byte[] cccdFrontImage;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    String description;
+    @Lob
+    @Column(name = "cccd_back_image", columnDefinition = "LONGBLOB")
+    byte[] cccdBackImage;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -48,8 +51,15 @@ public class Shop {
     @Builder.Default
     Boolean isDelete = false;
 
+    @Column(name = "commission_rate", precision = 5, scale = 2, nullable = false)
+    @Builder.Default
+    BigDecimal commissionRate = BigDecimal.valueOf(5.0);
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    String rejectionReason;
+
     public enum Status {
-        ACTIVE, INACTIVE
+        PENDING, ACTIVE, INACTIVE
     }
 
 }

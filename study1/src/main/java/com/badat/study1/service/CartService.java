@@ -1,10 +1,7 @@
 package com.badat.study1.service;
 
 import com.badat.study1.model.*;
-import com.badat.study1.repository.CartItemRepository;
-import com.badat.study1.repository.CartRepository;
-import com.badat.study1.repository.ProductRepository;
-import com.badat.study1.repository.WarehouseRepository;
+import com.badat.study1.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -24,9 +21,10 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-    private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final WarehouseRepository warehouseRepository;
     private final UserActivityLogService userActivityLogService;
+    private final ProductRepository productRepository;
 
     /**
      * Lấy người dùng hiện tại từ Spring Security Context.
@@ -85,11 +83,11 @@ public class CartService {
         }
 
         Cart cart = getOrCreateMyCart();
-        Product product = productRepository.findById(productId)
+        ProductVariant productVariant = productVariantRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
 
         // Tìm CartItem hiện có
-        Optional<CartItem> existingItem = cartItemRepository.findByCartAndProduct(cart, product);
+        Optional<CartItem> existingItem = cartItemRepository.findByCartAndProductVariant(cart, productVariant);
 
         if (existingItem.isPresent()) {
             // Cập nhật số lượng
@@ -100,7 +98,7 @@ public class CartService {
             // Tạo CartItem mới
             CartItem newItem = CartItem.builder()
                     .cart(cart)
-                    .product(product)
+                    .productVariant(productVariant)
                     .quantity(quantity)
                     .build();
             // Thêm vào list trong Cart để Hibernate biết và quản lý mối quan hệ
@@ -128,9 +126,9 @@ public class CartService {
         }
 
         Cart cart = getOrCreateMyCart();
-        Product product = productRepository.findById(productId)
+        ProductVariant productVariant = productVariantRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
-        CartItem item = cartItemRepository.findByCartAndProduct(cart, product)
+        CartItem item = cartItemRepository.findByCartAndProductVariant(cart, productVariant)
                 .orElseThrow(() -> new IllegalArgumentException("Item not in cart"));
 
         item.setQuantity(quantity);
@@ -151,9 +149,9 @@ public class CartService {
     @Transactional
     public Cart removeProduct(Long productId) {
         Cart cart = getOrCreateMyCart();
-        Product product = productRepository.findById(productId)
+        ProductVariant productVariant = productVariantRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
-        CartItem item = cartItemRepository.findByCartAndProduct(cart, product)
+        CartItem item = cartItemRepository.findByCartAndProductVariant(cart, productVariant)
                 .orElseThrow(() -> new IllegalArgumentException("Item not in cart"));
 
         // Xóa item khỏi list trong Cart trước khi xóa entity
@@ -219,43 +217,43 @@ public class CartService {
         List<Map<String, Object>> cartItems = new java.util.ArrayList<>();
         
         for (CartItem item : cart.getItems()) {
-            BigDecimal itemTotal = item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            BigDecimal itemTotal = item.getProductVariant().getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
             totalAmount = totalAmount.add(itemTotal);
             
             // Lấy warehouseId thực tế từ warehouse đầu tiên có sẵn
-            Long warehouseId = item.getProduct().getId(); // Default fallback
+            Long warehouseId = item.getProductVariant().getId(); // Default fallback
             try {
-                Optional<Warehouse> warehouse = warehouseRepository.findFirstByProductIdAndLockedFalseAndIsDeleteFalse(item.getProduct().getId());
+                Optional<Warehouse> warehouse = warehouseRepository.findFirstByProductVariantIdAndLockedFalseAndIsDeleteFalse(item.getProductVariant().getId());
                 if (warehouse.isPresent()) {
                     warehouseId = warehouse.get().getId();
                 }
             } catch (Exception e) {
-                log.warn("Failed to get warehouse for product {}, using productId as fallback", item.getProduct().getId());
+                log.warn("Failed to get warehouse for product variant {}, using productVariantId as fallback", item.getProductVariant().getId());
             }
             
             Map<String, Object> cartItemData = new java.util.HashMap<>();
-            cartItemData.put("productId", item.getProduct().getId());
-            cartItemData.put("name", item.getProduct().getName());
+            cartItemData.put("productId", item.getProductVariant().getId());
+            cartItemData.put("name", item.getProductVariant().getName());
             cartItemData.put("quantity", item.getQuantity());
-            cartItemData.put("price", item.getProduct().getPrice());
+            cartItemData.put("price", item.getProductVariant().getPrice());
             cartItemData.put("warehouseId", warehouseId);
             
-            // Lấy stallId an toàn
-            Long stallId = null;
+            // Lấy productId an toàn
+            Long productId = null;
             try {
-                if (item.getProduct().getStall() != null) {
-                    stallId = item.getProduct().getStall().getId();
+                if (item.getProductVariant().getProduct() != null) {
+                    productId = item.getProductVariant().getProduct().getId();
                 } else {
-                    stallId = item.getProduct().getStallId(); // Fallback
+                    productId = item.getProductVariant().getProductId(); // Fallback
                 }
             } catch (Exception e) {
-                log.warn("Failed to get stallId for product {}, using fallback", item.getProduct().getId());
-                stallId = item.getProduct().getStallId();
+                log.warn("Failed to get productId for product variant {}, using fallback", item.getProductVariant().getId());
+                productId = item.getProductVariant().getProductId();
             }
-            cartItemData.put("stallId", stallId);
+            cartItemData.put("productId", productId);
             
-            cartItemData.put("shopId", item.getProduct().getShopId());
-            cartItemData.put("sellerId", item.getProduct().getShop() != null ? item.getProduct().getShop().getUserId() : null);
+            cartItemData.put("shopId", item.getProductVariant().getShopId());
+            cartItemData.put("sellerId", item.getProductVariant().getShop() != null ? item.getProductVariant().getShop().getUserId() : null);
             
             
             cartItems.add(cartItemData);

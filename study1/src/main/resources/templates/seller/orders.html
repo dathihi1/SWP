@@ -280,9 +280,9 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/stall-management" class="menu-item">
+            <a href="/seller/product-management" class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
-                Quản lý gian hàng
+                Quản lý sản phẩm
             </a>
             <a href="/seller/orders" class="menu-item active">
                 <i class="fas fa-file-invoice-dollar"></i>
@@ -367,26 +367,26 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="stallId" class="form-label">Gian hàng</label>
-                            <select name="stallId" id="stallId" class="form-select">
-                                <option value="">Tất cả gian hàng</option>
-                                <option th:each="stall : ${stalls}" 
-                                        th:value="${stall.id}" 
-                                        th:text="${stall.stallName}"
-                                        th:selected="${stall.id == selectedStallId}">
-                                    Tên gian hàng
-                                </option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
                             <label for="productId" class="form-label">Sản phẩm</label>
                             <select name="productId" id="productId" class="form-select">
                                 <option value="">Tất cả sản phẩm</option>
                                 <option th:each="product : ${products}" 
                                         th:value="${product.id}" 
-                                        th:text="${product.name}"
+                                        th:text="${product.productName}"
                                         th:selected="${product.id == selectedProductId}">
                                     Tên sản phẩm
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="productVariantId" class="form-label">Biến thể</label>
+                            <select name="productVariantId" id="productVariantId" class="form-select">
+                                <option value="">Tất cả biến thể</option>
+                                <option th:each="productVariant : ${productVariants}" 
+                                        th:value="${productVariant.id}" 
+                                        th:text="${productVariant.name}"
+                                        th:selected="${productVariant.id == selectedProductVariantId}">
+                                    Tên biến thể
                                 </option>
                             </select>
                         </div>
@@ -418,7 +418,7 @@
                             <tr>
                                 <th>Mã đơn hàng</th>
                                 <th>Sản phẩm</th>
-                                <th>Gian hàng</th>
+                                <th>Biến thể</th>
                                 <th>Số lượng</th>
                                 <th>Đơn giá</th>
                                 <th>Tổng tiền</th>
@@ -427,23 +427,27 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="orderItem : ${orders}">
+                            <tr th:each="o : ${orders}">
                                 <td>
-                                    <span class="order-code text-primary" th:text="${orderItem.order.orderCode}">ORDER_CODE</span>
+                                    <span class="order-code text-primary" th:text="${o.order.orderCode}">ORDER_CODE</span>
                                 </td>
-                                <td th:text="${orderItem.product.name}">Tên sản phẩm</td>
-                                <td th:text="${orderItem.warehouse.stall.stallName}">Tên gian hàng</td>
-                                <td th:text="${orderItem.quantity}">1</td>
-                                <td class="amount" th:text="${#numbers.formatDecimal(orderItem.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
-                                <td class="amount" th:text="${#numbers.formatDecimal(orderItem.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
+                                <td>
+                                    <span th:text="${o.productName}">Tên sản phẩm</span>
+                                </td>
+                                <td>
+                                    <span th:text="${o.firstProductVariantName}">Tên biến thể</span>
+                                </td>
+                                <td th:text="${o.totalQuantity}">1</td>
+                                <td class="amount" th:text="${#numbers.formatDecimal(o.unitPrice, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
+                                <td class="amount" th:text="${#numbers.formatDecimal(o.totalAmount, 1, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
                                 <td>
                                     <span class="status-badge" 
-                                          th:classappend="'status-' + ${orderItem.status.name().toLowerCase()}"
-                                          th:text="${T(com.badat.study1.util.StatusUtils).getStatusDisplayName(orderItem.status)}">
+                                          th:classappend="'status-' + ${o.status.name().toLowerCase()}"
+                                          th:text="${T(com.badat.study1.util.StatusUtils).getStatusDisplayName(o.status)}">
                                         Trạng thái
                                     </span>
                                 </td>
-                                <td th:text="${#temporals.format(orderItem.createdAt, 'dd/MM/yyyy HH:mm')}">Ngày tạo</td>
+                                <td th:text="${#temporals.format(o.createdAt, 'dd/MM/yyyy HH:mm')}">Ngày tạo</td>
                             </tr>
                             <tr th:if="${orders.isEmpty()}">
                                 <td colspan="8" class="text-center text-muted py-4">
@@ -465,19 +469,19 @@
                     <nav>
                         <ul class="pagination mb-0" style="font-size: 16px;">
                             <li class="page-item" th:classappend="${!hasPrevious} ? 'disabled'">
-                                <a class="page-link" th:href="@{/seller/orders(page=${currentPage - 1}, status=${selectedStatus}, stallId=${selectedStallId}, productId=${selectedProductId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}" 
+                                <a class="page-link" th:href="@{/seller/orders(page=${currentPage - 1}, status=${selectedStatus}, productId=${selectedProductId}, productVariantId=${selectedProductVariantId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}" 
                                    th:if="${hasPrevious}">Trước</a>
                                 <span class="page-link" th:unless="${hasPrevious}">Trước</span>
                             </li>
                             
                             <li class="page-item" th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}"
                                 th:classappend="${pageNum == currentPage} ? 'active'">
-                                <a class="page-link" th:href="@{/seller/orders(page=${pageNum}, status=${selectedStatus}, stallId=${selectedStallId}, productId=${selectedProductId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}"
+                                <a class="page-link" th:href="@{/seller/orders(page=${pageNum}, status=${selectedStatus}, productId=${selectedProductId}, productVariantId=${selectedProductVariantId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}"
                                    th:text="${pageNum + 1}">1</a>
                             </li>
                             
                             <li class="page-item" th:classappend="${!hasNext} ? 'disabled'">
-                                <a class="page-link" th:href="@{/seller/orders(page=${currentPage + 1}, status=${selectedStatus}, stallId=${selectedStallId}, productId=${selectedProductId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}" 
+                                <a class="page-link" th:href="@{/seller/orders(page=${currentPage + 1}, status=${selectedStatus}, productId=${selectedProductId}, productVariantId=${selectedProductVariantId}, dateFrom=${selectedDateFrom}, dateTo=${selectedDateTo})}" 
                                    th:if="${hasNext}">Sau</a>
                                 <span class="page-link" th:unless="${hasNext}">Sau</span>
                             </li>

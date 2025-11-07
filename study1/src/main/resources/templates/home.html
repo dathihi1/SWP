@@ -108,7 +108,7 @@
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
                             <li th:if="${userRole == 'ADMIN'}"><a class="dropdown-item" th:href="@{/admin}" href="/admin"><i class="fa-solid fa-cogs me-2"></i>Quản lý</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/product-management}" href="/seller/product-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
@@ -173,46 +173,46 @@
 
     <section class="mb-4 mb-md-5">
         <div class="text-center mb-2">
-            <h5 class="text-primary mb-0">-- Gian hàng nổi bật --</h5>
+            <h5 class="text-primary mb-0">-- Sản phẩm nổi bật --</h5>
         </div>
         <br>
         <div class="d-flex justify-content-between align-items-center mb-2">
             <button id="prevPreview" class="btn btn-outline-secondary btn-sm" type="button"><i class="fa-solid fa-chevron-left"></i></button>
             <div id="previewTrack" class="preview-track flex-grow-1 mx-2">
-                <a th:if="${stalls}" th:each="s : ${stalls}"
-                   th:href="@{'/stall/' + ${s.stallId}}"
+                <a th:if="${products}" th:each="p : ${products}"
+                   th:href="@{'/products/' + ${p.productId}}"
                    class="text-decoration-none text-dark">
                     <div class="preview-card me-2">
                         <div class="preview-img-frame">
-                            <img th:if="${s.stallId != null}" th:src="@{'/stall-image/' + ${s.stallId}}" alt="stall">
-                            <div th:if="${s.stallId == null}" class="bg-light d-flex align-items-center justify-content-center" style="height:200px;border-radius:.5rem;">
+                            <img th:if="${p.productId != null}" th:src="@{'/stall-image/' + ${p.productId}} + '?' + ${#dates.createNow().time}" alt="product" onerror="this.style.display='none'">
+                            <div th:if="${p.productId == null}" class="bg-light d-flex align-items-center justify-content-center" style="height:200px;border-radius:.5rem;">
                                 <i class="fa-solid fa-store text-secondary" style="font-size:34px;"></i>
                             </div>
                         </div>
                         <div class="preview-sep"></div>
                         <div class="p-3" style="line-height:1.5;">
-                            <div class="fw-semibold text-truncate" th:text="${s.stallName}">Tên gian hàng</div>
+                            <div class="fw-semibold text-truncate" th:text="${p.productName}">Tên sản phẩm</div>
                             <div class="small mt-1">
                                 <div class="text-muted">Sản phẩm</div>
-                                <div class="text-truncate" th:text="${s.stallCategory != null ? s.stallCategory : 'Khác'}">Loại</div>
+                                <div class="text-truncate" th:text="${p.productCategory != null ? p.productCategory : 'Khác'}">Loại</div>
                             </div>
                             <div class="small mt-1">
                                 <div class="text-muted">Tên shop</div>
-                                <div class="text-truncate" th:text="${s.shopName}">Shop</div>
+                                <div class="text-truncate" th:text="${p.shopName}">Shop</div>
                             </div>
                             <div class="small mt-2 d-flex justify-content-between align-items-center">
                                 <span class="badge bg-primary-subtle text-primary">
                                     <i class="fa-solid fa-box-open me-1"></i>
-                                    <span th:text="${s.productCount}">0</span> sản phẩm
+                                    <span th:text="${p.productCount}">0</span> sản phẩm
                                 </span>
-                                <div th:if="${s.reviewCount != null and s.reviewCount > 0}" class="d-flex align-items-center">
+                                <div th:if="${p.reviewCount != null and p.reviewCount > 0}" class="d-flex align-items-center">
                                     <div class="rating-star me-1">
                                         <i class="fa-solid fa-star"></i>
-                                        <span class="rating-text" th:text="${s.averageRating != null ? #numbers.formatDecimal(s.averageRating, 1, 1) : '0.0'}">0.0</span>
+                                        <span class="rating-text" th:text="${p.averageRating != null ? #numbers.formatDecimal(p.averageRating, 1, 1) : '0.0'}">0.0</span>
                                     </div>
-                                    <small class="text-muted" th:text="'(' + ${s.reviewCount} + ')'">(0)</small>
+                                    <small class="text-muted" th:text="'(' + ${p.reviewCount} + ')'">(0)</small>
                                 </div>
-                                <div th:if="${s.reviewCount == null or s.reviewCount == 0}" class="text-muted">
+                                <div th:if="${p.reviewCount == null or p.reviewCount == 0}" class="text-muted">
                                     <i class="fa-regular fa-star rating-star"></i>
                                     <small>Chưa có đánh giá</small>
                                 </div>
@@ -230,28 +230,34 @@
         </div>
         <br>
         <div class="row g-3 g-md-4 justify-content-center">
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('email')" style="cursor: pointer;">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('Email')" style="cursor: pointer;">
                     <div class="category-icon bg-success-subtle text-success mb-2"><i class="fa-solid fa-envelope fa-lg"></i></div>
                     <div class="category-title">Email</div>
                     <div class="text-muted small">Gmail, Yahoo, Hotmail...</div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('software')" style="cursor: pointer;">
-                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-gamepad fa-lg"></i></div>
-                    <div class="category-title">Thẻ game</div>
-                    <div class="text-muted small">Thẻ nạp game, gift card...</div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('Tài khoản')" style="cursor: pointer;">
+                    <div class="category-icon bg-primary-subtle text-primary mb-2"><i class="fa-solid fa-user-lock fa-lg"></i></div>
+                    <div class="category-title">Tài khoản</div>
+                    <div class="text-muted small">Facebook, Twitter, Instagram...</div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('account')" style="cursor: pointer;">
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('Thẻ game')" style="cursor: pointer;">
                     <div class="category-icon bg-warning-subtle text-warning mb-2"><i class="fa-solid fa-key fa-lg"></i></div>
-                    <div class="category-title">Key game</div>
+                    <div class="category-title">Thẻ game</div>
                     <div class="text-muted small">Key Steam, Origin, Epic...</div>
                 </div>
             </div>
-            
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card category-card p-3 text-center h-100" onclick="viewCategory('Khác')" style="cursor: pointer;">
+                    <div class="category-icon bg-secondary-subtle text-secondary mb-2"><i class="fa-solid fa-ellipsis fa-lg"></i></div>
+                    <div class="category-title">Khác</div>
+                    <div class="text-muted small">Các loại sản phẩm khác...</div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -433,27 +439,13 @@
 
     // Function to handle category clicks
     function viewCategory(category) {
-        let type = '';
-        switch(category) {
-            case 'email':
-                type = 'Tài khoản Email';
-                break;
-            case 'software':
-                type = 'Thẻ cào (Điện thoại, Game)';
-                break;
-            case 'account':
-                type = 'Key Game';
-                break;
-            case 'other':
-                // Show all stalls
-                window.location.href = '/products';
-                return;
-            default:
-                type = '';
+        if (!category || category.trim() === '') {
+            window.location.href = '/products';
+            return;
         }
 
-        // Redirect to products page with category filter (match stallCategory)
-        window.location.href = `/products?type=${encodeURIComponent(type)}`;
+        // Redirect to products page with category filter (match productCategory)
+        window.location.href = `/products?type=${encodeURIComponent(category)}`;
     }
 
     // Handle OAuth2 login success (no auto-reload to avoid loops)

@@ -33,7 +33,10 @@ public class ReviewController {
             User user = (User) auth.getPrincipal();
             
             Long orderId = Long.valueOf(reviewData.get("orderId").toString());
-            Long productId = Long.valueOf(reviewData.get("productId").toString());
+            Long productId = null;
+            if (reviewData.containsKey("productId") && reviewData.get("productId") != null && !reviewData.get("productId").toString().isBlank()) {
+                productId = Long.valueOf(reviewData.get("productId").toString());
+            }
             Integer rating = Integer.valueOf(reviewData.get("rating").toString());
             String title = reviewData.get("title") != null ? reviewData.get("title").toString() : null;
             String content = reviewData.get("content") != null ? reviewData.get("content").toString() : null;

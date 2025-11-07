@@ -1,6 +1,6 @@
 package com.badat.study1.dto.response;
 
-import com.badat.study1.model.Product;
+import com.badat.study1.model.ProductVariant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,37 +16,35 @@ import java.time.LocalDateTime;
 public class ProductDTO {
     private Long id;
     private String name;
-    private String description;
     private BigDecimal price;
     private Integer quantity;
-    private String type;
+    private String subcategory;
     private String status;
     private String uniqueKey;
     private Long shopId;
     private String shopName; // tên shop hiển thị ở giỏ hàng
-    private Long stallId;
+    private Long productId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public static ProductDTO fromEntity(Product product) {
-        if (product == null) {
+    public static ProductDTO fromEntity(ProductVariant productVariant) {
+        if (productVariant == null) {
             return null;
         }
 
         return ProductDTO.builder()
-            .id(product.getId())
-            .name(product.getName())
-            .description(product.getDescription())
-            .price(product.getPrice())
-            .quantity(product.getQuantity())
-            .type(product.getType())
-            .status(product.getStatus() != null ? product.getStatus().name() : null)
-            .uniqueKey(product.getUniqueKey())
-            .shopId(product.getShop() != null ? product.getShop().getId() : null)
-            .shopName(product.getShop() != null ? product.getShop().getShopName() : null)
-            .stallId(product.getStall() != null ? product.getStall().getId() : null)
-            .createdAt(product.getCreatedAt())
-            .updatedAt(product.getUpdatedAt())
+            .id(productVariant.getId())
+            .name(productVariant.getName())
+            .price(productVariant.getPrice())
+            .quantity(productVariant.getQuantity())
+            .subcategory(productVariant.getSubcategory())
+            .status(productVariant.getStatus() != null ? productVariant.getStatus().name() : null)
+            .uniqueKey(productVariant.getUniqueKey())
+            .shopId(productVariant.getShop() != null ? productVariant.getShop().getId() : null)
+            .shopName(productVariant.getShop() != null ? productVariant.getShop().getShopName() : null)
+            .productId(productVariant.getProduct() != null ? productVariant.getProduct().getId() : null)
+            .createdAt(productVariant.getCreatedAt())
+            .updatedAt(productVariant.getUpdatedAt())
             .build();
     }
 }

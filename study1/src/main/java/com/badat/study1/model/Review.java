@@ -27,12 +27,12 @@ public class Review extends BaseEntity {
     @JoinColumn(name = "order_id", insertable = false, updatable = false)
     Order order;
     
-    @Column(name = "product_id", nullable = false)
-    Long productId;
+    @Column(name = "product_variant_id", nullable = false)
+    Long productVariantId;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false)
-    Product product;
+    @JoinColumn(name = "product_variant_id", insertable = false, updatable = false)
+    ProductVariant productVariant;
     
     @Column(name = "buyer_id", nullable = false)
     Long buyerId;
@@ -55,12 +55,12 @@ public class Review extends BaseEntity {
     @JoinColumn(name = "shop_id", insertable = false, updatable = false)
     Shop shop;
     
-    @Column(name = "stall_id", nullable = false)
-    Long stallId;
+    @Column(name = "product_id", nullable = false)
+    Long productId;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stall_id", insertable = false, updatable = false)
-    Stall stall;
+    @JoinColumn(name = "product_id", insertable = false, updatable = false)
+    Product product;
     
     @Column(name = "rating", nullable = false)
     @Min(1)

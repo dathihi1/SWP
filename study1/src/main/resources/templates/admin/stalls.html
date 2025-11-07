@@ -227,12 +227,12 @@
         }
         
         .btn-view {
-            background-color: #6c757d;
+            background-color: #ff7b00;
             color: white;
         }
         
         .btn-view:hover {
-            background-color: #5a6268;
+            background-color: #e66a00;
             color: white;
         }
         
@@ -497,8 +497,7 @@
             <div class="page-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h1 class="page-title">Quản lý cửa hàng & gian hàng</h1>
-                        <small class="text-muted">Quản lý cửa hàng, duyệt gian hàng</small>
+                        <h1 class="page-title">Quản lý cửa hàng</h1>
                     </div>
                 </div>
             </div>
@@ -512,7 +511,7 @@
                                 <i class="fas fa-users fa-2x" style="color:#ff7b00;"></i>
                             </div>
                             <div>
-                                <div class="stat-number" th:text="${#lists.size(sellers)}">0</div>
+                                <div class="stat-number" th:text="${totalActiveShops}">0</div>
                                 <div class="stat-label">Tổng số cửa hàng</div>
                             </div>
                         </div>
@@ -526,26 +525,12 @@
                             </div>
                             <div>
                                 <div class="stat-number" th:text="${#lists.size(pendingStalls)}">0</div>
-                                <div class="stat-label">Gian hàng chờ duyệt</div>
+                                <div class="stat-label">Cửa hàng chờ duyệt</div>
                             </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            
-                <div class="col-md-3">
-                    <div class="stats-card clickable" onclick="showTopSellers()">
-                        <div class="d-flex align-items-center">
-                            <div class="stat-icon me-3">
-                                <i class="fas fa-trophy fa-2x" style="color:#ffc107;"></i>
-                        </div>
-                            <div>
-                                <div class="stat-number" th:text="${#lists.size(topSellers)}">0</div>
-                                <div class="stat-label">Top 5 cửa hàng</div>
-                                    </div>
-                                    </div>
-                                    </div>
-                                    </div>
-                                    </div>
             
             <!-- Shop Search (outside table header/container) -->
             <div id="shopSearchBar" class="mb-3" style="display: none;">
@@ -556,11 +541,11 @@
                                 <i class="fas fa-search"></i>
                             </span>
                             <input type="text" class="form-control" id="shopSearchInput" 
-                                   placeholder="Tìm kiếm theo tên shop hoặc người dùng...">
-                                    </div>
-                                </div>
-                            </div>
-                            </div>
+                                   placeholder="Tìm kiếm theo tên cừa hàng">
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             <!-- Sellers List Section (Hidden by default) -->
             <div id="sellersListSection" class="table-container mb-4" style="display: none;">
@@ -568,7 +553,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="table-title mb-0">
                             <i class="fas fa-users me-2" style="color:#ff7b00;"></i>
-                            Danh sách cừa hàng
+                            Danh sách cửa hàng
                         </h5>
                     </div>
                 </div>
@@ -577,7 +562,7 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Tên shop</th>
+                                <th>Tên cừa hàng</th>
                                 <th>Tên người dùng</th>
                                 <th>Số gian hàng</th>
                                 <th>Ngày đăng ký</th>
@@ -586,28 +571,43 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="sellerData : ${sellerRevenue}">
-                                <td th:text="${sellerData.seller.id}">1</td>
-                                <td th:text="${sellerData.shopName}">Tên shop</td>
-                                <td th:text="${sellerData.seller.username}">Người dùng</td>
-                                <td th:text="${sellerData.stallsCount}">0</td>
-                                <td th:text="${sellerData.shop != null ? #temporals.format(sellerData.shop.createdAt, 'dd/MM/yyyy') : 'Chưa có shop'}">01/01/2024</td>
+                            <tr th:each="shopData : ${shopList}">
+                                <td th:text="${shopData.shop.id}">1</td>
+                                <td th:text="${shopData.shopName}">Tên cừa hàng</td>
+                                <td th:text="${shopData.user != null ? shopData.user.username : 'N/A'}">Người dùng</td>
+                                <td th:text="${shopData.stallsCount}">0</td>
+                                <td th:text="${#temporals.format(shopData.shop.createdAt, 'dd/MM/yyyy')}">01/01/2024</td>
                                 <td>
                                     <span class="badge bg-success" 
-                                          th:if="${sellerData.seller.status != null and sellerData.seller.status.name() == 'ACTIVE'}">Đang hoạt động</span>
+                                          th:if="${shopData.shop != null and shopData.shop.status != null and shopData.shop.status.name() == 'ACTIVE'}">Đang hoạt động</span>
                                     <span class="badge bg-danger" 
-                                          th:if="${sellerData.seller.status != null and sellerData.seller.status.name() == 'INACTIVE'}">Tạm khóa</span>
+                                          th:if="${shopData.shop != null and shopData.shop.status != null and shopData.shop.status.name() == 'INACTIVE'}">Tạm khóa</span>
+                                    <span class="badge bg-warning" 
+                                          th:if="${shopData.shop != null and shopData.shop.status != null and shopData.shop.status.name() == 'PENDING'}">Chờ duyệt</span>
+                                    <span class="badge bg-secondary" th:if="${shopData.shop == null or shopData.shop.status == null}">Không xác định</span>
                                 </td>
                                 <td>
                                     <div class="action-buttons">
                                         <button class="btn btn-action btn-lock" 
-                                                th:classappend="${sellerData.seller.status.name() == 'ACTIVE'} ? 'active' : 'inactive'"
+                                                th:if="${shopData.user != null}"
+                                                th:classappend="${shopData.user.status.name() == 'ACTIVE'} ? 'active' : 'inactive'"
                                                 title="Khóa/Mở khóa cửa hàng"
-                                                th:data-seller-id="${sellerData.seller.id}" 
-                                                th:data-seller-status="${sellerData.seller.status.name()}"
+                                                th:data-seller-id="${shopData.user.id}" 
+                                                th:data-seller-status="${shopData.user.status.name()}"
                                                 onclick="toggleSellerLock(this.dataset.sellerId, this.dataset.sellerStatus)">
-                                            <i class="fas fa-unlock" th:if="${sellerData.seller.status.name() == 'ACTIVE'}"></i>
-                                            <i class="fas fa-lock" th:if="${sellerData.seller.status.name() == 'INACTIVE'}"></i>
+                                            <i class="fas fa-unlock" th:if="${shopData.user.status.name() == 'ACTIVE'}"></i>
+                                            <i class="fas fa-lock" th:if="${shopData.user.status.name() == 'INACTIVE'}"></i>
+                                        </button>
+                                        <button class="btn btn-action btn-view" 
+                                                title="Xem lịch sử duyệt"
+                                                th:data-shop-id="${shopData.shop.id}"
+                                                th:data-shop-name="${shopData.shopName}"
+                                                th:data-shop-status="${shopData.shop.status != null ? shopData.shop.status.name() : 'N/A'}"
+                                                th:data-created-at="${shopData.shop.createdAt != null ? #temporals.format(shopData.shop.createdAt, 'dd/MM/yyyy HH:mm') : 'N/A'}"
+                                                th:data-updated-at="${shopData.shop.updatedAt != null ? #temporals.format(shopData.shop.updatedAt, 'dd/MM/yyyy HH:mm') : 'N/A'}"
+                                                th:data-rejection-reason="${shopData.shop.rejectionReason != null ? shopData.shop.rejectionReason : 'N/A'}"
+                                                onclick="viewShopHistory(this)">
+                                            <i class="fas fa-history"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -623,11 +623,8 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="table-title mb-0">
                             <i class="fas fa-clock me-2" style="color:#ffc107;"></i>
-                            Gian hàng chờ duyệt
+                            Cửa hàng chờ duyệt
                         </h5>
-                        <button class="btn btn-sm btn-outline-warning" onclick="showHistory()" style="border-color:#ff7b00;color:#ff7b00;">
-                            <i class="fas fa-history me-1"></i>Lịch sử
-                        </button>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -635,9 +632,7 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Tên gian hàng</th>
-                                <th>Loại kinh doanh</th>
-                                <th>Danh mục</th>
+                                <th>Tên cửa hàng</th>
                                 <th>Mô tả ngắn</th>
                                 <th>Ngày tạo</th>
                                 <th>Thao tác</th>
@@ -646,23 +641,19 @@
                         <tbody>
                             <tr th:each="stall : ${pendingStalls}">
                                 <td th:text="${stall.id}">1</td>
-                                <td th:text="${stall.stallName}">Gian hàng 1</td>
-                                <td th:text="${stall.businessType}">Thương mại</td>
-                                <td th:text="${stall.stallCategory}">Điện tử</td>
+                                <td th:text="${stall.shopName}">Cửa hàng 1</td>
                                 <td th:text="${stall.shortDescription}">Mô tả ngắn</td>
                                 <td th:text="${#temporals.format(stall.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2024 10:00</td>
                                 <td>
                                     <div class="d-flex gap-2">
                                     <button class="btn btn-sm btn-secondary" title="Xem chi tiết"
                                             th:data-stall-id="${stall.id}"
-                                            th:data-stall-name="${stall.stallName}"
-                                            th:data-business-type="${stall.businessType}"
-                                            th:data-stall-category="${stall.stallCategory}"
-                                            th:data-discount-percentage="${stall.discountPercentage}"
+                                            th:data-stall-name="${stall.shopName}"
                                             th:data-short-description="${stall.shortDescription}"
-                                            th:data-detailed-description="${stall.detailedDescription}"
                                             th:data-created-at="${stall.createdAt}"
+                                            th:data-updated-at="${stall.updatedAt != null ? #temporals.format(stall.updatedAt, 'yyyyMMddHHmmss') : ''}"
                                             th:data-stall-image-url="@{'/admin/stalls/' + ${stall.id} + '/image'}"
+                                            th:data-stall-image-back-url="@{'/admin/stalls/' + ${stall.id} + '/image/back'}"
                                             onclick="viewStallDetailsFromData(this)">
                                         <i class="fas fa-eye me-1"></i>Xem
                                         </button>
@@ -676,15 +667,15 @@
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(pendingStalls)}">
-                                <td colspan="7" class="text-center text-muted py-4">
+                                <td colspan="5" class="text-center text-muted py-4">
                                     <i class="fas fa-check-circle fa-2x mb-2" style="color:#28a745;"></i><br>
-                                    Không có gian hàng nào chờ duyệt.
+                                    Không có cửa hàng nào chờ duyệt.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
-                                    </div>
-                                    </div>
+                </div>
+            </div>
             
             <!-- History Section (Hidden by default) -->
             <div id="historySection" class="table-container mb-4" style="display: none;">
@@ -692,12 +683,12 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="table-title mb-0">
                             <i class="fas fa-history me-2" style="color:#6c757d;"></i>
-                            Lịch sử gian hàng
+                            Lịch sử cửa hàng
                         </h5>
                         <button class="btn btn-sm btn-outline-danger" onclick="hideHistory()">
                             <i class="fas fa-times me-1"></i>Đóng
-                                        </button>
-                                    </div>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Combined History Table -->
@@ -706,61 +697,59 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Tên gian hàng</th>
-                                <th>Loại kinh doanh</th>
-                                <th>Danh mục</th>
+                                <th>Tên cửa hàng</th>
+                                <th>Mô tả ngắn</th>
                                 <th>Trạng thái</th>
-                                <th>Ngày xử lý</th>
-                                <th>Lý do</th>
+                                <th>Ngày tạo</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="stall : ${historyStalls}">
                                 <td th:text="${stall.id}">1</td>
-                                <td th:text="${stall.stallName}">Gian hàng 1</td>
-                                <td th:text="${stall.businessType}">Thương mại</td>
-                                <td th:text="${stall.stallCategory}">Điện tử</td>
+                                <td th:text="${stall.shopName}">Cửa hàng 1</td>
+                                <td th:text="${stall.shortDescription}">Mô tả ngắn</td>
                                 <td>
                                     <span class="badge bg-success" 
-                                          th:if="${stall.status == 'CLOSED' or stall.status == 'OPEN' or stall.status == 'ACTIVE'}">Đã duyệt</span>
+                                          th:if="${stall.status.name() == 'ACTIVE'}">Đã duyệt</span>
+                                    <span class="badge bg-warning" 
+                                          th:if="${stall.status.name() == 'PENDING'}">Chờ duyệt</span>
                                     <span class="badge bg-danger" 
-                                          th:if="${stall.status == 'REJECTED'}">Bị từ chối</span>
+                                          th:if="${stall.status.name() == 'INACTIVE'}">Đã khóa</span>
                                 </td>
-                                <td th:text="${#temporals.format(stall.approvedAt, 'dd/MM/yyyy HH:mm')}">01/01/2024 10:00</td>
-                                <td th:text="${stall.approvalReason}">Lý do</td>
+                                <td th:text="${stall.createdAt != null ? #temporals.format(stall.createdAt, 'dd/MM/yyyy HH:mm') : '-'}">01/01/2024 10:00</td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(historyStalls)}">
-                                <td colspan="7" class="text-center text-muted py-4">
+                                <td colspan="5" class="text-center text-muted py-4">
                                     <i class="fas fa-inbox fa-2x mb-2"></i><br>
-                                    Không có lịch sử gian hàng nào.
+                                    Không có lịch sử cửa hàng nào.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                    </div>
+            </div>
             
             <!-- Revenue List Section (Hidden by default) -->
             <div id="revenueListSection" class="table-container mb-4" style="display: none;">
                 <div class="table-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="table-title mb-0">
-                            
+                            <i class="fas fa-chart-line me-2" style="color:#ff7b00;"></i>
                             Danh sách doanh thu
-                            <span class="badge bg-info ms-2" th:text="${#lists.size(sellerRevenue)}">0</span>
+                            <span class="badge bg-info ms-2" th:text="${#lists.size(shopList)}">0</span>
                         </h5>
                         <button class="btn btn-sm btn-outline-danger" onclick="hideRevenueList()">
                             <i class="fas fa-times me-1"></i>Đóng
-                                        </button>
+                        </button>
+                    </div>
                 </div>
-            </div>
                 <div class="table-responsive">
                     <table class="table">
                         <thead>
                             <tr>
                                 <th>Xếp hạng</th>
                                 <th>Tên người bán</th>
-                                <th>Tên shop</th>
+                                <th>Tên cưa</th>
                                 <th>Số gian hàng</th>
                                 <th>Tổng đơn hàng</th>
                                 <th>Đơn hoàn thành</th>
@@ -768,63 +757,19 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="sellerData, iterStat : ${sellerRevenue}">
+                            <tr th:each="shopData, iterStat : ${shopList}">
                                 <td th:text="${iterStat.index + 1}">1</td>
-                                <td th:text="${sellerData.seller.username}">Người bán</td>
-                                <td th:text="${sellerData.shopName}">Tên shop</td>
-                                <td th:text="${sellerData.stallsCount}">0</td>
-                                <td th:text="${sellerData.totalOrders}">0</td>
-                                <td th:text="${sellerData.completedOrders}">0</td>
-                                <td th:text="${#numbers.formatDecimal(sellerData.totalRevenue, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
+                                <td th:text="${shopData.user != null ? shopData.user.username : 'N/A'}">Người bán</td>
+                                <td th:text="${shopData.shopName}">Tên cừa hàng</td>
+                                <td th:text="${shopData.stallsCount}">0</td>
+                                <td th:text="${shopData.totalOrders}">0</td>
+                                <td th:text="${shopData.completedOrders}">0</td>
+                                <td th:text="${#numbers.formatDecimal(shopData.totalRevenue, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
                             </tr>
-                        </tbody>
-                    </table>
-        </div>
-    </div>
-    
-            <!-- Top 5 Sellers Section (Hidden by default) -->
-            <div id="topSellersSection" class="table-container mb-4" style="display: none;">
-                <div class="table-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="table-title mb-0">
-                            <i class="fas fa-trophy me-2" style="color:#ffc107;"></i>
-                            Top 5 cửa hàng
-                        </h5>
-                        <button class="btn btn-sm btn-outline-danger" onclick="hideTopSellers()">
-                            <i class="fas fa-times me-1"></i>Đóng
-                                        </button>
-                                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Xếp hạng</th>
-                                <th>Tên shop</th>
-                                <th>Tên người bán</th>
-                                <th>Số gian hàng</th>
-                                <th>Tổng đơn hàng</th>
-                                <th>Đơn hoàn thành</th>
-                                <th>Doanh thu</th>
-                                <th>Huy chương</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="sellerData, iterStat : ${topSellers}">
-                                <td>
-                                    <span th:text="${iterStat.index + 1}">1</span>
-                                </td>
-                                <td th:text="${sellerData.shopName}">Tên shop</td>
-                                <td th:text="${sellerData.seller.username}">Người bán</td>
-                                <td th:text="${sellerData.stallsCount}">0</td>
-                                <td th:text="${sellerData.totalOrders}">0</td>
-                                <td th:text="${sellerData.completedOrders}">0</td>
-                                <td th:text="${#numbers.formatDecimal(sellerData.totalRevenue, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</td>
-                                <td>
-                                    <i class="fas fa-trophy" th:if="${iterStat.index == 0}" style="color:#ffd700;"></i>
-                                    <i class="fas fa-medal" th:if="${iterStat.index == 1}" style="color:#c0c0c0;"></i>
-                                    <i class="fas fa-award" th:if="${iterStat.index == 2}" style="color:#cd7f32;"></i>
-                                    <i class="fas fa-star" th:if="${iterStat.index > 2}" style="color:#6c757d;"></i>
+                            <tr th:if="${#lists.isEmpty(shopList)}">
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                    Không có dữ liệu doanh thu.
                                 </td>
                             </tr>
                         </tbody>
@@ -928,26 +873,26 @@
         let currentAction = null;
         
         function approveStall(stallId) {
-            currentStallId = stallId;
-            currentAction = 'approve';
+            // Submit directly without showing modal (no reason required for approval)
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/stalls/approve?redirect=pending';
             
-            document.getElementById('actionModalLabel').textContent = 'Duyệt gian hàng';
-            document.getElementById('reasonLabel').textContent = 'Lý do duyệt (tùy chọn)';
-            document.getElementById('reasonHelp').textContent = 'Lý do này sẽ được ghi lại trong lịch sử.';
-            document.getElementById('reasonInput').placeholder = 'Nhập lý do duyệt (có thể để trống)...';
-            document.getElementById('reasonInput').value = '';
-            document.getElementById('confirmBtn').textContent = 'Duyệt';
-            document.getElementById('confirmBtn').className = 'btn btn-success';
+            const stallIdInput = document.createElement('input');
+            stallIdInput.type = 'hidden';
+            stallIdInput.name = 'stallId';
+            stallIdInput.value = stallId;
+            form.appendChild(stallIdInput);
             
-            const modal = new bootstrap.Modal(document.getElementById('actionModal'));
-            modal.show();
+            document.body.appendChild(form);
+            form.submit();
         }
         
         function rejectStall(stallId) {
             currentStallId = stallId;
             currentAction = 'reject';
             
-            document.getElementById('actionModalLabel').textContent = 'Từ chối gian hàng';
+            document.getElementById('actionModalLabel').textContent = 'Từ chối cửa hàng';
             document.getElementById('reasonLabel').textContent = 'Lý do từ chối';
             document.getElementById('reasonHelp').textContent = 'Lý do từ chối là bắt buộc.';
             document.getElementById('reasonInput').placeholder = 'Nhập lý do từ chối...';
@@ -960,7 +905,7 @@
         }
         
         function deleteStall(stallId) {
-            if (confirm('Bạn có chắc chắn muốn xóa gian hàng này?')) {
+            if (confirm('Bạn có chắc chắn muốn xóa cửa hàng này?')) {
                 // Implement delete functionality
                 console.log('Delete stall:', stallId);
             }
@@ -970,13 +915,20 @@
             // Get data from button attributes
             const stallId = button.getAttribute('data-stall-id');
             const stallName = button.getAttribute('data-stall-name');
-            const businessType = button.getAttribute('data-business-type');
-            const stallCategory = button.getAttribute('data-stall-category');
-            const discountPercentage = button.getAttribute('data-discount-percentage');
             const shortDescription = button.getAttribute('data-short-description');
-            const detailedDescription = button.getAttribute('data-detailed-description');
             const createdAt = button.getAttribute('data-created-at');
-            const stallImageUrl = button.getAttribute('data-stall-image-url');
+            const updatedAt = button.getAttribute('data-updated-at');
+            let stallImageUrl = button.getAttribute('data-stall-image-url');
+            let stallImageBackUrl = button.getAttribute('data-stall-image-back-url');
+            
+            // Thêm timestamp vào URL để tránh cache ảnh cũ - dùng timestamp hiện tại để luôn load ảnh mới nhất
+            const timestamp = Date.now();
+            if (stallImageUrl) {
+                stallImageUrl += (stallImageUrl.includes('?') ? '&' : '?') + 't=' + timestamp;
+            }
+            if (stallImageBackUrl) {
+                stallImageBackUrl += (stallImageBackUrl.includes('?') ? '&' : '?') + 't=' + timestamp;
+            }
             
             // Populate modal content
             const content = document.getElementById('stallDetailsContent');
@@ -990,20 +942,8 @@
                                 <td>${stallId}</td>
                             </tr>
                             <tr>
-                                <td><strong>Tên gian hàng:</strong></td>
+                                <td><strong>Tên cửa hàng:</strong></td>
                                 <td>${stallName || 'Chưa có'}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Loại kinh doanh:</strong></td>
-                                <td>${businessType || 'Chưa có'}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Danh mục:</strong></td>
-                                <td>${stallCategory || 'Chưa có'}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Chiết khấu:</strong></td>
-                                <td>${discountPercentage || 0}%</td>
                             </tr>
                             <tr>
                                 <td><strong>Ngày tạo:</strong></td>
@@ -1012,23 +952,27 @@
                         </table>
                     </div>
                     <div class="col-md-6">
-                        <h6><strong>Mô tả</strong></h6>
                         <div class="mb-3">
                             <strong>Mô tả ngắn:</strong>
                             <p class="text-muted">${shortDescription || 'Chưa có mô tả ngắn'}</p>
                         </div>
-                        <div class="mb-3">
-                            <strong>Mô tả chi tiết:</strong>
-                            <p class="text-muted">${detailedDescription || 'Chưa có mô tả chi tiết'}</p>
-                        </div>
                     </div>
                 </div>
                 <div class="row mt-3">
-                    <div class="col-12">
-                        <h6><strong>Hình ảnh gian hàng</strong></h6>
+                    <div class="col-md-6">
+                        <h6><strong>Hình ảnh CCCD mặt trước</strong></h6>
                         ${stallImageUrl ? 
                             `<img src="${stallImageUrl}" 
-                                  class="img-fluid" style="max-height: 200px;" alt="Hình ảnh gian hàng" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">` :
+                                  class="img-fluid" style="max-height: 300px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: #f9f9f9;" alt="CCCD mặt trước" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">` :
+                            '<p class="text-muted">Chưa có hình ảnh</p>'
+                        }
+                        <p class="text-muted" style="display:none;">Chưa có hình ảnh</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><strong>Hình ảnh CCCD mặt sau</strong></h6>
+                        ${stallImageBackUrl ? 
+                            `<img src="${stallImageBackUrl}" 
+                                  class="img-fluid" style="max-height: 300px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: #f9f9f9;" alt="CCCD mặt sau" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">` :
                             '<p class="text-muted">Chưa có hình ảnh</p>'
                         }
                         <p class="text-muted" style="display:none;">Chưa có hình ảnh</p>
@@ -1081,17 +1025,6 @@
             document.getElementById('revenueListSection').style.display = 'none';
         }
         
-        function showTopSellers() {
-            hideAllSections();
-            hideStallSections();
-            document.getElementById('shopSearchBar').style.display = 'none';
-            document.getElementById('topSellersSection').style.display = 'block';
-        }
-        
-        function hideTopSellers() {
-            document.getElementById('topSellersSection').style.display = 'none';
-        }
-        
         function showHistory() {
             // Hide all sections and show history
             hideAllSections();
@@ -1108,7 +1041,6 @@
         function hideAllSections() {
             document.getElementById('sellersListSection').style.display = 'none';
             document.getElementById('revenueListSection').style.display = 'none';
-            document.getElementById('topSellersSection').style.display = 'none';
             document.getElementById('historySection').style.display = 'none';
         }
         
@@ -1188,6 +1120,81 @@
             }
         }
         
+        // View shop history function
+        function viewShopHistory(button) {
+            const shopId = button.getAttribute('data-shop-id');
+            const shopName = button.getAttribute('data-shop-name');
+            const shopStatus = button.getAttribute('data-shop-status');
+            const createdAt = button.getAttribute('data-created-at');
+            const updatedAt = button.getAttribute('data-updated-at');
+            const rejectionReason = button.getAttribute('data-rejection-reason');
+            
+            // Helper function to escape HTML
+            function escapeHtml(text) {
+                if (!text || text === 'N/A') return text;
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            // Get status badge HTML
+            let statusBadge = '';
+            if (shopStatus === 'ACTIVE') {
+                statusBadge = '<span class="badge bg-success">Đang hoạt động</span>';
+            } else if (shopStatus === 'INACTIVE') {
+                statusBadge = '<span class="badge bg-danger">Tạm khóa</span>';
+            } else if (shopStatus === 'PENDING') {
+                statusBadge = '<span class="badge bg-warning">Chờ duyệt</span>';
+            } else {
+                statusBadge = '<span class="badge bg-secondary">Không xác định</span>';
+            }
+            
+            // Determine approval/rejection status
+            let approvalInfo = '';
+            if (shopStatus === 'ACTIVE' && updatedAt !== 'N/A') {
+                approvalInfo = `
+                    <div class="alert alert-success mb-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Cửa hàng đã được duyệt</strong><br>
+                        <small>Ngày duyệt: ${escapeHtml(updatedAt)}</small>
+                    </div>
+                `;
+            } else if (shopStatus === 'INACTIVE' && rejectionReason !== 'N/A') {
+                approvalInfo = `
+                    <div class="alert alert-danger mb-3">
+                        <i class="fas fa-times-circle me-2"></i>
+                        <strong>Cửa hàng đã bị từ chối</strong><br>
+                        <small>Ngày từ chối: ${escapeHtml(updatedAt !== 'N/A' ? updatedAt : createdAt)}</small>
+                    </div>
+                `;
+            } else if (shopStatus === 'PENDING') {
+                approvalInfo = `
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-clock me-2"></i>
+                        <strong>Cửa hàng đang chờ duyệt</strong>
+                    </div>
+                `;
+            }
+            
+            // Populate modal content - chỉ hiển thị nội dung duyệt
+            const content = document.getElementById('shopHistoryContent');
+            content.innerHTML = `
+                ${approvalInfo}
+                ${rejectionReason !== 'N/A' ? `
+                    <div class="mb-3">
+                        <h6><strong>Nội dung duyệt</strong></h6>
+                        <div class="alert alert-light border">
+                            <p class="mb-0">${escapeHtml(rejectionReason)}</p>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('shopHistoryModal'));
+            modal.show();
+        }
+        
     </script>
 
     <!-- Modal for Approval/Rejection -->
@@ -1223,7 +1230,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="stallDetailsModalLabel">
-                        <i class="fas fa-store me-2"></i>Chi tiết gian hàng
+                        <i class="fas fa-store me-2"></i>Chi tiết cửa hàng
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -1231,6 +1238,26 @@
                     <!-- Content will be populated by JavaScript -->
                 </div>
                 <div class="modal-footer">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for Shop History -->
+    <div class="modal fade" id="shopHistoryModal" tabindex="-1" aria-labelledby="shopHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="shopHistoryModalLabel">
+                        <i class="fas fa-history me-2"></i>Lịch sử duyệt cửa hàng
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="shopHistoryContent">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>

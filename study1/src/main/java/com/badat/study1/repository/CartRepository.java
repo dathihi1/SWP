@@ -17,10 +17,10 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
 
     /**
      * Phương thức tối ưu cho việc hiển thị giỏ hàng (Controller).
-     * Sử dụng LEFT JOIN FETCH để tải CartItems (ci) và Product (p) trong một truy vấn duy nhất.
+     * Sử dụng LEFT JOIN FETCH để tải CartItems (ci) và ProductVariant (p) trong một truy vấn duy nhất.
      * Tránh lỗi N+1 Selects.
      */
-    @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items ci LEFT JOIN FETCH ci.product p WHERE c.user = :user")
+    @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items ci LEFT JOIN FETCH ci.productVariant p WHERE c.user = :user")
     Optional<Cart> findByUserWithItems(User user);
 
     // ĐÃ XÓA: findByUserIdAndProductId và deleteByUserIdAndProductId

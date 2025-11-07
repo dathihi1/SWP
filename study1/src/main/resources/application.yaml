@@ -5,7 +5,7 @@ spring:
     url: jdbc:mysql://localhost:3306/mmo_market?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: root
+    password: sa123
     hikari:
       maximum-pool-size: 100
       minimum-idle: 20
@@ -95,7 +95,7 @@ jwt:
 security:
   captcha:
     expire-minutes: 5
-    length: 6
+    length: 1
     max-attempts-per-ip: 5      # NEW
     lockout-minutes: 15          # NEW
   rate-limit:
@@ -131,6 +131,9 @@ logging:
     com.badat.study1.service.ApiCallLogService: INFO
     org.springframework.web: WARN
     org.hibernate: WARN
+    com.badat.study1.service.impl: DEBUG
+    com.badat.study1.controller: DEBUG
+    root: INFO
 server:
   port: 8080
   tomcat:

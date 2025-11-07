@@ -1,19 +1,19 @@
 package com.badat.study1.service;
 
-import com.badat.study1.model.Product;
-import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.model.ProductVariant;
+import com.badat.study1.repository.ProductVariantRepository;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ProductService{
 
-    private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
 
-    public ProductService(ProductRepository productRepository) {
-        this.productRepository = productRepository;
+    public ProductService(ProductVariantRepository productVariantRepository) {
+        this.productVariantRepository = productVariantRepository;
     }
 
-    public Long createProduct(Product product){
-        return productRepository.save(product).getId();
+    public Long createProduct(ProductVariant productVariant){
+        return productVariantRepository.save(productVariant).getId();
     }
 }

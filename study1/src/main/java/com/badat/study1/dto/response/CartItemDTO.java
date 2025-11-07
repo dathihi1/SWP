@@ -24,7 +24,7 @@ public class CartItemDTO {
         return CartItemDTO.builder()
             .id(cartItem.getId())
             .cartId(cartItem.getCart().getId())
-            .product(ProductDTO.fromEntity(cartItem.getProduct()))
+            .product(ProductDTO.fromEntity(cartItem.getProductVariant()))
             .quantity(cartItem.getQuantity())
             .build();
     }
