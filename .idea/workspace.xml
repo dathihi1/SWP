@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="187f6cf5-18ea-4c28-a426-54dccda32cff" name="Changes" comment="update fix bug login fail with captcha">
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/65d55693-8f46-438f-8ae3-03d3d9178cc1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/65d55693-8f46-438f-8ae3-03d3d9178cc1.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/audit.log" beforeDir="false" afterPath="$PROJECT_DIR$/logs/audit.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/configuration/JwtAuthenticationFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/configuration/JwtAuthenticationFilter.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/configuration/KaptchaConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/configuration/KaptchaConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/configuration/SecurityConfiguration.java" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/configuration/SecurityConfiguration.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/controller/AdminController.java" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/controller/AdminController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/model/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/model/User.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/service/AuthenticationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/service/AuthenticationService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/java/com/badat/study1/service/UserService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/resources/application.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/resources/application.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/resources/static/js/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/resources/static/js/auth.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/study1/src/main/resources/templates/login.html" beforeDir="false" afterPath="$PROJECT_DIR$/study1/src/main/resources/templates/login.html" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;dathihi1&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/dathihi1/SWP.git&quot;,
+    &quot;accountId&quot;: &quot;fb97c737-15b0-495a-8ab5-e4b8253c2de0&quot;
+  }
+}</component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="jar://$MAVEN_REPOSITORY$/org/springframework/spring-context/6.2.11/spring-context-6.2.11.jar!/org/springframework/scheduling/annotation/Scheduled.class" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
+  <component name="ProjectId" id="34MEh8TEr6wbWo7eke1zj8TQgJ1" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.Main.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Admin/OneDrive/Desktop/SWP391/SWP&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager">
+    <configuration name="Main" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="com.badat.study1.Study1Application" />
+      <module name="study1" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.27397.103" />
+        <option value="bundled-js-predefined-d6986cc7102b-3aa1da707db6-JavaScript-IU-252.27397.103" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="187f6cf5-18ea-4c28-a426-54dccda32cff" name="Changes" comment="" />
+      <created>1761015157995</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1761015157995</updated>
+      <workItem from="1762314374003" duration="178000" />
+      <workItem from="1762314794138" duration="2643000" />
+      <workItem from="1762331428457" duration="2186000" />
+      <workItem from="1762349809834" duration="316000" />
+    </task>
+    <task id="LOCAL-00001" summary="update security captcha">
+      <option name="closed" value="true" />
+      <created>1761755142148</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1761755142148</updated>
+    </task>
+    <task id="LOCAL-00002" summary="add">
+      <option name="closed" value="true" />
+      <created>1761755278729</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1761755278729</updated>
+    </task>
+    <task id="LOCAL-00003" summary="update controller">
+      <option name="closed" value="true" />
+      <created>1761828152791</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1761828152791</updated>
+    </task>
+    <task id="LOCAL-00004" summary="update controller">
+      <option name="closed" value="true" />
+      <created>1761828164101</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1761828164101</updated>
+    </task>
+    <task id="LOCAL-00005" summary="update controller">
+      <option name="closed" value="true" />
+      <created>1761830293079</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1761830293079</updated>
+    </task>
+    <task id="LOCAL-00006" summary="update captcha max">
+      <option name="closed" value="true" />
+      <created>1762011494601</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1762011494601</updated>
+    </task>
+    <task id="LOCAL-00007" summary="update security forgot-password">
+      <option name="closed" value="true" />
+      <created>1762095270430</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1762095270430</updated>
+    </task>
+    <task id="LOCAL-00008" summary="update fix bug login fail with captcha">
+      <option name="closed" value="true" />
+      <created>1762183579134</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1762183579134</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="update security captcha" />
+    <MESSAGE value="add" />
+    <MESSAGE value="update controller" />
+    <MESSAGE value="update captcha max" />
+    <MESSAGE value="update security forgot-password" />
+    <MESSAGE value="update fix bug login fail with captcha" />
+    <option name="LAST_COMMIT_MESSAGE" value="update fix bug login fail with captcha" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/study1/src/main/java/com/badat/study1/service/CaptchaService.java</url>
+          <line>199</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>

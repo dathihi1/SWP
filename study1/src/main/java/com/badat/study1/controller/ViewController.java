@@ -24,6 +24,10 @@ import com.badat.study1.repository.UserActivityLogRepository;
 import com.badat.study1.service.WalletHistoryService;
 import com.badat.study1.service.AuditLogService;
 import com.badat.study1.service.UserService;
+import com.badat.study1.service.OtpService;
+import com.badat.study1.service.ResetTokenLockoutService;
+import com.badat.study1.service.SecurityEventService;
+import com.badat.study1.model.SecurityEvent;
 import java.time.LocalDateTime;
 import com.badat.study1.dto.response.UserActivityLogResponse;
 import com.badat.study1.util.PaginationValidator;
@@ -78,6 +82,9 @@ public class ViewController {
     private final WalletHistoryService walletHistoryService;
     private final AuditLogService auditLogService;
     private final UserService userService;
+    private final OtpService otpService;
+    private final ResetTokenLockoutService resetTokenLockoutService;
+    private final SecurityEventService securityEventService;
     private final com.badat.study1.service.UserActivityLogService userActivityLogService;
     private final WarehouseRepository warehouseRepository;
 
@@ -327,15 +334,68 @@ public class ViewController {
 
     @GetMapping("/reset-password")
     public String resetPasswordPage(@RequestParam(value = "email", required = false) String email,
+                                   @RequestParam(value = "token", required = false) String token,
                                    @RequestParam(value = "otp", required = false) String otp,
-                                   Model model) {
-        if (email != null) {
-            model.addAttribute("email", email);
+                                   Model model,
+                                   HttpServletRequest request) {
+        // CRITICAL SECURITY: Validate token when GET request
+        if (email == null || token == null) {
+            log.warn("Reset password page accessed without email or token");
+            return "redirect:/forgot-password?error=missing_params";
         }
+        
+        // Get IP address for security tracking
+        String ipAddress = getClientIpAddress(request);
+        
+        // Check if account is locked
+        if (resetTokenLockoutService.isLocked(email, ipAddress)) {
+            log.warn("Reset password page accessed but account is locked for email: {} from IP: {}", email, ipAddress);
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.RESET_TOKEN_VALIDATION_FAILED,
+                ipAddress,
+                email,
+                "Attempt to access reset password page but account is locked"
+            );
+            return "redirect:/forgot-password?error=locked";
+        }
+        
+        // Validate reset token (this also checks if OTP was verified)
+        boolean isValidToken = otpService.validateResetToken(token, email);
+        
+        if (!isValidToken) {
+            // Track failed attempt
+            resetTokenLockoutService.recordFailedAttempt(email, ipAddress);
+            
+            // Log security event
+            securityEventService.logSecurityEvent(
+                SecurityEvent.EventType.RESET_TOKEN_VALIDATION_FAILED,
+                ipAddress,
+                email,
+                "Invalid reset token attempted on GET /reset-password"
+            );
+            
+            log.warn("Invalid reset token attempt on GET /reset-password for email: {} from IP: {}", email, ipAddress);
+            return "redirect:/forgot-password?error=invalid_token";
+        }
+        
+        // Token is valid, allow access to reset password page
+        model.addAttribute("email", email);
         if (otp != null) {
             model.addAttribute("otp", otp);
         }
         return "reset-password";
+    }
+    
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
+        }
+        return request.getRemoteAddr();
     }
 
 

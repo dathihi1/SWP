@@ -37,6 +37,12 @@ public class AuthenticationService {
         
         User user = userOpt.get();
         
+        // Check if account is PENDING (not activated)
+        if (user.getStatus() == User.Status.PENDING) {
+            // Log failed attempt - this will be handled by UserActivityAspect
+            throw new RuntimeException("Tài khoản chưa được kích hoạt. Vui lòng xác thực email.");
+        }
+        
         // Check if account is locked
         if (loginAttemptService.isAccountLocked(user.getUsername())) {
             // Log failed attempt - this will be handled by UserActivityAspect
