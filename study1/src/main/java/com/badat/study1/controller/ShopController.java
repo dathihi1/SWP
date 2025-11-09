@@ -408,10 +408,10 @@ public class ShopController {
         return shopService.replyToReview(user, reviewId, sellerReply, redirectAttributes);
     }
 
-    @GetMapping("/stall-image/{stallId}")
-    public ResponseEntity<byte[]> getStallImage(@PathVariable Long stallId) {
+    @GetMapping("/product-image/{productId}")
+    public ResponseEntity<byte[]> getProductImage(@PathVariable Long productId) {
         try {
-            Product product = productRepository.findById(stallId).orElse(null);
+            Product product = productRepository.findById(productId).orElse(null);
             if (product == null || product.getProductImageData() == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -428,6 +428,16 @@ public class ShopController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+    
+    /**
+     * @deprecated Sử dụng /product-image/{productId} thay vì endpoint này
+     */
+    @Deprecated
+    @GetMapping("/stall-image/{stallId}")
+    public ResponseEntity<byte[]> getStallImage(@PathVariable Long stallId) {
+        // Redirect to new endpoint
+        return getProductImage(stallId);
     }
 
     @PostMapping("/seller/edit-product/{id}")

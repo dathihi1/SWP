@@ -48,6 +48,7 @@ public class SecurityConfiguration {
             "/terms", "/faqs", 
             "/css/**", "/js/**", "/images/**", "/static/**", "/favicon.ico",
             "/stall-image/**",
+            "/product-image/**",
             "/oauth2/**", "/login/oauth2/**",
             "/error", // Thêm /error vào whitelist để tránh authentication loop
             "/admin-simple", "/admin/test-withdraw", "/api/admin/withdraw/requests-simple", "/api/admin/withdraw/approve-simple/**", "/api/admin/withdraw/reject-simple/**"};

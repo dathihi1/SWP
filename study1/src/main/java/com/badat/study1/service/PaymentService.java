@@ -114,6 +114,24 @@ public class PaymentService {
             Wallet wallet = walletRepository.findByUserId(userId)
                     .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + userId));
             
+            // ANTI-SPAM: Check if this transaction has already been processed successfully
+            if (vnpTransactionNo != null && !vnpTransactionNo.trim().isEmpty()) {
+                boolean alreadyProcessed = walletHistoryService.existsByTransactionNoAndTypeAndStatus(
+                    vnpTransactionNo, WalletHistory.Type.DEPOSIT, WalletHistory.Status.SUCCESS);
+                if (alreadyProcessed) {
+                    System.out.println("Transaction already processed: " + vnpTransactionNo);
+                    return true; // Return true to avoid showing error to user
+                }
+            }
+            
+            // ANTI-SPAM: Check if this orderId has already been processed successfully
+            boolean orderAlreadyProcessed = walletHistoryService.existsByReferenceIdAndTypeAndStatus(
+                orderId, WalletHistory.Type.DEPOSIT, WalletHistory.Status.SUCCESS);
+            if (orderAlreadyProcessed) {
+                System.out.println("Order already processed: " + orderId);
+                return true; // Return true to avoid showing error to user
+            }
+            
             // Add amount to wallet balance
             BigDecimal currentBalance = wallet.getBalance();
             BigDecimal newBalance = currentBalance.add(BigDecimal.valueOf(amount));
@@ -201,23 +219,35 @@ public class PaymentService {
                     Integer quantity = Integer.valueOf(item.get("quantity").toString());
                     totalAmount = totalAmount.add(price.multiply(BigDecimal.valueOf(quantity)));
                     
-                    // Tìm warehouseId thực tế cho product
-                    Long productId = Long.valueOf(item.get("productId").toString());
-                    Long actualWarehouseId = productId; // Default fallback
-                    
-                    try {
-                        // Tìm warehouse đầu tiên có sẵn cho product này
-                        Optional<Warehouse> warehouse = warehouseRepository.findFirstByProductIdAndLockedFalseAndIsDeleteFalse(productId);
-                        if (warehouse.isPresent()) {
-                            actualWarehouseId = warehouse.get().getId();
-                        }
-                    } catch (Exception e) {
-                        log.warn("Failed to get warehouse for product {}, using productId as fallback", productId);
+                    // Lấy productVariantId từ cart item (đây là ID của ProductVariant)
+                    Long productVariantId = null;
+                    if (item.containsKey("productVariantId")) {
+                        productVariantId = Long.valueOf(item.get("productVariantId").toString());
+                    } else if (item.containsKey("productId")) {
+                        // Fallback: nếu vẫn dùng productId (backward compatibility)
+                        productVariantId = Long.valueOf(item.get("productId").toString());
                     }
                     
-                    // Tạo cart item với warehouseId thực tế
+                    Long actualWarehouseId = productVariantId; // Default fallback
+                    
+                    try {
+                        // Tìm warehouse đầu tiên có sẵn cho productVariant này
+                        if (productVariantId != null) {
+                            Optional<Warehouse> warehouse = warehouseRepository.findFirstByProductVariantIdAndLockedFalseAndIsDeleteFalse(productVariantId);
+                            if (warehouse.isPresent()) {
+                                actualWarehouseId = warehouse.get().getId();
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to get warehouse for productVariant {}, using productVariantId as fallback", productVariantId);
+                    }
+                    
+                    // Tạo cart item với warehouseId thực tế và đảm bảo có productVariantId
                     Map<String, Object> processedItem = new HashMap<>(item);
                     processedItem.put("warehouseId", actualWarehouseId);
+                    if (productVariantId != null) {
+                        processedItem.put("productVariantId", productVariantId);
+                    }
                     processedCartItems.add(processedItem);
                 }
                 
@@ -311,19 +341,32 @@ public class PaymentService {
         
         for (Map<String, Object> cartItem : cartItems) {
             try {
-                Long productId = Long.valueOf(cartItem.get("productId").toString());
-                Integer requestedQuantity = Integer.valueOf(cartItem.get("quantity").toString());
-                String productName = cartItem.get("name").toString();
+                // Lấy productVariantId từ cart item
+                Long productVariantId = null;
+                if (cartItem.containsKey("productVariantId")) {
+                    productVariantId = Long.valueOf(cartItem.get("productVariantId").toString());
+                } else if (cartItem.containsKey("productId")) {
+                    // Fallback: nếu vẫn dùng productId (backward compatibility)
+                    productVariantId = Long.valueOf(cartItem.get("productId").toString());
+                }
                 
-                // Đếm số lượng warehouse items có sẵn cho sản phẩm này
-                long availableStock = warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(productId);
+                if (productVariantId == null) {
+                    outOfStockProducts.add("Lỗi: Không tìm thấy productVariantId trong cart item");
+                    continue;
+                }
+                
+                Integer requestedQuantity = Integer.valueOf(cartItem.get("quantity").toString());
+                String productName = cartItem.get("name") != null ? cartItem.get("name").toString() : "Sản phẩm";
+                
+                // Đếm số lượng warehouse items có sẵn cho productVariant này
+                long availableStock = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productVariantId);
                 
                 if (availableStock < requestedQuantity) {
                     outOfStockProducts.add(productName + " (cần " + requestedQuantity + ", còn " + availableStock + ")");
                 }
                 
             } catch (Exception e) {
-                outOfStockProducts.add("Lỗi kiểm tra tồn kho cho sản phẩm: " + cartItem.get("name"));
+                outOfStockProducts.add("Lỗi kiểm tra tồn kho cho sản phẩm: " + (cartItem.get("name") != null ? cartItem.get("name") : "Unknown"));
             }
         }
         

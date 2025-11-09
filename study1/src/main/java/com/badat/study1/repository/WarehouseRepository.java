@@ -111,11 +111,24 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
      */
     @Query(value = "SELECT * FROM warehouse WHERE product_id = :productId AND locked = false AND is_delete = false ORDER BY created_at ASC LIMIT :quantity FOR UPDATE", nativeQuery = true)
     List<Warehouse> findAvailableItemsForReservation(@Param("productId") Long productId, @Param("quantity") Integer quantity);
-
-    List<Warehouse> findByLockedTrueAndReservedUntilBefore(LocalDateTime now);
+    
+    /**
+     * Find available items for reservation by productVariantId with database lock (SELECT FOR UPDATE)
+     * Sử dụng để chống race condition khi reserve inventory
+     */
+    @Query(value = "SELECT * FROM warehouse WHERE product_variant_id = :productVariantId AND locked = false AND is_delete = false ORDER BY created_at ASC LIMIT :quantity FOR UPDATE", nativeQuery = true)
+    List<Warehouse> findAvailableItemsForReservationByVariant(@Param("productVariantId") Long productVariantId, @Param("quantity") Integer quantity);
+    
+    /**
+     * Find warehouse items by productVariantId (not locked, not deleted) with pagination - for batch locking
+     */
+    List<Warehouse> findByProductVariantIdAndLockedFalseAndIsDeleteFalseOrderByCreatedAtAsc(Long productVariantId, Pageable pageable);
+    
     /**
      * Find expired warehouse reservations
      */
+    List<Warehouse> findByLockedTrueAndReservedUntilBefore(LocalDateTime now);
+      
     @Query(value = "SELECT COUNT(*) FROM warehouse WHERE product_id = :productId AND locked = false AND is_delete = false", nativeQuery = true)
     long countAvailableItemsByProductId(@Param("productId") Long productId);
     

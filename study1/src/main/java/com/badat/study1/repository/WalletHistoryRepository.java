@@ -13,6 +13,12 @@ public interface WalletHistoryRepository extends JpaRepository<WalletHistory, Lo
     List<WalletHistory> findByWalletIdAndIsDeleteFalseOrderByCreatedAtDesc(Long walletId);
     java.util.Optional<WalletHistory> findByWalletIdAndReferenceIdAndTypeAndStatus(Long walletId, String referenceId, WalletHistory.Type type, WalletHistory.Status status);
     java.util.Optional<WalletHistory> findByWalletIdAndReferenceIdAndTypeAndIsDeleteFalse(Long walletId, String referenceId, WalletHistory.Type type);
+    
+    // Methods to prevent payment spam
+    java.util.Optional<WalletHistory> findByTransactionNoAndTypeAndStatus(String transactionNo, WalletHistory.Type type, WalletHistory.Status status);
+    java.util.Optional<WalletHistory> findByReferenceIdAndTypeAndStatus(String referenceId, WalletHistory.Type type, WalletHistory.Status status);
+    boolean existsByTransactionNoAndTypeAndStatus(String transactionNo, WalletHistory.Type type, WalletHistory.Status status);
+    boolean existsByReferenceIdAndTypeAndStatus(String referenceId, WalletHistory.Type type, WalletHistory.Status status);
 }
 
 

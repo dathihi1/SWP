@@ -25,6 +25,7 @@ public class WalletHistoryService {
             .type(WalletHistory.Type.DEPOSIT)
             .amount(amount)
             .referenceId(vnpTxnRef)
+            .transactionNo(vnpTransactionNo)
             .description("Deposit via VNPay - TransactionNo: " + (vnpTransactionNo == null ? "" : vnpTransactionNo))
             .isDelete(false)
             .createdBy("system")
@@ -69,6 +70,7 @@ public class WalletHistoryService {
                         .type(type)
                         .amount(amount)
                         .referenceId(vnpTxnRef)
+                        .transactionNo(vnpTransactionNo)
                         .isDelete(false)
                         .createdBy("system")
                         .createdAt(java.time.Instant.now())
@@ -77,6 +79,9 @@ public class WalletHistoryService {
                 history.setDescription(description);
                 history.setStatus(status);
                 history.setUpdatedAt(java.time.Instant.now());
+                if (vnpTransactionNo != null) {
+                    history.setTransactionNo(vnpTransactionNo);
+                }
             } else {
                 // For SALE_SUCCESS, COMMISSION, etc. - always create new record
                 history = WalletHistory.builder()
@@ -84,6 +89,7 @@ public class WalletHistoryService {
                     .type(type)
                     .amount(amount)
                     .referenceId(vnpTxnRef)
+                    .transactionNo(vnpTransactionNo)
                     .description(description)
                     .isDelete(false)
                     .createdBy("system")
@@ -112,6 +118,20 @@ public class WalletHistoryService {
 
 	public List<WalletHistory> getWalletHistoryByWalletId(Long walletId) {
 		return walletHistoryRepository.findByWalletIdAndIsDeleteFalseOrderByCreatedAtDesc(walletId);
+	}
+
+	/**
+	 * Check if a transaction has already been processed successfully
+	 */
+	public boolean existsByTransactionNoAndTypeAndStatus(String transactionNo, WalletHistory.Type type, WalletHistory.Status status) {
+		return walletHistoryRepository.existsByTransactionNoAndTypeAndStatus(transactionNo, type, status);
+	}
+
+	/**
+	 * Check if an order has already been processed successfully
+	 */
+	public boolean existsByReferenceIdAndTypeAndStatus(String referenceId, WalletHistory.Type type, WalletHistory.Status status) {
+		return walletHistoryRepository.existsByReferenceIdAndTypeAndStatus(referenceId, type, status);
 	}
 
 	/**
