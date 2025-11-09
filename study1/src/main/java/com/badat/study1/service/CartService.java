@@ -232,13 +232,11 @@ public class CartService {
             }
             
             Map<String, Object> cartItemData = new java.util.HashMap<>();
-            cartItemData.put("productId", item.getProductVariant().getId());
-            cartItemData.put("name", item.getProductVariant().getName());
-            cartItemData.put("quantity", item.getQuantity());
-            cartItemData.put("price", item.getProductVariant().getPrice());
-            cartItemData.put("warehouseId", warehouseId);
             
-            // Lấy productId an toàn
+            // QUAN TRỌNG: Đặt productVariantId (ID của ProductVariant)
+            cartItemData.put("productVariantId", item.getProductVariant().getId());
+            
+            // Lấy productId (ID của Product cha) an toàn
             Long productId = null;
             try {
                 if (item.getProductVariant().getProduct() != null) {
@@ -250,8 +248,14 @@ public class CartService {
                 log.warn("Failed to get productId for product variant {}, using fallback", item.getProductVariant().getId());
                 productId = item.getProductVariant().getProductId();
             }
+            
+            // Đặt productId (Product cha) - cần cho commission và order
             cartItemData.put("productId", productId);
             
+            cartItemData.put("name", item.getProductVariant().getName());
+            cartItemData.put("quantity", item.getQuantity());
+            cartItemData.put("price", item.getProductVariant().getPrice());
+            cartItemData.put("warehouseId", warehouseId);
             cartItemData.put("shopId", item.getProductVariant().getShopId());
             cartItemData.put("sellerId", item.getProductVariant().getShop() != null ? item.getProductVariant().getShop().getUserId() : null);
             

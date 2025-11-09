@@ -182,36 +182,40 @@
                 `;
                 
                 items.forEach(item => {
-                    const price = Number(item.product?.price || 0);
+                    // ProductVariant thông tin từ ProductDTO
+                    const productVariant = item.product;
+                    const price = Number(productVariant?.price || 0);
                     const qty = Number(item.quantity || 1);
                     const subtotal = price * qty;
-                    const isSelected = selectedItems.has(item.product?.id);
-                    const sellerId = item.product?.shop?.userId || item.product?.sellerId;
-                    const stallId = item.product?.stallId;
-                    // Ưu tiên ảnh gian hàng của shop
-                    const imageUrl = (stallId ? `/stall-image/${stallId}` : null)
-                                         || item.product?.imageUrl
-                                         || (sellerId ? `/api/profile/avatar/${sellerId}` : (item.product?.shop?.avatarUrl || item.product?.shopAvatar))
-                                         || '/images/products/default.jpg';
+                    const productVariantId = productVariant?.id;
+                    const isSelected = selectedItems.has(productVariantId);
+                    const productId = productVariant?.productId; // ID của Product cha
+                    const shopId = productVariant?.shopId;
+                    
+                    // Lấy ảnh sản phẩm từ Product cha (nếu có)
+                    // Thêm timestamp để tránh cache
+                    const timestamp = new Date().getTime();
+                    const imageUrl = productId ? `/product-image/${productId}?t=${timestamp}` : '/images/default-avatar.svg';
                     
                     html += `
                         <div class="row align-items-center mb-3 cart-row">
                             <div class="col-1">
                                 <div class="form-check">
                                     <input class="form-check-input product-checkbox" type="checkbox" 
-                                           data-product-id="${item.product?.id}" 
+                                           data-product-variant-id="${productVariantId}" 
                                            ${isSelected ? 'checked' : ''}
-                                           onchange="toggleItem(${item.product?.id}, this.checked)">
+                                           onchange="toggleItem(${productVariantId}, this.checked)">
                                 </div>
                             </div>
                             <div class="col-2">
-                                <img src="${imageUrl}" alt="${item.product?.name}" 
+                                <img src="${imageUrl}" alt="${productVariant?.name || 'Sản phẩm'}" 
                                      class="product-image" width="80" height="80" loading="lazy"
-                                     onerror="this.src='/images/products/default.jpg'">
+                                     onerror="this.onerror=null; this.src='/images/default-avatar.svg';">
                             </div>
                             <div class="col-3">
-                                <div class="product-name">${item.product?.name || 'Sản phẩm không xác định'}</div>
+                                <div class="product-name">${productVariant?.name || 'Sản phẩm không xác định'}</div>
                                 <div class="shop-name">${shopName}</div>
+                                ${productVariant?.subcategory ? `<small class="text-muted">${productVariant.subcategory}</small>` : ''}
                             </div>
                             <div class="col-6">
                                 <div class="mid-wrap">
@@ -219,16 +223,16 @@
                                     <div class="qty-cell">
                                         <div class="input-group input-group-sm" style="width: 140px;">
                                             <button class="btn btn-outline-secondary" type="button"
-                                                    onclick="updateQty(${item.product?.id}, Math.max(1, ${qty}-1))">&minus;</button>
+                                                    onclick="updateQty(${productVariantId}, Math.max(1, ${qty}-1))">&minus;</button>
                                             <input class="form-control text-center" type="number" min="1" value="${qty}"
-                                                   onchange="updateQty(${item.product?.id}, this.value)" />
+                                                   onchange="updateQty(${productVariantId}, this.value)" />
                                             <button class="btn btn-outline-secondary" type="button"
-                                                    onclick="updateQty(${item.product?.id}, ${qty}+1)">&plus;</button>
+                                                    onclick="updateQty(${productVariantId}, ${qty}+1)">&plus;</button>
                                         </div>
                                     </div>
                                     <div class="text-end subtotal-cell">
                                         <div class="product-price price-cell">${formatMoney(subtotal)}&nbsp;₫</div>
-                                        <button class="remove-btn" onclick="removeItem(${item.product?.id})" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+                                        <button class="remove-btn" onclick="removeItem(${productVariantId})" title="Xóa"><i class="fa-solid fa-trash"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -245,11 +249,11 @@
             cartContainer.innerHTML = html;
         }
 
-        function toggleItem(productId, checked) {
+        function toggleItem(productVariantId, checked) {
             if (checked) {
-                selectedItems.add(productId);
+                selectedItems.add(productVariantId);
             } else {
-                selectedItems.delete(productId);
+                selectedItems.delete(productVariantId);
             }
             updateCheckoutBar();
             updateShopCheckboxes();
@@ -258,10 +262,11 @@
         function toggleShopItems(shopId, checked) {
             const shopItems = cartItems.filter(item => item.product?.shopId == shopId);
             shopItems.forEach(item => {
+                const productVariantId = item.product?.id;
                 if (checked) {
-                    selectedItems.add(item.product?.id);
+                    selectedItems.add(productVariantId);
                 } else {
-                    selectedItems.delete(item.product?.id);
+                    selectedItems.delete(productVariantId);
                 }
             });
             renderCartItems();
@@ -459,13 +464,14 @@
                 const insufficientItems = [];
                 
                 for (const item of selectedCartItems) {
-                    const productId = item.product?.id;
+                    const productVariantId = item.product?.id;
                     const requiredQty = Number(item.quantity || 1);
                     
-                    if (!productId) continue;
+                    if (!productVariantId) continue;
                     
                     try {
-                        const res = await fetch(`/api/cart/check-stock/${productId}`, {
+                        // Kiểm tra stock theo productVariantId (cần cập nhật API nếu cần)
+                        const res = await fetch(`/api/cart/check-stock/${productVariantId}`, {
                             method: 'GET',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -487,7 +493,7 @@
                             }
                         }
                     } catch (e) {
-                        console.error(`Lỗi kiểm tra stock sản phẩm ${productId}:`, e);
+                        console.error(`Lỗi kiểm tra stock sản phẩm ${productVariantId}:`, e);
                     }
                 }
                 
@@ -567,9 +573,9 @@
             `;
         }
 
-        async function addItem(productId, quantity = 1) {
+        async function addItem(productVariantId, quantity = 1) {
             try {
-                const res = await fetch(`/api/cart/add/${productId}?quantity=${quantity}`, { 
+                const res = await fetch(`/api/cart/add/${productVariantId}?quantity=${quantity}`, { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -634,9 +640,9 @@
             }
         }
 
-        async function removeItem(productId) {
+        async function removeItem(productVariantId) {
             try {
-                const res = await fetch(`/api/cart/remove/${productId}`, { 
+                const res = await fetch(`/api/cart/remove/${productVariantId}`, { 
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -726,7 +732,7 @@
         function toggleAllItems(checked) {
             if (checked) {
                 cartItems.forEach(item => {
-                    selectedItems.add(item.product?.id);
+                    selectedItems.add(item.product?.id); // product?.id là productVariantId
                 });
             } else {
                 selectedItems.clear();
@@ -753,14 +759,13 @@
                 
                 
                 const cartData = selectedCartItems.map(item => ({
-                    productId: item.product?.id,
+                    productVariantId: item.product?.id, // ID của ProductVariant
+                    productId: item.product?.productId, // ID của Product cha
                     quantity: item.quantity,
                     price: item.product?.price,
                     name: item.product?.name,
-                    warehouseId: item.product?.id, // Tạm dùng productId làm warehouseId
-                    stallId: item.product?.stallId,
                     shopId: item.product?.shopId,
-                    sellerId: item.product?.shop?.userId || item.product?.shopId
+                    sellerId: item.product?.shopId // Có thể cần lấy từ shop nếu có
                 }));
                 
                 const totalAmount = selectedCartItems.reduce((sum, item) => {
@@ -1097,10 +1102,10 @@
             currentPaymentId = null;
         }
 
-        async function updateQty(productId, quantity) {
+        async function updateQty(productVariantId, quantity) {
             try {
             const q = Math.max(1, parseInt(quantity || '1', 10));
-                const res = await fetch(`/api/cart/update/${productId}?quantity=${q}`, { 
+                const res = await fetch(`/api/cart/update/${productVariantId}?quantity=${q}`, { 
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1131,9 +1136,9 @@
             }
         }
 
-        async function removeItem(productId) {
+        async function removeItem(productVariantId) {
             try {
-                const res = await fetch(`/api/cart/remove/${productId}`, { 
+                const res = await fetch(`/api/cart/remove/${productVariantId}`, { 
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1158,7 +1163,7 @@
                 }
                 
                 // Bỏ chọn nếu đang được chọn
-                selectedItems.delete(productId);
+                selectedItems.delete(productVariantId);
             await loadCart();
             } catch (e) {
                 console.error('Error removing item:', e);
