@@ -190,20 +190,15 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/product-management}" href="/seller/product-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
 
-                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
-                        <i class="fa-solid fa-message"></i>
-                        <span>Tin nhắn</span>
-                    </a>
 
                     <a class="btn btn-outline-danger d-flex align-items-center gap-2" href="#" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
@@ -219,57 +214,84 @@
         <h1>Đăng ký bán hàng</h1>
     </div>
     <div class="content">
-        <!-- Thông báo cho user đã có role SELLER -->
-        <div th:if="${alreadySeller}" class="alert alert-info text-center" role="alert">
+        <!-- Thông báo cho user đã có role SELLER hoặc đã đăng ký shop -->
+        <div th:if="${alreadySeller && !isPendingApproval}" class="alert alert-info text-center" role="alert">
             <i class="fa-solid fa-handshake fa-3x text-primary mb-3"></i>
-            <h5 class="alert-heading mb-3 text-primary" th:text="${submitSuccess} ? 'Yêu cầu đăng ký bán hàng của bạn đã được gửi thành công!' : 'Bạn đã đăng ký shop thành công!'">Bạn đã đăng ký shop thành công</h5>
-            <div th:if="${submitSuccess}">
-                <p class="mb-1">Hệ thống đang chuyển yêu cầu của bạn đến quản trị viên để duyệt.</p>
-                <p class="mb-0">Dự kiến thời gian xử lý: 12–24 giờ làm việc.</p>
-            </div>
-            <div th:if="${submitSuccess == false}" class="d-flex justify-content-center mt-2">
-                <a class="btn btn-outline-primary keep-outline" th:href="@{/seller/stall-management}" href="/seller/stall-management">
+            <h5 class="alert-heading mb-3 text-primary">
+                <span th:if="${submitSuccess}">Yêu cầu đăng ký bán hàng của bạn đã được gửi thành công! Vui lòng chờ admin duyệt.</span>
+                <span th:if="${!submitSuccess}">Đăng ký cửa hàng thành công!</span>
+            </h5>
+            <div th:if="${submitSuccess == false && !isPendingApproval}" class="d-flex justify-content-center mt-2">
+                <a class="btn btn-outline-primary keep-outline" th:href="@{/seller/product-management}" href="/seller/product-management">
                     <i class="fa-solid fa-store me-2"></i>Quản lí gian hàng
                 </a>
             </div>
         </div>
         
+        <!-- Thông báo chờ duyệt với nền vàng nhạt -->
+        <div th:if="${isPendingApproval}" class="alert text-center" role="alert" style="background-color: #fff3cd; border-color: #ffc107; color: #856404;">
+            <i class="fa-solid fa-clock fa-3x mb-3" style="color: #856404;"></i>
+            <h5 class="alert-heading mb-3" style="color: #856404;">
+                Yêu cầu đăng ký bán hàng của bạn đang chờ admin duyệt.
+            </h5>
+        </div>
+        
+        <!-- Thông báo bị từ chối với nền đỏ nhạt -->
+        <div th:if="${isRejected}" class="alert text-center" role="alert" style="background-color: #f8d7da; border-color: #dc3545; color: #721c24;">
+            <i class="fa-solid fa-times-circle fa-3x mb-3" style="color: #dc3545;"></i>
+            <h5 class="alert-heading mb-3" style="color: #721c24;">
+                Yêu cầu đăng ký bán hàng của bạn đã bị từ chối.
+            </h5>
+            <div th:if="${shop != null && shop.rejectionReason != null && !shop.rejectionReason.isEmpty()}" class="mb-3">
+                <p class="mb-2"><strong>Lý do từ chối:</strong></p>
+                <p class="mb-0" style="color: #721c24;" th:text="${shop.rejectionReason}"></p>
+            </div>
+            <p class="mb-3" style="color: #721c24;">
+                Vui lòng cập nhật thông tin và gửi lại đơn đăng ký.
+            </p>
+        </div>
         
         
-        <!-- Form đăng ký chỉ hiển thị cho user chưa có role SELLER -->
-        <form th:if="${!alreadySeller and !pendingReview}" method="post" th:action="@{/seller/register}" enctype="multipart/form-data" id="sellerRegisterForm">
-            <h2 class="section-title">Thông tin tài khoản người bán</h2>
+        
+        <!-- Form đăng ký chỉ hiển thị cho user chưa có role SELLER và shop không đang chờ duyệt -->
+        <form th:if="${!alreadySeller && !isPendingApproval}" method="post" th:action="@{/seller/register}" enctype="multipart/form-data" id="sellerRegisterForm">
             <div class="grid">
                 <div class="field">
                     <label for="ownerName">Tên Shop</label>
-                    <input id="ownerName" name="ownerName" type="text" placeholder="Tên Shop của bạn" required>
+                    <input id="ownerName" name="ownerName" type="text" placeholder="Tên Shop của bạn" 
+                           th:value="${shop != null ? shop.shopName : ''}" required>
                 </div>
                 <div class="field">
-                    <label for="identity">Số CCCD</label>
-                    <input id="identity" name="identity" type="text" placeholder="XXXXXXXXXXXX" pattern="[0-9]{12}" title="Số CCCD phải có đúng 12 chữ số" required>
-                    <small class="text-muted">Nhập đúng 12 chữ số</small>
+                    <label for="shortDescription">Mô tả ngắn</label>
+                    <input id="shortDescription" name="shortDescription" type="text" placeholder="Mô tả ngắn" maxlength="50" 
+                           th:value="${shop != null ? shop.shortDescription : ''}" required>
+                    <small class="text-muted">Tối đa 50 ký tự</small>
                 </div>
+            </div>
+            <br>
+            <div class="grid">
                 <div class="field">
-                    <label for="bankAccountNumber">Số tài khoản ngân hàng</label>
-                    <input id="bankAccountNumber" name="bankAccountNumber" type="text" placeholder="123456789" pattern="[0-9]{8,20}" title="Số tài khoản phải có từ 8-20 chữ số" required>
-                    <small class="text-muted">Nhập từ 8-20 chữ số</small>
-                    <small class="text-danger">Chú ý: Tên chủ tài khoản ngân hàng phải khớp với họ và tên trong thông tin cá nhân</small>
-                </div>
-                <div class="field">
-                    <label for="bankName">Tên ngân hàng</label>
-                    <div class="bank-dropdown">
-                        <input type="text" id="bankName" name="bankName" class="bank-search" placeholder="Tìm kiếm ngân hàng..." autocomplete="off" required>
-                        <div class="bank-list" id="bankList"></div>
+                    <label for="cccdFront">CCCD mặt trước</label>
+                    <input id="cccdFront" name="cccdFront" type="file" accept="image/*" required>
+                    <small class="text-muted">Vui lòng upload ảnh CCCD mặt trước</small>
+                    <div id="previewFront" style="margin-top: 12px; display: none;">
+                        <img id="imgFront" src="" alt="CCCD mặt trước" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: #f9f9f9;">
                     </div>
-                    <small class="text-muted">Nhập để tìm kiếm ngân hàng</small>
+                </div>
+                <div class="field">
+                    <label for="cccdBack">CCCD mặt sau</label>
+                    <input id="cccdBack" name="cccdBack" type="file" accept="image/*" required>
+                    <small class="text-muted">Vui lòng upload ảnh CCCD mặt sau</small>
+                    <div id="previewBack" style="margin-top: 12px; display: none;">
+                        <img id="imgBack" src="" alt="CCCD mặt sau" style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 8px; padding: 8px; background: #f9f9f9;">
+                    </div>
                 </div>
             </div>
 
             <div class="actions">
-                <label class="small text-muted m-0"><input type="checkbox" id="agree" required> Tôi đồng ý với <a class="link-secondary" th:href="@{/terms}" target="_blank" rel="noopener noreferrer">Điều khoản & Chính sách</a></label>
+                <label class="small text-muted m-0"><input type="checkbox" id="agree" name="agree" required> Tôi đồng ý với <a class="link-secondary" th:href="@{/terms}" target="_blank" rel="noopener noreferrer">Điều khoản & Chính sách</a></label>
                 <div>
-                    <button class="btn btn-danger" type="reset">Xoá</button>
-                    <button class="btn primary" type="submit">Đăng ký</button>
+                    <button class="btn btn-primary" type="submit">Đăng ký</button>
                 </div>
             </div>
             <div th:if="${submitError}" class="alert alert-danger mt-3" th:text="${submitError}"></div>
@@ -338,105 +360,38 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/auth.js"></script>
-</body>
 <script>
-    // Vietnamese banks data
-    const vietnameseBanks = [
-        { code: 'ACB', name: 'Ngân hàng TMCP Á Châu' },
-        { code: 'BIDV', name: 'Ngân hàng TMCP Đầu tư và Phát triển Việt Nam' },
-        { code: 'CTG', name: 'Ngân hàng TMCP Công Thương Việt Nam' },
-        { code: 'MB', name: 'Ngân hàng TMCP Quân đội' },
-        { code: 'TCB', name: 'Ngân hàng TMCP Kỹ thương Việt Nam' },
-        { code: 'VCB', name: 'Ngân hàng TMCP Ngoại thương Việt Nam' },
-        { code: 'VPB', name: 'Ngân hàng TMCP Việt Nam Thịnh Vượng' },
-        { code: 'TPB', name: 'Ngân hàng TMCP Tiên Phong' },
-        { code: 'HDB', name: 'Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh' },
-        { code: 'STB', name: 'Ngân hàng TMCP Sài Gòn Thương Tín' },
-        { code: 'VIB', name: 'Ngân hàng TMCP Quốc tế Việt Nam' },
-        { code: 'MSB', name: 'Ngân hàng TMCP Hàng Hải' },
-        { code: 'OCB', name: 'Ngân hàng TMCP Phương Đông' },
-        { code: 'SHB', name: 'Ngân hàng TMCP Sài Gòn - Hà Nội' },
-        { code: 'LPB', name: 'Ngân hàng TMCP Lào - Việt' },
-        { code: 'NAB', name: 'Ngân hàng TMCP Nam Á' },
-        { code: 'PGB', name: 'Ngân hàng TMCP Xăng dầu Petrolimex' },
-        { code: 'SCB', name: 'Ngân hàng TMCP Sài Gòn' },
-        { code: 'VAB', name: 'Ngân hàng TMCP Việt Á' },
-        { code: 'GPB', name: 'Ngân hàng TMCP Dầu Khí Toàn Cầu' }
-    ];
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const bankSearch = document.getElementById('bankName');
-        const bankList = document.getElementById('bankList');
-        let selectedBank = null;
-
-        // Show bank list
-        function showBankList() {
-            bankList.style.display = 'block';
+    // Preview image when file is selected
+    document.getElementById('cccdFront').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imgFront').src = e.target.result;
+                document.getElementById('previewFront').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            document.getElementById('previewFront').style.display = 'none';
         }
+    });
 
-        // Hide bank list
-        function hideBankList() {
-            setTimeout(() => {
-                bankList.style.display = 'none';
-            }, 200);
+    document.getElementById('cccdBack').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imgBack').src = e.target.result;
+                document.getElementById('previewBack').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            document.getElementById('previewBack').style.display = 'none';
         }
-
-        // Filter banks based on search input
-        function filterBanks(searchTerm) {
-            const filteredBanks = vietnameseBanks.filter(bank => 
-                bank.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                bank.code.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-
-            bankList.innerHTML = '';
-            
-            if (filteredBanks.length === 0) {
-                bankList.innerHTML = '<div class="bank-item">Không tìm thấy ngân hàng</div>';
-                return;
-            }
-
-            filteredBanks.forEach(bank => {
-                const bankItem = document.createElement('div');
-                bankItem.className = 'bank-item';
-                bankItem.innerHTML = `
-                    <span class="bank-code">${bank.code}</span>
-                    <span class="bank-name">${bank.name}</span>
-                `;
-                
-                bankItem.addEventListener('click', function() {
-                    bankSearch.value = bank.name;
-                    selectedBank = bank;
-                    hideBankList();
-                });
-                
-                bankList.appendChild(bankItem);
-            });
-        }
-
-        // Event listeners
-        bankSearch.addEventListener('focus', showBankList);
-        bankSearch.addEventListener('input', function() {
-            const searchTerm = this.value;
-            if (searchTerm.length > 0) {
-                filterBanks(searchTerm);
-                showBankList();
-            } else {
-                hideBankList();
-            }
-        });
-
-        bankSearch.addEventListener('blur', hideBankList);
-
-        // Prevent form submission if no bank is selected
-        document.querySelector('form').addEventListener('submit', function(e) {
-            if (!selectedBank && bankSearch.value.trim() !== '') {
-                e.preventDefault();
-                alert('Vui lòng chọn ngân hàng từ danh sách gợi ý');
-                bankSearch.focus();
-            }
-        });
     });
 </script>
+
+</body>
 </html>
 
 

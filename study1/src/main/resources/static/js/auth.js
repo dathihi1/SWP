@@ -2,11 +2,40 @@
 class AuthManager {
     constructor() {
         this.baseUrl = this.getBaseUrl();
+        this._refreshInFlight = null;
+        this.maxInactivityMinutes = 15;
+        // Background proactive refresh every 60s
+        try {
+            setInterval(() => {
+                // No-op if not authenticated
+                if (!this.isAuthenticated()) return;
+                if (this.shouldForceLogoutForInactivity(this.maxInactivityMinutes)) {
+                    this.clearTokens();
+                    try { window.location.href = '/login'; } catch (e) {}
+                    return;
+                }
+                this.maybeRefreshByRefreshToken(5);
+            }, 60_000);
+        } catch (e) {
+            // ignore in environments without timers
+        }
     }
 
     getBaseUrl() {
         const baseUrlMeta = document.querySelector('meta[name="base_url"]');
         return baseUrlMeta ? baseUrlMeta.content : '/';
+    }
+
+    // Extract exp (epoch seconds) from JWT; returns null on failure
+    getJwtExpSeconds(token) {
+        try {
+            const parts = token.split('.');
+            if (parts.length !== 3) return null;
+            const payload = JSON.parse(atob(parts[1]));
+            return typeof payload.exp === 'number' ? payload.exp : null;
+        } catch (e) {
+            return null;
+        }
     }
 
     getAccessToken() {
@@ -55,6 +84,76 @@ class AuthManager {
     getAuthHeaders() {
         const token = this.getAccessToken();
         return token ? { 'Authorization': `Bearer ${token}` } : {};
+    }
+
+    // Record user activity timestamp (ms)
+    updateLastActivity() {
+        try { localStorage.setItem('lastActivityAt', String(Date.now())); } catch (e) {}
+    }
+
+    // Check if inactivity exceeds threshold minutes
+    shouldForceLogoutForInactivity(thresholdMinutes = 15) {
+        try {
+            const v = localStorage.getItem('lastActivityAt');
+            const last = v ? parseInt(v, 10) : null;
+            if (!last || Number.isNaN(last)) return false; // if unknown, don't force
+            const ms = Date.now() - last;
+            return ms >= thresholdMinutes * 60 * 1000;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Proactively refresh using refresh token when it is close to expiring
+    async maybeRefreshByRefreshToken(thresholdMinutes = 5) {
+        // Respect inactivity auto-logout policy
+        if (this.shouldForceLogoutForInactivity(this.maxInactivityMinutes)) {
+            this.clearTokens();
+            try { window.location.href = '/login'; } catch (e) {}
+            return;
+        }
+
+        const refreshToken = this.getRefreshToken();
+        if (!refreshToken) return;
+
+        const exp = this.getJwtExpSeconds(refreshToken);
+        const now = Math.floor(Date.now() / 1000);
+        if (!exp) return; // cannot parse; skip
+
+        const remaining = exp - now;
+        if (remaining <= 0) {
+            // already expired -> force logout
+            this.clearTokens();
+            try { window.location.href = '/login'; } catch (e) {}
+            return;
+        }
+
+        if (remaining > thresholdMinutes * 60) return; // not near expiry
+
+        // Single-flight to avoid parallel refresh calls
+        if (this._refreshInFlight) {
+            try { await this._refreshInFlight; } catch (e) {}
+            return;
+        }
+
+        this._refreshInFlight = (async () => {
+            const res = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${refreshToken}` }
+            });
+            if (!res.ok) throw new Error('refresh failed');
+            const data = await res.json();
+            this.setTokens(data.accessToken, data.refreshToken);
+        })();
+
+        try {
+            await this._refreshInFlight;
+        } catch (e) {
+            this.clearTokens();
+            try { window.location.href = '/login'; } catch (err) {}
+        } finally {
+            this._refreshInFlight = null;
+        }
     }
 
     async fetchWithAuth(url, options = {}) {
@@ -129,17 +228,96 @@ class AuthManager {
 // Global auth manager instance
 window.authManager = new AuthManager();
 
+const AUTH_SKIP_PATHS = [
+    '/api/auth/login',
+    '/api/auth/captcha',
+    '/api/auth/register',
+    '/api/auth/forgot-password',
+    '/api/auth/verify-otp',
+    '/api/auth/verify-register-otp',
+    '/api/auth/verify-forgot-password-otp',
+    '/api/auth/reset-password'
+];
+
+const shouldSkipAuthFlow = (reqUrl) => {
+    if (typeof reqUrl !== 'string') return false;
+    let path = reqUrl;
+    if (reqUrl.startsWith('http')) {
+        try {
+            path = new URL(reqUrl).pathname;
+        } catch (e) {
+            return false;
+        }
+    }
+    return AUTH_SKIP_PATHS.some(skipPath => path.startsWith(skipPath));
+};
+
 // Override fetch to automatically add auth headers
 const originalFetch = window.fetch;
-window.fetch = function(url, options = {}) {
+window.fetch = async function(url, options = {}) {
+    // Track activity at call time (covers user-initiated network actions)
+    try { window.authManager.updateLastActivity(); } catch (e) {}
+
+    if (shouldSkipAuthFlow(url)) {
+        return originalFetch.call(this, url, options);
+    }
+
+    // If inactivity exceeded, force logout without attempting refresh
+    if (window.authManager.shouldForceLogoutForInactivity(window.authManager.maxInactivityMinutes)) {
+        window.authManager.clearTokens();
+        try { window.location.href = '/login'; } catch (e) {}
+        // Still perform the call without auth if desired, but return early
+        return originalFetch.call(this, url, options);
+    }
+
+    // Proactive refresh before making the request
+    try { await window.authManager.maybeRefreshByRefreshToken(5); } catch (e) {}
+
     // Only add auth headers for same-origin requests
+    let hasAuthHeader = false;
     if (typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin))) {
         const authHeaders = window.authManager.getAuthHeaders();
-        const headers = {
-            ...options.headers,
-            ...authHeaders
-        };
-        options.headers = headers;
+        if (authHeaders && Object.keys(authHeaders).length > 0) {
+            const headers = {
+                ...(options.headers || {}),
+                ...authHeaders
+            };
+            options.headers = headers;
+            hasAuthHeader = true;
+        }
     }
-    return originalFetch.call(this, url, options);
+
+    let response = await originalFetch.call(this, url, options);
+
+    // If unauthorized, check inactivity first; if within window, try one-off refresh then retry once
+    if (response.status === 401 && hasAuthHeader) {
+        // If user has been inactive too long, do not attempt refresh
+        if (window.authManager.shouldForceLogoutForInactivity(window.authManager.maxInactivityMinutes)) {
+            window.authManager.clearTokens();
+            try { window.location.href = '/login'; } catch (e) {}
+            return response;
+        }
+        try {
+            await window.authManager.maybeRefreshByRefreshToken(60); // force attempt regardless of proximity
+            // Reattach headers with potentially new access token
+            if (typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin))) {
+                const retryAuthHeaders = window.authManager.getAuthHeaders();
+                const retryHeaders = {
+                    ...(options.headers || {}),
+                    ...retryAuthHeaders
+                };
+                options.headers = retryHeaders;
+            }
+            response = await originalFetch.call(this, url, options);
+        } catch (e) {
+            // fall through to logout
+        }
+
+        if (response.status === 401) {
+            window.authManager.clearTokens();
+            try { window.location.href = '/login'; } catch (e) {}
+        }
+    }
+
+    return response;
 };

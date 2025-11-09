@@ -24,11 +24,14 @@
         .product-checkbox { transform: scale(1.2); }
         .product-image { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; background: #f8f9fa; }
         .quantity-controls { display: flex; align-items: center; border: 1px solid #ced4da; border-radius: 4px; overflow: hidden; width: 140px; height: 36px; box-sizing: border-box; background: #fff; }
-        .quantity-controls .qty-btn { flex-shrink: 0; width: 48px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 0; line-height: 1; background: #fff; padding: 0; }
-        .quantity-controls .qty-btn i { font-size: 14px; }
+        .quantity-controls .qty-btn { flex-shrink: 0; width: 44px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 0; line-height: 1; background: #fff; padding: 0; }
+        .quantity-controls .qty-btn i { font-size: 14px; line-height: 1; pointer-events: none; }
+        .quantity-controls .btn-plus { padding-right: 2px; }
+        .quantity-controls .btn-plus i { transform: translateX(-1px); }
         .quantity-controls .btn-minus { border-right: 1px solid #ced4da; }
         .quantity-controls .btn-plus { border-left: 1px solid #ced4da; }
-        .quantity-controls input { flex-grow: 1; width: 44px; height: 36px; border: 0; padding: 0; background: #fff; text-align: center; -moz-appearance: textfield; outline: none; }
+        .quantity-controls input { flex-grow: 1; width: 52px; height: 36px; border: 0; padding: 0; background: #fff; text-align: center; -moz-appearance: textfield; outline: none; }
+        .quantity-controls input:focus { border: 0; box-shadow: none; }
         .quantity-controls input::-webkit-outer-spin-button,
         .quantity-controls input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .checkout-bar { 
@@ -214,17 +217,13 @@
                                 <div class="mid-wrap">
                                     <div class="price-left product-price price-cell">${formatMoney(price)}&nbsp;₫</div>
                                     <div class="qty-cell">
-                                        <div class="quantity-controls">
-                                            <button class="btn qty-btn btn-minus" type="button" 
-                                                    onclick="updateQty(${item.product?.id}, Math.max(1, ${qty}-1))">
-                                                <i class="fa-solid fa-minus"></i>
-                                            </button>
-                                            <input class="form-control text-center" type="number" min="1" 
-                                                   value="${qty}" onchange="updateQty(${item.product?.id}, this.value)">
-                                            <button class="btn qty-btn btn-plus" type="button" 
-                                                    onclick="updateQty(${item.product?.id}, ${qty}+1)">
-                                                <i class="fa-solid fa-plus"></i>
-                                            </button>
+                                        <div class="input-group input-group-sm" style="width: 140px;">
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="updateQty(${item.product?.id}, Math.max(1, ${qty}-1))">&minus;</button>
+                                            <input class="form-control text-center" type="number" min="1" value="${qty}"
+                                                   onchange="updateQty(${item.product?.id}, this.value)" />
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="updateQty(${item.product?.id}, ${qty}+1)">&plus;</button>
                                         </div>
                                     </div>
                                     <div class="text-end subtotal-cell">
@@ -1287,20 +1286,15 @@
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
                             <li th:if="${userRole == 'ADMIN'}"><a class="dropdown-item" th:href="@{/admin}" href="/admin"><i class="fa-solid fa-cogs me-2"></i>Quản lý</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/product-management}" href="/seller/product-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
 
-                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
-                        <i class="fa-solid fa-message"></i>
-                        <span>Tin nhắn</span>
-                    </a>
                     
                     <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>

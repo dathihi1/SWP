@@ -233,9 +233,9 @@
         
         <div class="menu-section">
             <div class="section-title">SHOP</div>
-            <a href="/seller/stall-management" class="menu-item">
+            <a href="/seller/product-management" class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
-                Quản lý gian hàng
+                Quản lý sản phẩm
             </a>
             <a href="/seller/orders" class="menu-item">
                 <i class="fas fa-file-invoice-dollar"></i>
@@ -275,16 +275,11 @@
                         <li><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                         <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                         <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                     </ul>
                 </div>
 
-                <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
-                    <i class="fa-solid fa-message"></i>
-                    <span>Tin nhắn</span>
-                </a>
             </div>
         </div>
         
@@ -408,14 +403,14 @@
                 <div class="d-none d-md-block col-md-3"></div>
             </div>
 
-            <!-- Doanh số gian hàng -->
+            <!-- Doanh số sản phẩm -->
             <div class="mb-3 mt-5 text-center position-relative">
                 <hr class="border-primary border-2">
-                <h5 class="text-primary mb-0 position-absolute top-50 start-50 translate-middle bg-light px-3">Doanh số gian hàng</h5>
+                <h5 class="text-primary mb-0 position-absolute top-50 start-50 translate-middle bg-light px-3">Doanh số sản phẩm</h5>
             </div>
             <br>
             
-            <!-- Filter cho doanh số gian hàng -->
+            <!-- Filter cho sản phẩm -->
             <div class="row mb-3">
                 <div class="col-md-8"></div>
                 <div class="col-md-2">
@@ -665,7 +660,7 @@
                 }
                 
                 // Clear existing options except first
-                select.innerHTML = '<option value="">Tất cả gian hàng</option>';
+                select.innerHTML = '<option value="">Tất cả sản phẩm</option>';
                 
                 stalls.forEach((stall, index) => {
                     const option = document.createElement('option');

@@ -323,10 +323,14 @@
             // Load saved credentials if remember me was checked
             loadSavedCredentials();
             
-            // Initialize captcha
+            // Initialize vars used by captcha generator before any call
+            // (avoid TDZ when generateCaptcha accesses isGeneratingCaptcha)
+            window.__loginCaptcha = window.__loginCaptcha || {};
+            let isGeneratingCaptcha = false;
+
+            // Initialize captcha (will trigger one generate on load)
             initializeCaptcha();
-            
-            // Always show captcha (required for all login attempts)
+            // Ensure captcha section visible on first load
             showCaptcha();
 
             // Handle login form submission
@@ -384,6 +388,7 @@
                 // Disable button and show loading
                 loginBtn.disabled = true;
                 loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang đăng nhập...';
+                let loginSuccessful = false;
                 
                 try {
                     const response = await fetch('/api/auth/login', {
@@ -391,17 +396,18 @@
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        credentials: 'same-origin',
                         body: JSON.stringify({
                             username: username,
                             password: password,
-                            captchaCode: captchaInput,
-                            captchaId: window.currentCaptchaId || null
+                            captchaCode: captchaInput
                         })
                     });
                     
                     const data = await response.json();
                     
                     if (response.ok) {
+                        loginSuccessful = true;
                         // Store tokens
                         localStorage.setItem('accessToken', data.accessToken);
                         localStorage.setItem('refreshToken', data.refreshToken);
@@ -429,43 +435,46 @@
                         }
                     } else {
                         // Handle different error types based on status code
-                        if (response.status === 400) {
-                            // Captcha errors (400 status)
-                            if (data.message && data.message.includes('captcha')) {
+                        if (response.status === 429) {
+                            const msg429 = data.message || data.error || 'Bạn thao tác quá nhiều. Vui lòng thử lại sau.';
+                            alert(msg429);
+                            try { throw new Error(msg429); } catch (e) {}
+                            loadCaptchaFromBackend();
+                        } else if (response.status === 400) {
+                            // Chỉ coi là lỗi captcha khi BE báo captchaRequired hoặc message chứa 'captcha'
+                            const isCaptchaError = (data && (data.captchaRequired === true || (data.message && data.message.toLowerCase().includes('captcha'))));
+                            if (isCaptchaError) {
                                 showCaptcha();
-                                
-                                if (data.message.includes('incorrect')) {
-                                    alert('Mã xác thực không đúng, vui lòng nhập lại!');
-                                } else if (data.message.includes('required')) {
-                                    alert('Vui lòng nhập mã xác thực!');
-                                } else {
-                                    alert('Mã xác thực không hợp lệ, vui lòng làm mới trang!');
-                                }
-                                
-                                // Update captcha with new one from backend if provided
+                                const msg400c = data.message || data.error || (data.message && data.message.toLowerCase().includes('required') ? 'Vui lòng nhập mã xác thực!' : 'Mã xác thực không hợp lệ, vui lòng làm mới!');
+                                alert(msg400c);
+                                try { throw new Error(msg400c); } catch (e) {}
                                 if (data.captcha) {
                                     updateCaptchaFromBackend(data.captcha);
                                 } else {
                                     loadCaptchaFromBackend();
                                 }
                             } else {
-                                // Other 400 errors
-                                alert(data.error || 'Lỗi dữ liệu đầu vào!');
+                                // 400 không liên quan captcha
+                                const msg400 = data.message || data.error || 'Lỗi dữ liệu đầu vào!';
+                                alert(msg400);
+                                try { throw new Error(msg400); } catch (e) {}
                                 loadCaptchaFromBackend();
                             }
                         } else if (response.status === 401) {
-                            // Authentication errors (401 status) - username/password wrong
-                            alert(data.error || 'Tài khoản hoặc mật khẩu không đúng!');
-                            
-                            // Use new captcha from backend response if available
+                            // Sai tài khoản/mật khẩu
+                            const msg401 = data.message || data.error || 'Tài khoản hoặc mật khẩu không đúng!';
+                            alert(msg401);
+                            try { throw new Error(msg401); } catch (e) {}
                             if (data.captcha) {
                                 updateCaptchaFromBackend(data.captcha);
                             } else {
                                 loadCaptchaFromBackend();
                             }
                         } else {
-                            // Other errors
-                            alert(data.error || 'Có lỗi xảy ra!');
+                            // Khác
+                            const msgOther = data.message || data.error || 'Có lỗi xảy ra!';
+                            alert(msgOther);
+                            try { throw new Error(msgOther); } catch (e) {}
                             loadCaptchaFromBackend();
                         }
                     }
@@ -478,9 +487,11 @@
                     loginBtn.disabled = false;
                     loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-2"></i>Đăng nhập';
                     
-                    // Always regenerate captcha after each attempt
-                    loadCaptchaFromBackend();
-                    document.getElementById('captcha').value = '';
+                    // Only regenerate captcha if login failed
+                    if (!loginSuccessful) {
+                        loadCaptchaFromBackend();
+                        document.getElementById('captcha').value = '';
+                    }
                 }
             });
             
@@ -528,18 +539,21 @@
             }
             
             // Captcha functions
+
             function initializeCaptcha() {
-                const canvas = document.getElementById('captchaCanvas');
-                if (canvas) {
-                    canvas.addEventListener('click', generateCaptcha);
+                const captchaImage = document.getElementById('captchaImage');
+                if (captchaImage) {
+                    captchaImage.addEventListener('click', generateCaptcha);
                     generateCaptcha();
                 }
             }
             
             function generateCaptcha() {
+                if (isGeneratingCaptcha) return;
+                isGeneratingCaptcha = true;
                 console.log('Generating captcha...');
                 // Get captcha from backend
-                fetch('/api/auth/captcha/simple')
+                fetch('/api/auth/captcha', { credentials: 'same-origin' })
                     .then(response => {
                         console.log('Captcha response status:', response.status);
                         if (!response.ok) {
@@ -548,14 +562,14 @@
                         return response.json();
                     })
                     .then(data => {
-                        console.log('Captcha data received:', data);
-                        if (data.captchaId && data.captchaText) {
-                            // Store captcha data globally
-                            window.currentCaptchaId = data.captchaId;
-                            window.currentCaptchaAnswer = data.captchaText;
-                            
-                            // Draw captcha on canvas
-                            drawCaptchaOnCanvas(data.captchaText);
+                        console.log('Captcha data received');
+                        if (data.captchaImage) {
+                            // Display captcha image
+                            const captchaImage = document.getElementById('captchaImage');
+                            if (captchaImage) {
+                                captchaImage.src = data.captchaImage;
+                                captchaImage.style.display = 'block';
+                            }
                             console.log('Captcha generated successfully');
                         } else {
                             throw new Error('Invalid captcha response from server');
@@ -564,55 +578,25 @@
                     .catch(error => {
                         console.error('Error getting captcha from backend:', error);
                         alert('Không thể tải captcha. Vui lòng làm mới trang.');
-                        // Show error message but don't allow fallback
+                    })
+                    .finally(() => {
+                        isGeneratingCaptcha = false;
                     });
             }
             
-            
-            function drawCaptchaOnCanvas(captchaText) {
-                const canvas = document.getElementById('captchaCanvas');
-                const ctx = canvas.getContext('2d');
-                
-                // Clear canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw background
-                ctx.fillStyle = '#f0f0f0';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw text
-                ctx.font = '20px Arial';
-                ctx.fillStyle = '#333';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                // Add some distortion
-                for (let i = 0; i < captchaText.length; i++) {
-                    const x = 20 + i * 20;
-                    const y = 20 + Math.sin(i) * 5;
-                    ctx.save();
-                    ctx.translate(x, y);
-                    ctx.rotate(Math.random() * 0.4 - 0.2);
-                    ctx.fillText(captchaText[i], 0, 0);
-                    ctx.restore();
-                }
-                
-                // Add some noise lines
-                for (let i = 0; i < 3; i++) {
-                    ctx.strokeStyle = '#999';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-                    ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
-                    ctx.stroke();
-                }
+            function loadCaptchaFromBackend() {
+                generateCaptcha();
             }
             
             function showCaptcha() {
                 const captchaSection = document.getElementById('captchaSection');
                 if (captchaSection) {
                     captchaSection.style.display = 'block';
-                    generateCaptcha();
+                    // Ensure an image is present; generate if missing/unset
+                    const img = document.getElementById('captchaImage');
+                    if (img && (!img.src || img.src.trim() === '' || img.src.endsWith('/'))) {
+                        generateCaptcha();
+                    }
                 }
             }
             
@@ -625,56 +609,16 @@
             }
             
             function updateCaptchaFromBackend(captchaData) {
-                // Update captcha with data from backend
-                if (captchaData && (captchaData.text || captchaData.captchaText)) {
-                    // Store the correct answer (support both formats)
-                    const captchaText = captchaData.text || captchaData.captchaText;
-                    window.currentCaptchaAnswer = captchaText;
-                    
-                    // Store captcha ID if available
-                    if (captchaData.captchaId) {
-                        window.currentCaptchaId = captchaData.captchaId;
+                // Update captcha with image from backend
+                if (captchaData && captchaData.captchaImage) {
+                    const captchaImage = document.getElementById('captchaImage');
+                    if (captchaImage) {
+                        captchaImage.src = captchaData.captchaImage;
+                        captchaImage.style.display = 'block';
                     }
-                    
-                    // Update the canvas with new captcha
-                    const canvas = document.getElementById('captchaCanvas');
-                    if (canvas) {
-                        const ctx = canvas.getContext('2d');
-                        canvas.width = 120;
-                        canvas.height = 40;
-                        
-                        // Clear canvas
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        
-                        // Set background
-                        ctx.fillStyle = '#f8f9fa';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        
-                        // Draw captcha text
-                        ctx.font = '20px Arial';
-                        ctx.fillStyle = '#333';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        
-                        // Add some rotation and distortion
-                        for (let i = 0; i < captchaText.length; i++) {
-                            ctx.save();
-                            ctx.translate(20 + i * 20, 20);
-                            ctx.rotate((Math.random() - 0.5) * 0.4);
-                            ctx.fillText(captchaText[i], 0, 0);
-                            ctx.restore();
-                        }
-                        
-                        // Add some noise lines
-                        for (let i = 0; i < 3; i++) {
-                            ctx.strokeStyle = '#999';
-                            ctx.lineWidth = 1;
-                            ctx.beginPath();
-                            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-                            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
-                            ctx.stroke();
-                        }
-                    }
+                } else {
+                    // Fallback: reload captcha
+                    loadCaptchaFromBackend();
                 }
             }
         });
@@ -727,13 +671,13 @@
                 <!-- Captcha Section -->
                 <div class="mb-3" id="captchaSection" style="display: none;">
                     <label for="captcha" class="form-label">Mã xác thực <span class="text-danger">*</span></label>
-                    <div class="row">
+                    <div class="row align-items-center">
                         <div class="col-8">
                             <input type="text" class="form-control" id="captcha" name="captcha" placeholder="Nhập mã xác thực" required>
                         </div>
                         <div class="col-4">
-                            <div class="captcha-container">
-                                <canvas id="captchaCanvas" width="120" height="40" style="border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" title="Click để làm mới"></canvas>
+                            <div class="captcha-container d-flex align-items-center">
+                                <img id="captchaImage" src="" alt="Captcha" style="border: 1px solid #ddd; border-radius: 4px; cursor: pointer; width: 110px; height: 52px; object-fit: contain; display: block;" title="Click để làm mới">
                             </div>
                         </div>
                     </div>

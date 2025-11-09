@@ -35,15 +35,29 @@ public class OtpService {
     
     private static final String OTP_PREFIX = "otp:";
     private static final String RESET_TOKEN_PREFIX = "reset_token:";
+    private static final String OTP_VERIFIED_PREFIX = "otp_verified:";
+    private static final String OTP_EMAIL_SENT_PREFIX = "otp_email_sent:";
     
     public void sendOtp(String email, String purpose) {
-        // Check rate limiting (skip for forgot password)
-        if (!"forgot_password".equals(purpose) && rateLimitService.isEmailRateLimited(email)) {
+        // Check if email was already sent recently (10 minutes rate limit)
+        String emailSentKey = OTP_EMAIL_SENT_PREFIX + purpose + ":" + email;
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(emailSentKey))) {
+            // Get TTL to show remaining time
+            Long ttl = redisTemplate.getExpire(emailSentKey, TimeUnit.SECONDS);
+            long remainingMinutes = ttl != null && ttl > 0 ? (ttl / 60) + 1 : 10;
+            log.warn("Email OTP already sent recently for {} (purpose: {}). Remaining time: {} minutes", 
+                    email, purpose, remainingMinutes);
+            throw new RuntimeException("Email đã được gửi. Vui lòng đợi " + remainingMinutes + " phút trước khi yêu cầu lại.");
+        }
+        
+        // Check rate limiting for all purposes (including forgot_password)
+        // Use separate limit for forgot_password to allow legitimate users to recover their password
+        if (rateLimitService.isEmailRateLimited(email, purpose)) {
             try {
                 auditLogService.logAction(
                         null,
                         "EMAIL_BLOCKED_RATE_LIMIT_ACTIVE",
-                        "Blocked email send due to active rate limit for " + email,
+                        "Blocked email send due to active rate limit for " + email + " (purpose: " + purpose + ")",
                         null,
                         false,
                         "RATE_LIMIT_ACTIVE",
@@ -55,6 +69,10 @@ public class OtpService {
             } catch (Exception ignore) {}
             throw new RuntimeException("Quá nhiều yêu cầu. Vui lòng thử lại sau 1 giờ.");
         }
+        
+        // Mark email as sent with 10 minutes TTL (rate limit)
+        redisTemplate.opsForValue().set(emailSentKey, "sent", 10, TimeUnit.MINUTES);
+        log.info("Email sent marker stored in Redis - key: {}, expire: 10 minutes", emailSentKey);
         
         // Generate OTP
         String otp = generateOtp();
@@ -113,8 +131,8 @@ public class OtpService {
             emailService.sendEmail(email, subject, body);
         }
         
-        // Record request
-        rateLimitService.recordEmailRequest(email);
+        // Record request with purpose
+        rateLimitService.recordEmailRequest(email, purpose);
         
         log.info("OTP sent to email: {} for purpose: {}", email, purpose);
     }
@@ -181,17 +199,63 @@ public class OtpService {
     }
     
     public String generateResetToken(String email) {
+        // CRITICAL SECURITY: Verify that OTP was successfully verified before generating reset token
+        String verifiedKey = OTP_VERIFIED_PREFIX + "forgot_password:" + email;
+        if (!Boolean.TRUE.equals(redisTemplate.hasKey(verifiedKey))) {
+            log.error("SECURITY ALERT: Attempt to generate reset token without OTP verification for email: {}", email);
+            throw new RuntimeException("OTP phải được xác minh trước khi tạo reset token");
+        }
+        
         String resetToken = UUID.randomUUID().toString();
         String tokenKey = RESET_TOKEN_PREFIX + email;
         
         // Store reset token in Redis with 30 minutes expiry
         redisTemplate.opsForValue().set(tokenKey, resetToken, 30, TimeUnit.MINUTES);
         
-        log.info("Reset token generated for email: {}", email);
+        log.info("Reset token generated for email: {} (OTP verified)", email);
         return resetToken;
     }
     
+    /**
+     * Mark OTP as verified for forgot_password flow
+     * This must be called after successful OTP verification
+     */
+    public void markOtpVerified(String email, String purpose) {
+        if (!"forgot_password".equals(purpose)) {
+            // Only track for forgot_password purpose
+            return;
+        }
+        String verifiedKey = OTP_VERIFIED_PREFIX + purpose + ":" + email;
+        // Store verification state with same expiry as reset token (30 minutes)
+        redisTemplate.opsForValue().set(verifiedKey, "verified", 30, TimeUnit.MINUTES);
+        log.info("OTP verification state marked for email: {}, purpose: {}", email, purpose);
+    }
+    
+    /**
+     * Check if OTP has been verified for the given email and purpose
+     */
+    public boolean isOtpVerified(String email, String purpose) {
+        String verifiedKey = OTP_VERIFIED_PREFIX + purpose + ":" + email;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(verifiedKey));
+    }
+    
+    /**
+     * Clear OTP verification state (called after successful password reset)
+     */
+    public void clearOtpVerificationState(String email, String purpose) {
+        String verifiedKey = OTP_VERIFIED_PREFIX + purpose + ":" + email;
+        redisTemplate.delete(verifiedKey);
+        log.info("OTP verification state cleared for email: {}, purpose: {}", email, purpose);
+    }
+    
     public boolean validateResetToken(String resetToken, String email) {
+        // CRITICAL SECURITY: Check if OTP was verified before allowing reset token validation
+        String verifiedKey = OTP_VERIFIED_PREFIX + "forgot_password:" + email;
+        if (!Boolean.TRUE.equals(redisTemplate.hasKey(verifiedKey))) {
+            log.error("SECURITY ALERT: Attempt to validate reset token without OTP verification for email: {}", email);
+            return false;
+        }
+        
         String tokenKey = RESET_TOKEN_PREFIX + email;
         String storedToken = (String) redisTemplate.opsForValue().get(tokenKey);
         
@@ -203,9 +267,9 @@ public class OtpService {
         boolean isValid = resetToken.equals(storedToken);
         
         if (isValid) {
-            log.info("Reset token validated successfully for email: {}", email);
+            log.info("Reset token validated successfully for email: {} (OTP was verified)", email);
         } else {
-            log.warn("Reset token validation failed for email: {}", email);
+            log.warn("Reset token validation failed for email: {} - Token mismatch", email);
         }
         
         return isValid;
@@ -217,7 +281,9 @@ public class OtpService {
         
         if (resetToken.equals(storedToken)) {
             redisTemplate.delete(tokenKey);
-            log.info("Reset token invalidated for email: {}", email);
+            // Also clear OTP verification state after token is used
+            clearOtpVerificationState(email, "forgot_password");
+            log.info("Reset token invalidated for email: {} (OTP verification state also cleared)", email);
         }
     }
     

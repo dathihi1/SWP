@@ -31,19 +31,15 @@ public class Order extends BaseEntity {
     @Column(name = "shop_id", nullable = false)
     Long shopId;
 
-    @Column(name = "stall_id", nullable = false)
-    Long stallId;
+    @Column(name = "product_id", nullable = false)
+    Long productId;
 
     @Column(name = "seller_id", nullable = false)
     Long sellerId;
 
-    // Relationship với Stall
+    // Relationship với Product
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "stall_id", insertable = false, updatable = false)
-    Stall stall;
-
-    // Relationship với Product (từ OrderItem đầu tiên)
-    @Transient
+    @JoinColumn(name = "product_id", insertable = false, updatable = false)
     Product product;
 
     // Quantity và unitPrice từ OrderItem đầu tiên

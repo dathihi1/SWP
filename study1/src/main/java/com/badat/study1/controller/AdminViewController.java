@@ -1,14 +1,15 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.User;
-import com.badat.study1.model.Stall;
 import com.badat.study1.repository.UserRepository;
 import com.badat.study1.repository.ShopRepository;
-import com.badat.study1.repository.StallRepository;
+import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.OrderRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.WithdrawRequestRepository;
 import com.badat.study1.repository.AuditLogRepository;
+import com.badat.study1.model.Product;
+import com.badat.study1.model.Shop;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -41,7 +42,7 @@ import java.util.ArrayList;
 public class AdminViewController {
     private final UserRepository userRepository;
     private final ShopRepository shopRepository;
-    private final StallRepository stallRepository;
+    private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final WithdrawRequestRepository withdrawRequestRepository;
@@ -65,7 +66,10 @@ public class AdminViewController {
         model.addAttribute("user", user);
 
         long totalUsers = userRepository.count();
-        long totalStalls = shopRepository.count();
+        // Count ACTIVE + INACTIVE shops (not PENDING)
+        List<Shop> activeShops = shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.ACTIVE, false);
+        List<Shop> inactiveShops = shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.INACTIVE, false);
+        long totalStalls = activeShops.size() + inactiveShops.size();
         long pendingWithdrawals = withdrawRequestRepository.findByStatus(com.badat.study1.model.WithdrawRequest.Status.PENDING).size();
         long totalAuditLogs = auditLogRepository.count();
         long todayAuditLogs = auditLogRepository.countByCreatedAtAfter(java.time.LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0));
@@ -131,43 +135,27 @@ public class AdminViewController {
                 .add(item.getTotalAmount() != null ? item.getTotalAmount() : BigDecimal.ZERO));
             ordersBySellerDistinct.computeIfAbsent(sellerId, k -> new java.util.HashSet<>()).add(item.getOrderId());
         }
-        List<Map<String, Object>> topSellers = revenueBySeller.entrySet().stream()
-            .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-            .limit(5)
-            .map(e -> {
-                Long sellerId = e.getKey();
-                var userOpt = userRepository.findById(sellerId);
-                String sellerName = userOpt.map(User::getUsername).orElse("Seller " + sellerId);
-                Map<String, Object> m = new java.util.HashMap<>();
-                m.put("sellerId", sellerId);
-                m.put("sellerName", sellerName);
-                m.put("revenue", e.getValue());
-                m.put("orders", (long) ordersBySellerDistinct.getOrDefault(sellerId, java.util.Collections.emptySet()).size());
-                return m;
-            })
-            .collect(Collectors.toList());
-        model.addAttribute("topSellers", topSellers);
 
-        Map<Long, BigDecimal> revenueByStall = new java.util.HashMap<>();
-        Map<Long, java.util.Set<Long>> ordersByStallDistinct = new java.util.HashMap<>();
+        Map<Long, BigDecimal> revenueByProduct = new java.util.HashMap<>();
+        Map<Long, java.util.Set<Long>> ordersByProductDistinct = new java.util.HashMap<>();
         for (var item : completedItems) {
-            Long stallId = item.getStallId();
-            revenueByStall.put(stallId, revenueByStall.getOrDefault(stallId, BigDecimal.ZERO)
+            Long productId = item.getProductId();
+            revenueByProduct.put(productId, revenueByProduct.getOrDefault(productId, BigDecimal.ZERO)
                 .add(item.getTotalAmount() != null ? item.getTotalAmount() : BigDecimal.ZERO));
-            ordersByStallDistinct.computeIfAbsent(stallId, k -> new java.util.HashSet<>()).add(item.getOrderId());
+            ordersByProductDistinct.computeIfAbsent(productId, k -> new java.util.HashSet<>()).add(item.getOrderId());
         }
-        List<Map<String, Object>> topStalls = revenueByStall.entrySet().stream()
+        List<Map<String, Object>> topStalls = revenueByProduct.entrySet().stream()
             .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
             .limit(5)
             .map(e -> {
-                Long stallId = e.getKey();
-                var stallOpt = stallRepository.findById(stallId);
-                String stallName = stallOpt.map(Stall::getStallName).orElse("Stall " + stallId);
+                Long productId = e.getKey();
+                var productOpt = productRepository.findById(productId);
+                String productName = productOpt.map(Product::getProductName).orElse("Product " + productId);
                 Map<String, Object> m = new java.util.HashMap<>();
-                m.put("stallId", stallId);
-                m.put("stallName", stallName);
+                m.put("stallId", productId);
+                m.put("stallName", productName);
                 m.put("revenue", e.getValue());
-                m.put("orders", (long) ordersByStallDistinct.getOrDefault(stallId, java.util.Collections.emptySet()).size());
+                m.put("orders", (long) ordersByProductDistinct.getOrDefault(productId, java.util.Collections.emptySet()).size());
                 return m;
             })
             .collect(Collectors.toList());
@@ -192,67 +180,81 @@ public class AdminViewController {
         model.addAttribute("isAuthenticated", true);
         model.addAttribute("userRole", user.getRole().name());
         model.addAttribute("user", user);
-        model.addAttribute("pendingStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("PENDING"));
-        model.addAttribute("approvedStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("CLOSED"));
-        model.addAttribute("rejectedStalls", stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("REJECTED"));
-        List<Stall> historyStalls = new java.util.ArrayList<>();
-        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("CLOSED"));
-        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("OPEN"));
-        historyStalls.addAll(stallRepository.findByStatusAndIsDeleteFalseOrderByCreatedAtDesc("REJECTED"));
-        historyStalls.sort((a, b) -> {
-            if (a.getApprovedAt() == null && b.getApprovedAt() == null) return 0;
-            if (a.getApprovedAt() == null) return 1;
-            if (b.getApprovedAt() == null) return -1;
-            return b.getApprovedAt().compareTo(a.getApprovedAt());
+        // Get shops waiting for approval (PENDING status)
+        model.addAttribute("pendingStalls", shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.PENDING, false));
+        // Get approved shops (ACTIVE status)
+        model.addAttribute("approvedStalls", shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.ACTIVE, false));
+        model.addAttribute("rejectedStalls", java.util.Collections.emptyList());
+        // History: all shops sorted by createdAt (including PENDING, ACTIVE, INACTIVE)
+        List<Shop> historyShops = new java.util.ArrayList<>();
+        historyShops.addAll(shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.ACTIVE, false));
+        historyShops.addAll(shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.INACTIVE, false));
+        historyShops.addAll(shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.PENDING, false));
+        historyShops.sort((a, b) -> {
+            if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+            if (a.getCreatedAt() == null) return 1;
+            if (b.getCreatedAt() == null) return -1;
+            return b.getCreatedAt().compareTo(a.getCreatedAt());
         });
-        model.addAttribute("historyStalls", historyStalls);
-        java.util.List<User> sellers = userRepository.findByRole(User.Role.SELLER);
-        for (User seller : sellers) {
-            if (seller.getStatus() == null) {
-                seller.setStatus(User.Status.ACTIVE);
-                userRepository.save(seller);
-            }
-        }
-        model.addAttribute("sellers", sellers);
-        List<Map<String, Object>> sellerRevenue = sellers.stream()
-            .map(seller -> {
-                java.util.List<com.badat.study1.model.OrderItem> completedOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(seller.getId())
-                    .stream()
-                    .filter(orderItem -> orderItem.getStatus() == com.badat.study1.model.OrderItem.Status.COMPLETED)
-                    .collect(Collectors.toList());
-                BigDecimal totalRevenue = completedOrderItems.stream()
-                    .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-                long totalOrders = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(seller.getId())
-                    .stream()
-                    .map(com.badat.study1.model.OrderItem::getOrderId)
-                    .distinct()
-                    .count();
-                long completedOrdersCount = completedOrderItems.stream()
-                    .map(com.badat.study1.model.OrderItem::getOrderId)
-                    .distinct()
-                    .count();
-                var shop = shopRepository.findByUserId(seller.getId()).orElse(null);
-                String shopName = shop != null ? shop.getShopName() : "Chưa có shop";
-                long stallsCount = shop != null ? stallRepository.countByShopIdAndIsDeleteFalse(shop.getId()) : 0;
-                Map<String, Object> sellerData = new java.util.HashMap<>();
-                sellerData.put("seller", seller);
-                sellerData.put("shop", shop);
-                sellerData.put("shopName", shopName);
-                sellerData.put("totalRevenue", totalRevenue);
-                sellerData.put("totalOrders", totalOrders);
-                sellerData.put("completedOrders", completedOrdersCount);
-                sellerData.put("stallsCount", stallsCount);
-                return sellerData;
+        model.addAttribute("historyStalls", historyShops);
+        
+        // Get all ACTIVE and INACTIVE shops (not PENDING) for shop list
+        List<Shop> activeShops = shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.ACTIVE, false);
+        List<Shop> inactiveShops = shopRepository.findByStatusAndIsDeleteOrderByCreatedAtDesc(Shop.Status.INACTIVE, false);
+        List<Shop> allShops = new java.util.ArrayList<>();
+        allShops.addAll(activeShops);
+        allShops.addAll(inactiveShops);
+        
+        // Build shop list with user info and revenue data
+        List<Map<String, Object>> shopList = allShops.stream()
+            .map(shop -> {
+                // Get user for this shop
+                User shopUser = userRepository.findById(shop.getUserId()).orElse(null);
+                
+                // Calculate revenue and orders for this shop's seller
+                BigDecimal totalRevenue = BigDecimal.ZERO;
+                long totalOrders = 0;
+                long completedOrdersCount = 0;
+                
+                if (shopUser != null) {
+                    java.util.List<com.badat.study1.model.OrderItem> completedOrderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(shopUser.getId())
+                        .stream()
+                        .filter(orderItem -> orderItem.getStatus() == com.badat.study1.model.OrderItem.Status.COMPLETED)
+                        .collect(Collectors.toList());
+                    totalRevenue = completedOrderItems.stream()
+                        .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    totalOrders = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(shopUser.getId())
+                        .stream()
+                        .map(com.badat.study1.model.OrderItem::getOrderId)
+                        .distinct()
+                        .count();
+                    completedOrdersCount = completedOrderItems.stream()
+                        .map(com.badat.study1.model.OrderItem::getOrderId)
+                        .distinct()
+                        .count();
+                }
+                
+                long productsCount = productRepository.countByShopIdAndIsDeleteFalse(shop.getId());
+                
+                Map<String, Object> shopData = new java.util.HashMap<>();
+                shopData.put("shop", shop);
+                shopData.put("user", shopUser);
+                shopData.put("shopName", shop.getShopName());
+                shopData.put("totalRevenue", totalRevenue);
+                shopData.put("totalOrders", totalOrders);
+                shopData.put("completedOrders", completedOrdersCount);
+                shopData.put("stallsCount", productsCount);
+                return shopData;
             })
             .collect(Collectors.toList());
-        model.addAttribute("sellerRevenue", sellerRevenue);
-        List<Map<String, Object>> topSellers = sellerRevenue.stream()
-            .sorted((a, b) -> ((BigDecimal) b.get("totalRevenue")).compareTo((BigDecimal) a.get("totalRevenue")))
-            .limit(5)
-            .collect(Collectors.toList());
-        model.addAttribute("topSellers", topSellers);
-        BigDecimal totalPlatformRevenue = sellerRevenue.stream()
+        model.addAttribute("shopList", shopList);
+        model.addAttribute("sellerRevenue", shopList); // Keep for backward compatibility with template
+        
+        // Count ACTIVE + INACTIVE shops for total shops display (not PENDING)
+        long totalActiveShops = allShops.size();
+        model.addAttribute("totalActiveShops", totalActiveShops);
+        BigDecimal totalPlatformRevenue = shopList.stream()
             .map(data -> (BigDecimal) data.get("totalRevenue"))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         model.addAttribute("totalPlatformRevenue", totalPlatformRevenue);
@@ -295,20 +297,28 @@ public class AdminViewController {
             return "redirect:/";
         }
         try {
-            Stall stall = stallRepository.findById(stallId).orElse(null);
-            if (stall == null) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
+            Shop shop = shopRepository.findById(stallId).orElse(null);
+            if (shop == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy cửa hàng!");
                 return "redirect:/admin/stalls";
             }
-            stall.setStatus("CLOSED");
-            stall.setActive(false);
-            stall.setApprovedAt(Instant.now());
-            stall.setApprovedBy(user.getId());
-            stall.setApprovalReason(reason);
-            stallRepository.save(stall);
-            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã được duyệt thành công!");
+            // Activate shop
+            shop.setStatus(Shop.Status.ACTIVE);
+            shop.setUpdatedAt(Instant.now());
+            shopRepository.save(shop);
+            
+            // Add SELLER role to user
+            User shopUser = userRepository.findById(shop.getUserId()).orElse(null);
+            if (shopUser != null && shopUser.getRole() != User.Role.SELLER) {
+                shopUser.setRole(User.Role.SELLER);
+                userRepository.save(shopUser);
+                log.info("Added SELLER role to user ID: {} after shop approval", shop.getUserId());
+            }
+            
+            redirectAttributes.addFlashAttribute("successMessage", "Duyệt cửa hàng thành công! Người dùng đã được cấp quyền SELLER.");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi duyệt gian hàng!");
+            log.error("Error approving shop: ", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi duyệt cửa hàng!");
         }
         if ("shops".equals(redirect)) {
             return "redirect:/admin/stalls?redirect=shops";
@@ -334,20 +344,20 @@ public class AdminViewController {
             return "redirect:/";
         }
         try {
-            Stall stall = stallRepository.findById(stallId).orElse(null);
-            if (stall == null) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy gian hàng!");
+            Shop shop = shopRepository.findById(stallId).orElse(null);
+            if (shop == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy cửa hàng!");
                 return "redirect:/admin/stalls";
             }
-            stall.setStatus("REJECTED");
-            stall.setActive(false);
-            stall.setApprovedAt(Instant.now());
-            stall.setApprovedBy(user.getId());
-            stall.setApprovalReason(reason);
-            stallRepository.save(stall);
-            redirectAttributes.addFlashAttribute("successMessage", "Gian hàng đã bị từ chối!");
+            // Reject shop: set status to INACTIVE and save rejection reason
+            shop.setStatus(Shop.Status.INACTIVE);
+            shop.setRejectionReason(reason);
+            shop.setUpdatedAt(Instant.now());
+            shopRepository.save(shop);
+            redirectAttributes.addFlashAttribute("successMessage", "Đã từ chối cửa hàng.");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi từ chối gian hàng!");
+            log.error("Error rejecting shop: ", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra khi từ chối cửa hàng!");
         }
         if ("shops".equals(redirect)) {
             return "redirect:/admin/stalls?redirect=shops";
@@ -360,11 +370,28 @@ public class AdminViewController {
     @GetMapping("/admin/stalls/{id}/image")
     public ResponseEntity<byte[]> getStallImage(@PathVariable("id") Long stallId) {
         try {
-            Stall stall = stallRepository.findById(stallId).orElse(null);
-            if (stall == null || stall.getStallImageData() == null || stall.getStallImageData().length == 0) {
+            Shop shop = shopRepository.findById(stallId).orElse(null);
+            if (shop == null || shop.getCccdFrontImage() == null || shop.getCccdFrontImage().length == 0) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            byte[] imageBytes = stall.getStallImageData();
+            byte[] imageBytes = shop.getCccdFrontImage();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_JPEG);
+            headers.setCacheControl("max-age=3600, must-revalidate");
+            return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/admin/stalls/{id}/image/back")
+    public ResponseEntity<byte[]> getStallImageBack(@PathVariable("id") Long stallId) {
+        try {
+            Shop shop = shopRepository.findById(stallId).orElse(null);
+            if (shop == null || shop.getCccdBackImage() == null || shop.getCccdBackImage().length == 0) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            byte[] imageBytes = shop.getCccdBackImage();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.IMAGE_JPEG);
             headers.setCacheControl("max-age=3600, must-revalidate");
@@ -374,6 +401,10 @@ public class AdminViewController {
         }
     }
 }
+
+
+
+
 
 
 

@@ -65,7 +65,8 @@ public class CaptchaService {
                     .build();
             
             log.info("Captcha generated with ID: {} (will be stored in cookie)", captchaId);
-            log.debug("Captcha text: {} for ID: {}", captchaText, captchaId);
+            // Log captcha text at INFO as requested
+            log.info("Captcha text: {} for ID: {}", captchaText, captchaId);
             
             // Return response and cookie header
             CaptchaResponse captchaResponse = CaptchaResponse.builder()
@@ -120,29 +121,40 @@ public class CaptchaService {
         
         try {
             String redisKey = CAPTCHA_PREFIX + captchaId;
-            String storedCaptcha = (String) redisTemplate.opsForValue().get(redisKey);
+            
+            // CRITICAL: Use GET and DELETE atomically to prevent race conditions
+            // We use getAndDelete which is atomic - only one request will get the value
+            // Subsequent requests will get null because captcha was already deleted
+            String storedCaptcha = (String) redisTemplate.opsForValue().getAndDelete(redisKey);
             
             if (storedCaptcha == null) {
-                log.warn("Captcha not found or expired for ID: {} (Redis key: {})", captchaId, redisKey);
+                log.warn("Captcha not found, expired, or already used for ID: {} (Redis key: {})", 
+                        captchaId, redisKey);
                 return false;
             }
             
-            log.debug("Stored captcha text: '{}'", storedCaptcha);
+            log.debug("Stored captcha text retrieved and deleted: '{}'", storedCaptcha);
             
+            // Normalize input: trim whitespace and handle whitespace issues
             String trimmedInput = userInput.trim();
-            boolean isValid = storedCaptcha.equals(trimmedInput);
             
-            log.info("Captcha comparison - stored: '{}' vs input: '{}' -> {}", 
-                    storedCaptcha, trimmedInput, isValid);
+            // Remove any extra whitespace between characters if any
+            String normalizedInput = trimmedInput.replaceAll("\\s+", "");
+            String normalizedStored = storedCaptcha.replaceAll("\\s+", "");
             
-            // Always delete captcha after validation (one-time use)
-            redisTemplate.delete(redisKey);
+            // Case-insensitive comparison to improve UX
+            boolean isValid = normalizedStored.equalsIgnoreCase(normalizedInput);
             
+            log.info("Captcha comparison (case-insensitive) - stored: '{}' (normalized: '{}') vs input: '{}' (normalized: '{}') -> {}", 
+                    storedCaptcha, normalizedStored, trimmedInput, normalizedInput, isValid);
+            
+            // Captcha is already deleted by getAndDelete above - cannot be reused
             if (isValid) {
-                log.info("Captcha validated successfully for ID: {}", captchaId);
+                log.info("Captcha validated successfully for ID: {} - was already deleted from Redis", captchaId);
             } else {
-                log.warn("Captcha validation failed for ID: {} - stored: '{}' vs input: '{}'", 
-                        captchaId, storedCaptcha, trimmedInput);
+                log.warn("Captcha validation failed for ID: {} - stored: '{}' vs input: '{}' (normalized: '{}') - captcha was deleted to prevent reuse", 
+                        captchaId, storedCaptcha, trimmedInput, normalizedInput);
+                // Captcha is already deleted - user must get a new one
             }
             
             return isValid;
@@ -198,6 +210,11 @@ public class CaptchaService {
         throw new UnsupportedOperationException("Use validateCaptcha(HttpServletRequest, String) instead");
     }
     
+    /**
+     * @deprecated This method is deprecated due to security vulnerability (sends answer to frontend).
+     * Use {@link #generateCaptchaWithCookie()} instead for secure image captcha.
+     */
+    @Deprecated
     // Generate simple captcha with answer stored in Redis
     public Map<String, String> generateSimpleCaptcha() {
         try {
@@ -235,6 +252,11 @@ public class CaptchaService {
         }
     }
     
+    /**
+     * @deprecated This method is deprecated. Use {@link #validateCaptcha(HttpServletRequest, String)} instead
+     * which reads captchaId from HttpOnly cookie for better security.
+     */
+    @Deprecated
     // Validate simple captcha against stored answer
     public boolean validateSimpleCaptcha(String captchaId, String userInput) {
         log.info("Validating simple captcha - ID: {}, User input: '{}'", captchaId, userInput);

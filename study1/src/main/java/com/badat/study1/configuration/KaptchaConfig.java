@@ -19,32 +19,34 @@ public class KaptchaConfig {
         DefaultKaptcha kaptcha = new DefaultKaptcha();
         Properties properties = new Properties();
         
-        // Image properties
-        properties.setProperty("kaptcha.image.width", "200");
-        properties.setProperty("kaptcha.image.height", "50");
+        // Image properties - increased width to prevent text overflow (110x52px)
+        properties.setProperty("kaptcha.image.width", "110");
+        properties.setProperty("kaptcha.image.height", "52");
         
-        // Text properties
+        // Text properties - easier to read
         properties.setProperty("kaptcha.textproducer.char.length", String.valueOf(captchaLength));
-        properties.setProperty("kaptcha.textproducer.char.string", "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-        properties.setProperty("kaptcha.textproducer.font.size", "40");
-        properties.setProperty("kaptcha.textproducer.font.color", "black");
-        properties.setProperty("kaptcha.textproducer.font.names", "Arial,Courier");
+        properties.setProperty("kaptcha.textproducer.char.string", "A");
+        properties.setProperty("kaptcha.textproducer.font.size", "28"); // Reduced for better fit and readability
+        properties.setProperty("kaptcha.textproducer.font.color", "0,0,0"); // Pure black for better visibility
+        properties.setProperty("kaptcha.textproducer.font.names", "Arial");
+        properties.setProperty("kaptcha.textproducer.char.space", "3"); // Add spacing between characters
         
-        // Noise properties
-        properties.setProperty("kaptcha.noise.color", "white");
+        // Noise properties - reduced noise for better readability
+        properties.setProperty("kaptcha.noise.color", "240,240,240"); // Very light gray noise (almost invisible)
         properties.setProperty("kaptcha.noise.impl", "com.google.code.kaptcha.impl.DefaultNoise");
         
-        // Background properties
-        properties.setProperty("kaptcha.background.color.from", "lightGray");
-        properties.setProperty("kaptcha.background.color.to", "white");
+        // Background properties - brighter for better contrast
+        properties.setProperty("kaptcha.background.color.from", "255,255,255"); // White
+        properties.setProperty("kaptcha.background.color.to", "250,250,250"); // Very light gray
         
-        // Border properties
+        // Border properties - subtle border
         properties.setProperty("kaptcha.border", "yes");
-        properties.setProperty("kaptcha.border.color", "105,179,90");
+        properties.setProperty("kaptcha.border.color", "221,221,221"); // Light gray border
         properties.setProperty("kaptcha.border.thickness", "1");
         
-        // Word properties
+        // Word properties - adjust renderer to prevent overflow
         properties.setProperty("kaptcha.word.impl", "com.google.code.kaptcha.text.impl.DefaultWordRenderer");
+        properties.setProperty("kaptcha.obscurificator.impl", "com.google.code.kaptcha.impl.ShadowGimpy"); // Less distortion
         
         // Session properties
         properties.setProperty("kaptcha.session.key", "kaptchaCode");

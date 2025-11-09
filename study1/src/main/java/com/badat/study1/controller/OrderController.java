@@ -2,8 +2,9 @@ package com.badat.study1.controller;
 
 import com.badat.study1.model.Order;
 import com.badat.study1.model.User;
+import com.badat.study1.model.Product;
+import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.service.OrderService;
-import com.badat.study1.repository.StallRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 public class OrderController {
     
     private final OrderService orderService;
-    private final StallRepository stallRepository;
+    private final ProductRepository productRepository;
     
     /**
      * Lấy danh sách orders của user hiện tại với thông tin OrderItem
@@ -33,7 +34,7 @@ public class OrderController {
     public ResponseEntity<List<Map<String, Object>>> getMyOrders(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String searchStall,
+            @RequestParam(required = false) String searchSeller,
             @RequestParam(required = false) String searchProduct,
             @RequestParam(required = false) String sortBy) {
         try {
@@ -41,7 +42,7 @@ public class OrderController {
             User user = (User) auth.getPrincipal();
             
             List<Order> orders = orderService.getOrdersByBuyerWithFilters(
-                user.getId(), startDate, endDate, searchStall, searchProduct, sortBy);
+                user.getId(), startDate, endDate, searchSeller, searchProduct, sortBy);
             
             // Chuyển đổi orders thành format mới với thông tin OrderItem
             List<Map<String, Object>> orderDetails = orders.stream().map(order -> {
@@ -62,7 +63,7 @@ public class OrderController {
                         Map<String, Object> itemMap = new HashMap<>();
                         itemMap.put("id", item.getId());
                         itemMap.put("productId", item.getProductId());
-                        itemMap.put("productName", item.getProduct() != null ? item.getProduct().getName() : "N/A");
+                        itemMap.put("productName", item.getProductVariant() != null ? item.getProductVariant().getName() : "N/A");
                         itemMap.put("warehouseId", item.getWarehouseId());
                         itemMap.put("quantity", item.getQuantity());
                         itemMap.put("unitPrice", item.getUnitPrice());
@@ -70,11 +71,11 @@ public class OrderController {
                         itemMap.put("commissionAmount", item.getCommissionAmount());
                         itemMap.put("sellerAmount", item.getSellerAmount());
                         itemMap.put("status", item.getStatus().name());
-                        // Stall info
-                        itemMap.put("stallId", item.getStallId());
+                        // Product info
+                        itemMap.put("stallId", item.getProductId());
                         try {
-                            if (item.getStallId() != null) {
-                                itemMap.put("stallName", stallRepository.findById(item.getStallId()).map(s -> s.getStallName()).orElse("N/A"));
+                            if (item.getProductId() != null) {
+                                itemMap.put("stallName", productRepository.findById(item.getProductId()).map(Product::getProductName).orElse("N/A"));
                             }
                         } catch (Exception ex) {
                             itemMap.put("stallName", "N/A");
@@ -191,7 +192,7 @@ public class OrderController {
                     Map<String, Object> itemMap = new HashMap<>();
                     itemMap.put("id", item.getId());
                     itemMap.put("productId", item.getProductId());
-                    itemMap.put("productName", item.getProduct() != null ? item.getProduct().getName() : "N/A");
+                    itemMap.put("productName", item.getProductVariant() != null ? item.getProductVariant().getName() : "N/A");
                     itemMap.put("warehouseId", item.getWarehouseId());
                     itemMap.put("quantity", item.getQuantity());
                     itemMap.put("unitPrice", item.getUnitPrice());
@@ -200,11 +201,11 @@ public class OrderController {
                     itemMap.put("sellerAmount", item.getSellerAmount());
                     itemMap.put("status", item.getStatus().name());
                     itemMap.put("notes", item.getNotes());
-                    // Stall info
-                    itemMap.put("stallId", item.getStallId());
+                    // Product info
+                    itemMap.put("stallId", item.getProductId());
                     try {
-                        if (item.getStallId() != null) {
-                            itemMap.put("stallName", stallRepository.findById(item.getStallId()).map(s -> s.getStallName()).orElse("N/A"));
+                        if (item.getProductId() != null) {
+                            itemMap.put("stallName", productRepository.findById(item.getProductId()).map(Product::getProductName).orElse("N/A"));
                         }
                     } catch (Exception ex) {
                         itemMap.put("stallName", "N/A");

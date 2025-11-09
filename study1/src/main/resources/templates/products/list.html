@@ -50,6 +50,24 @@
             font-size: 0.875rem;
             font-weight: 500;
         }
+        /* Marquee styles (synced with home) */
+        .marquee-container { background: white; color: #0d6efd; padding: 8px 0; overflow: hidden; position: relative; z-index: 1000; border-bottom: 1px solid #e9ecef; }
+        .marquee { display: inline-block; white-space: nowrap; animation: marquee 40s linear infinite; font-size: 14px; font-weight: 500; color: #0d6efd; }
+        .marquee:hover { animation-play-state: paused; }
+        @keyframes marquee { 0% { transform: translateX(100%);} 100% { transform: translateX(-100%);} }
+        /* Pagination styles giống trang Đơn hàng */
+        .pagination { margin: 0; }
+        .page-link {
+            color: #0d6efd;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem 0.75rem;
+            margin: 0 4px;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        .page-link:hover { color: #0b5ed7; background-color: #e9ecef; border-color: #adb5bd; }
+        .page-item.active .page-link { background-color: #0d6efd; border-color: #0d6efd; color: #fff; }
+        .page-item.disabled .page-link { color: #6c757d; background-color: #fff; border-color: #dee2e6; cursor: not-allowed; }
     </style>
     <script src="/js/auth.js"></script>
     <script>
@@ -140,6 +158,14 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div id="nav" class="collapse navbar-collapse d-flex align-items-center">
+            <div class="flex-grow-1 mx-lg-3 d-none d-lg-block">
+                <form role="search" th:action="@{/products}" method="get">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="q" placeholder="Tìm kiếm tên gian hàng...">
+                        <button class="btn home-primary" type="submit" aria-label="Tìm kiếm"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
+                </form>
+            </div>
             
             <div class="d-none d-lg-flex align-items-center gap-2 ms-auto">
                 <!-- Guest user navigation -->
@@ -170,20 +196,15 @@
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" th:href="@{/profile}" href="/profile"><i class="fa-solid fa-user me-2"></i>Thông tin cá nhân</a></li>
                             <li><a class="dropdown-item" th:href="@{/orders}" href="/orders"><i class="fa-solid fa-shopping-bag me-2"></i>Đơn hàng</a></li>
-                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/stall-management}" href="/seller/stall-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
+                            <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/seller/product-management}" href="/seller/product-management"><i class="fa-solid fa-store me-2"></i>Quản lí gian hàng</a></li>
                             <li th:if="${userRole == 'SELLER'}"><a class="dropdown-item" th:href="@{/withdraw}" href="/withdraw"><i class="fa-solid fa-money-bill-transfer me-2"></i>Rút tiền</a></li>
                             <li><a class="dropdown-item" th:href="@{/payment-history}" href="/payment-history"><i class="fa-solid fa-credit-card me-2"></i>Lịch sử thanh toán</a></li>
                             <li><a class="dropdown-item" th:href="@{/change-password}" href="/change-password"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-heart me-2"></i>Yêu thích</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="window.authManager.logout(); return false;"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
                         </ul>
                     </div>
 
-                    <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="#" aria-label="Tin nhắn">
-                        <i class="fa-solid fa-message"></i>
-                        <span>Tin nhắn</span>
-                    </a>
                     
                     <a class="btn btn-outline-danger d-flex align-items-center gap-2" th:href="@{/cart}" href="/cart" aria-label="Giỏ hàng">
                         <i class="fa-solid fa-cart-shopping"></i>
@@ -195,14 +216,14 @@
     </div>
 </nav>
 
-<!-- Running ticker line -->
-<div class="bg-light border-bottom">
-    <div class="container py-2">
-        <marquee behavior="scroll" direction="left" scrollamount="6">
-            Ưu đãi hôm nay: Giao dịch an toàn • Nạp ví nhanh • Hỗ trợ 24/7 • Nhiều gian hàng uy tín
-        </marquee>
+<!-- Marquee (synced with home) -->
+<div class="marquee-container">
+    <div class="container">
+        <div class="marquee">
+            <i class="fa-solid fa-bullhorn me-2"></i>
+            MMO Market - Mua bán sản phẩm số . Mọi giao dịch trên trang đều hoàn toàn tự động và được giữ tiền 3 ngày, thay thế cho hình thức trung gian, các bạn yên tâm giao dịch nhé.
+        </div>
     </div>
-    
 </div>
 
 <!-- Empty state -->
@@ -307,11 +328,11 @@
 
 <div class="row g-3" th:if="${!stalls.isEmpty()}">
     <div class="col-12 col-md-4" th:each="s: ${stalls}">
-        <a th:href="@{'/stall/' + ${s.id}}" class="text-decoration-none text-dark">
+        <a th:href="@{'/products/' + ${s.id}}" class="text-decoration-none text-dark">
             <div class="card h-100 border-0 shadow-sm hover-lift">
                 <!-- Stall Image -->
                 <div class="preview-img-frame" styles="height:200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <img th:alt="${s.stallName}" th:src="@{'/stall-image/' + ${s.id}}" 
+                    <img th:alt="${s.productName}" th:src="@{'/stall-image/' + ${s.id}}" 
                          style="object-fit:cover;height:200px; width: 100%; border-radius: 0.5rem 0.5rem 0 0;"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <!-- Fallback content if no image -->
@@ -319,14 +340,14 @@
                          style="display: none; border-radius: 0.5rem 0.5rem 0 0;">
                         <div class="text-center text-white">
                             <i class="fa-solid fa-store mb-2" style="font-size:48px; opacity: 0.8;"></i>
-                            <div class="fw-bold" th:text="${s.stallName}">Gian hàng</div>
+                            <div class="fw-bold" th:text="${s.productName}">Gian hàng</div>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Stall Content -->
                 <div class="p-3" style="line-height:1.5;">
-                    <div class="fw-semibold text-truncate mb-2" th:text="${s.stallName}">Tên gian hàng</div>
+                    <div class="fw-semibold text-truncate mb-2" th:text="${s.productName}">Tên gian hàng</div>
                     
                     <!-- Stock and Price Range -->
                     <div class="mb-2">
@@ -344,17 +365,12 @@
                     
                     <div class="small mb-2">
                         <div class="text-muted">Loại gian hàng</div>
-                        <div class="text-truncate" th:text="${s.stallCategory != null ? s.stallCategory : 'Khác'}">Danh mục</div>
+                        <div class="text-truncate" th:text="${s.productCategory != null ? s.productCategory : 'Khác'}">Danh mục</div>
                     </div>
                     
                     <div class="small mb-2">
                         <div class="text-muted">Tên shop</div>
                         <div class="text-truncate" th:text="${shopMap[s.shopId] != null ? shopMap[s.shopId].shopName : 'N/A'}">Shop</div>
-                    </div>
-                    
-                    <div class="small mb-2">
-                        <div class="text-muted">Loại kinh doanh</div>
-                        <div class="text-truncate" th:text="${s.businessType}">Business Type</div>
                     </div>
                     
                     <div class="small mt-2 d-flex justify-content-between align-items-center">
@@ -384,27 +400,35 @@
 <div class="container mt-5" th:if="${totalPages > 1}">
     <div class="row">
         <div class="col-12">
-            <nav aria-label="Pagination">
+            <nav aria-label="Pagination"
+                 th:with="maxButtons=${7},
+                          start=${(currentPage - 3) < 0 ? 0 : (currentPage - 3)},
+                          end=${(start + maxButtons - 1) > (totalPages - 1) ? (totalPages - 1) : (start + maxButtons - 1)},
+                          start=${(end - maxButtons + 1) < 0 ? 0 : (end - maxButtons + 1)}">
                 <ul class="pagination justify-content-center">
                     <!-- Previous button -->
                     <li class="page-item" th:classappend="${!hasPrev} ? 'disabled'">
-                        <a class="page-link" th:href="${hasPrev} ? @{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${currentPage - 1}, size=${pageSize})} : '#'" 
-                           th:if="${hasPrev}">&lt;</a>
-                        <span class="page-link" th:unless="${hasPrev}">&lt;</span>
+                        <a class="page-link" th:if="${hasPrev}"
+                           th:href="@{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${currentPage - 1}, size=${pageSize})}"
+                           aria-label="Previous">&laquo;</a>
+                        <span class="page-link" th:unless="${hasPrev}">&laquo;</span>
                     </li>
                     
                     <!-- Page numbers -->
-                    <li class="page-item" th:each="pageNum : ${#numbers.sequence(0, totalPages - 1)}" 
+                    <li class="page-item" th:each="pageNum : ${#numbers.sequence(start, end)}"
                         th:classappend="${pageNum == currentPage} ? 'active'">
-                        <a class="page-link" th:href="@{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${pageNum}, size=${pageSize})}" 
+                        <span class="page-link" th:if="${pageNum == currentPage}" th:text="${pageNum + 1}">1</span>
+                        <a class="page-link" th:unless="${pageNum == currentPage}"
+                           th:href="@{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${pageNum}, size=${pageSize})}"
                            th:text="${pageNum + 1}">1</a>
                     </li>
                     
                     <!-- Next button -->
                     <li class="page-item" th:classappend="${!hasNext} ? 'disabled'">
-                        <a class="page-link" th:href="${hasNext} ? @{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${currentPage + 1}, size=${pageSize})} : '#'" 
-                           th:if="${hasNext}">&gt;</a>
-                        <span class="page-link" th:unless="${hasNext}">&gt;</span>
+                        <a class="page-link" th:if="${hasNext}"
+                           th:href="@{/products(q=${q}, type=${type}, shop=${shop}, ratingMin=${ratingMin}, sortBy=${sortBy}, order=${order}, page=${currentPage + 1}, size=${pageSize})}"
+                           aria-label="Next">&raquo;</a>
+                        <span class="page-link" th:unless="${hasNext}">&raquo;</span>
                     </li>
                 </ul>
             </nav>

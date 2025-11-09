@@ -23,24 +23,23 @@ public class Warehouse {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", nullable = false)
-    private ItemType itemType;
+    @Column(name = "item_subcategory", nullable = false, length = 100)
+    private String itemSubcategory;
     
     @Column(name = "item_data", nullable = false, columnDefinition = "TEXT")
     private String itemData;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant productVariant;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shop_id", nullable = false)
     private Shop shop;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stall_id", nullable = false)
-    private Stall stall;
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -70,7 +69,5 @@ public class Warehouse {
     @Column(name = "reserved_until")
     private LocalDateTime reservedUntil;
     
-    public enum ItemType {
-        EMAIL, CARD, ACCOUNT, KEY
-    }
+    // Removed ItemType enum in favor of free-form subcategory string
 }
