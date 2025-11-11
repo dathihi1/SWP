@@ -131,21 +131,21 @@ public class CartController {
         }
     }
     
-    @GetMapping("/check-stock/{productId}")
-    public ResponseEntity<?> checkStock(@PathVariable Long productId) {
+    @GetMapping("/check-stock/{productVariantId}")
+    public ResponseEntity<?> checkStock(@PathVariable Long productVariantId) {
         try {
-            log.info("Checking stock for product: {}", productId);
+            log.info("Checking stock for product variant: {}", productVariantId);
             
-            // Count available warehouse items for this product
-            long availableStock = warehouseRepository.countByProductIdAndLockedFalseAndIsDeleteFalse(productId);
+            // Count available warehouse items for this product variant
+            long availableStock = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productVariantId);
             
             return ResponseEntity.ok(Map.of(
-                "productId", productId,
+                "productVariantId", productVariantId,
                 "availableStock", availableStock,
                 "message", "Available stock: " + availableStock
             ));
         } catch (Exception e) {
-            log.error("Error checking stock for product: {}", productId, e);
+            log.error("Error checking stock for product variant: {}", productVariantId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error checking stock: " + e.getMessage());
         }
     }

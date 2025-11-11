@@ -62,8 +62,11 @@ public class OrderController {
                     List<Map<String, Object>> orderItems = order.getOrderItems().stream().map(item -> {
                         Map<String, Object> itemMap = new HashMap<>();
                         itemMap.put("id", item.getId());
+                        itemMap.put("productVariantId", item.getProductVariantId());
                         itemMap.put("productId", item.getProductId());
-                        itemMap.put("productName", item.getProductVariant() != null ? item.getProductVariant().getName() : "N/A");
+                        // Tên của ProductVariant (mặt hàng)
+                        itemMap.put("productVariantName", item.getProductVariant() != null ? item.getProductVariant().getName() : "N/A");
+                        itemMap.put("productVariantSubcategory", item.getProductVariant() != null && item.getProductVariant().getSubcategory() != null ? item.getProductVariant().getSubcategory() : null);
                         itemMap.put("warehouseId", item.getWarehouseId());
                         itemMap.put("quantity", item.getQuantity());
                         itemMap.put("unitPrice", item.getUnitPrice());
@@ -71,14 +74,15 @@ public class OrderController {
                         itemMap.put("commissionAmount", item.getCommissionAmount());
                         itemMap.put("sellerAmount", item.getSellerAmount());
                         itemMap.put("status", item.getStatus().name());
-                        // Product info
-                        itemMap.put("stallId", item.getProductId());
+                        // Product info (parent product) - tên của Product cha
                         try {
                             if (item.getProductId() != null) {
-                                itemMap.put("stallName", productRepository.findById(item.getProductId()).map(Product::getProductName).orElse("N/A"));
+                                itemMap.put("productName", productRepository.findById(item.getProductId()).map(Product::getProductName).orElse("N/A"));
+                            } else {
+                                itemMap.put("productName", "N/A");
                             }
                         } catch (Exception ex) {
-                            itemMap.put("stallName", "N/A");
+                            itemMap.put("productName", "N/A");
                         }
                         
                         // Thêm thông tin warehouse với itemData
@@ -191,8 +195,11 @@ public class OrderController {
                 List<Map<String, Object>> orderItems = order.getOrderItems().stream().map(item -> {
                     Map<String, Object> itemMap = new HashMap<>();
                     itemMap.put("id", item.getId());
+                    itemMap.put("productVariantId", item.getProductVariantId());
                     itemMap.put("productId", item.getProductId());
-                    itemMap.put("productName", item.getProductVariant() != null ? item.getProductVariant().getName() : "N/A");
+                    // Tên của ProductVariant (mặt hàng)
+                    itemMap.put("productVariantName", item.getProductVariant() != null ? item.getProductVariant().getName() : "N/A");
+                    itemMap.put("productVariantSubcategory", item.getProductVariant() != null && item.getProductVariant().getSubcategory() != null ? item.getProductVariant().getSubcategory() : null);
                     itemMap.put("warehouseId", item.getWarehouseId());
                     itemMap.put("quantity", item.getQuantity());
                     itemMap.put("unitPrice", item.getUnitPrice());
@@ -201,14 +208,15 @@ public class OrderController {
                     itemMap.put("sellerAmount", item.getSellerAmount());
                     itemMap.put("status", item.getStatus().name());
                     itemMap.put("notes", item.getNotes());
-                    // Product info
-                    itemMap.put("stallId", item.getProductId());
+                    // Product info (parent product) - tên của Product cha
                     try {
                         if (item.getProductId() != null) {
-                            itemMap.put("stallName", productRepository.findById(item.getProductId()).map(Product::getProductName).orElse("N/A"));
+                            itemMap.put("productName", productRepository.findById(item.getProductId()).map(Product::getProductName).orElse("N/A"));
+                        } else {
+                            itemMap.put("productName", "N/A");
                         }
                     } catch (Exception ex) {
-                        itemMap.put("stallName", "N/A");
+                        itemMap.put("productName", "N/A");
                     }
                     
                     // Thêm thông tin warehouse nếu có

@@ -42,6 +42,9 @@ public class WalletHistory {
 	@Column(name = "reference_id")
 	String referenceId;
 
+	@Column(name = "transaction_no")
+	String transactionNo;
+
 	@Lob
 	String description;
 

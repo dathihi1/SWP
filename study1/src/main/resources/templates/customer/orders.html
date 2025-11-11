@@ -82,8 +82,8 @@
                 // Tạo query string từ các tham số lọc (chỉ gửi khi có giá trị)
                 const queryParams = new URLSearchParams();
                 // Không gửi tham số ngày lên API để tránh lỗi 500; lọc ngày sẽ làm ở client
-                // searchStall của API hiểu là username người bán → ánh xạ từ sellerUsername
-                if (filterParams.sellerUsername) queryParams.append('searchStall', filterParams.sellerUsername);
+                // searchProduct của API hiểu là username người bán → ánh xạ từ sellerUsername
+                if (filterParams.sellerUsername) queryParams.append('searchProduct', filterParams.sellerUsername);
                 if (filterParams.searchProduct) queryParams.append('searchProduct', filterParams.searchProduct);
                 if (filterParams.sortBy) queryParams.append('sortBy', filterParams.sortBy);
                 
@@ -125,9 +125,9 @@
                             if (created > e) return false;
                         }
                     }
-                    // Lọc theo tên gian hàng (trên client): khớp bất kỳ item có stallName phù hợp
-                    if (filterParams.searchStall) {
-                        const ok = (o.orderItems || []).some(it => (it.stallName || '').toLowerCase().includes(filterParams.searchStall.toLowerCase()));
+                    // Lọc theo tên sản phẩm (trên client): khớp bất kỳ item có productName phù hợp
+                    if (filterParams.searchProduct) {
+                        const ok = (o.orderItems || []).some(it => (it.productName || '').toLowerCase().includes(filterParams.searchProduct.toLowerCase()));
                         if (!ok) return false;
                     }
                     return true;
@@ -234,13 +234,16 @@
                                         <div class="row align-items-center">
                                             <div class="col-md-6">
                                                 <div class="mb-1">
-                                                    <span class="fw-semibold">Gian hàng:</span>
-                                                    <span class="text-muted">${item.stallName || ('#' + (item.stallId ?? 'N/A'))}</span>
+                                                    <span class="fw-semibold">Mặt hàng (ProductVariant):</span>
+                                                    <span class="text-muted">${item.productVariantName || item.productName || 'Sản phẩm'}</span>
+                                                    ${item.productVariantSubcategory ? `<small class="text-muted ms-2">(${item.productVariantSubcategory})</small>` : ''}
                                                 </div>
+                                                ${item.productName ? `
                                                 <div class="mb-1">
-                                                    <span class="fw-semibold">Mặt hàng:</span>
-                                                    <span class="text-muted">${item.productName || 'Sản phẩm'}</span>
+                                                    <span class="fw-semibold">Sản phẩm (Product):</span>
+                                                    <span class="text-muted">${item.productName}</span>
                                                 </div>
+                                                ` : ''}
                                                 <div>
                                                     <span class="fw-semibold">Người bán:</span>
                                                     <span class="text-muted">${item.warehouse && item.warehouse.sellerName ? item.warehouse.sellerName : 'N/A'}</span>
@@ -564,9 +567,8 @@
             const filterParams = {
                 startDate: startDate,
                 endDate: endDate,
-                searchStall: formData.get('searchStall'), // tên gian hàng (lọc client)
+                searchProduct: formData.get('searchProduct'), // tên sản phẩm (lọc client)
                 sellerUsername: formData.get('sellerUsername'), // người bán (gửi API)
-                searchProduct: formData.get('searchProduct'),
                 sortBy: formData.get('sortBy'),
                 orderCode: formData.get('orderCode')
             };
@@ -746,8 +748,8 @@
                     <input type="date" class="form-control" id="endDate" name="endDate" max="">
                 </div>
                 <div class="col-md-3">
-                    <label for="searchStall" class="form-label fw-semibold">Tên gian hàng</label>
-                    <input type="text" class="form-control" id="searchStall" name="searchStall" placeholder="Nhập tên gian hàng...">
+                    <label for="searchProduct" class="form-label fw-semibold">Tên sản phẩm</label>
+                    <input type="text" class="form-control" id="searchProduct" name="searchProduct" placeholder="Nhập tên sản phẩm...">
                 </div>
                 <div class="col-md-3">
                     <label for="sellerUsername" class="form-label fw-semibold">Người bán</label>

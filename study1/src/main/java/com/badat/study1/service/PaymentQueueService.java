@@ -1,10 +1,12 @@
 package com.badat.study1.service;
 
 import com.badat.study1.model.PaymentQueue;
+import com.badat.study1.model.Wallet;
 import com.badat.study1.model.Warehouse;
 import com.badat.study1.model.Order;
 import com.badat.study1.model.OrderItem;
 import com.badat.study1.repository.PaymentQueueRepository;
+import com.badat.study1.repository.WalletRepository;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.event.PaymentEvent;
 import org.springframework.integration.redis.util.RedisLockRegistry;
@@ -31,6 +33,7 @@ public class PaymentQueueService {
     
     private final PaymentQueueRepository paymentQueueRepository;
     private final WalletHoldService walletHoldService;
+    private final WalletRepository walletRepository;
     private final WarehouseLockService warehouseLockService;
     private final OrderService orderService;
     private final OrderItemRepository orderItemRepository;
@@ -110,44 +113,56 @@ public class PaymentQueueService {
     private void validateStockAvailability(List<Map<String, Object>> cartItems) {
         log.info("Validating stock availability for {} cart items", cartItems.size());
         
-        // Tạo map để group theo productId và tính tổng quantity
-        Map<Long, Integer> productQuantities = new java.util.HashMap<>();
+        // Tạo map để group theo productVariantId và tính tổng quantity
+        Map<Long, Integer> productVariantQuantities = new java.util.HashMap<>();
         for (Map<String, Object> cartItem : cartItems) {
-            Long productId = Long.valueOf(cartItem.get("productId").toString());
+            // Lấy productVariantId từ cart item
+            Long productVariantId = null;
+            if (cartItem.containsKey("productVariantId")) {
+                productVariantId = Long.valueOf(cartItem.get("productVariantId").toString());
+            } else if (cartItem.containsKey("productId")) {
+                // Fallback: nếu vẫn dùng productId (backward compatibility)
+                productVariantId = Long.valueOf(cartItem.get("productId").toString());
+            }
+            
+            if (productVariantId == null) {
+                throw new RuntimeException("Không tìm thấy productVariantId trong cart item");
+            }
+            
             Integer quantity = Integer.valueOf(cartItem.get("quantity").toString());
-            productQuantities.put(productId, productQuantities.getOrDefault(productId, 0) + quantity);
+            productVariantQuantities.put(productVariantId, productVariantQuantities.getOrDefault(productVariantId, 0) + quantity);
         }
         
-        // Validate từng product với Redis lock
-        for (Map.Entry<Long, Integer> entry : productQuantities.entrySet()) {
-            Long productId = entry.getKey();
+        // Validate từng productVariant với Redis lock
+        for (Map.Entry<Long, Integer> entry : productVariantQuantities.entrySet()) {
+            Long productVariantId = entry.getKey();
             Integer requiredQuantity = entry.getValue();
             
-            String lockKey = "stock:validate:" + productId;
+            String lockKey = "stock:validate:" + productVariantId;
             Lock lock = redisLockRegistry.obtain(lockKey);
             
             try {
                 if (lock.tryLock(3, java.util.concurrent.TimeUnit.SECONDS)) {
-                    log.info("Acquired stock validation lock for product: {}", productId);
+                    log.info("Acquired stock validation lock for productVariant: {}", productVariantId);
                     
-                    // Kiểm tra số lượng có sẵn trong lock
-                    long availableCount = warehouseLockService.getAvailableStockCount(productId);
+                    // Kiểm tra số lượng có sẵn trong lock (sử dụng productVariantId)
+                    long availableCount = warehouseLockService.getAvailableStockCountByVariant(productVariantId);
                     
                     if (availableCount < requiredQuantity) {
-                        log.warn("Insufficient stock for product {}. Required: {}, Available: {}", 
-                            productId, requiredQuantity, availableCount);
-                        throw new RuntimeException("Không đủ hàng cho sản phẩm ID: " + productId + 
+                        log.warn("Insufficient stock for productVariant {}. Required: {}, Available: {}", 
+                            productVariantId, requiredQuantity, availableCount);
+                        throw new RuntimeException("Không đủ hàng cho sản phẩm ID: " + productVariantId + 
                             " (cần " + requiredQuantity + ", chỉ có " + availableCount + ")");
                     }
                     
-                    log.info("Stock validation passed for product {}: {} available", productId, availableCount);
+                    log.info("Stock validation passed for productVariant {}: {} available", productVariantId, availableCount);
                 } else {
-                    log.warn("Failed to acquire stock validation lock for product: {}", productId);
-                    throw new RuntimeException("Không thể kiểm tra hàng cho sản phẩm: " + productId);
+                    log.warn("Failed to acquire stock validation lock for productVariant: {}", productVariantId);
+                    throw new RuntimeException("Không thể kiểm tra hàng cho sản phẩm: " + productVariantId);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException("Bị gián đoạn khi kiểm tra hàng cho sản phẩm: " + productId, e);
+                throw new RuntimeException("Bị gián đoạn khi kiểm tra hàng cho sản phẩm: " + productVariantId, e);
             } finally {
                 lock.unlock();
             }
@@ -161,21 +176,16 @@ public class PaymentQueueService {
      */
     private void validateUserBalance(Long userId, BigDecimal requiredAmount) {
         log.info("Validating balance for user {}: {} VND", userId, requiredAmount);
-        
-        // Sử dụng WalletHoldService để check balance với user-level lock
-        try {
-            // Tạm thời hold 0 VND để check balance (sẽ được release ngay)
-            String tempOrderId = "TEMP_CHECK_" + userId + "_" + System.currentTimeMillis();
-            walletHoldService.holdMoney(userId, BigDecimal.ZERO, tempOrderId);
-            
-            // Release ngay lập tức
-            walletHoldService.releaseHold(userId, tempOrderId);
-            
-            log.info("Balance validation passed for user {}", userId);
-        } catch (Exception e) {
-            log.warn("Balance validation failed for user {}: {}", userId, e.getMessage());
-            throw new RuntimeException("Số dư không đủ để thực hiện thanh toán: " + e.getMessage());
+
+        // Kiểm tra trực tiếp số dư ví, không tạo hold tạm (tránh log TEST TEMP_CHECK)
+        Wallet wallet = walletRepository.findByUserId(userId)
+            .orElseThrow(() -> new RuntimeException("Wallet not found for user: " + userId));
+
+        if (wallet.getBalance() == null || wallet.getBalance().compareTo(requiredAmount) < 0) {
+            throw new RuntimeException("Số dư không đủ để thực hiện thanh toán");
         }
+
+        log.info("Balance validation passed for user {} with balance {} VND", userId, wallet.getBalance());
     }
     
     /**
@@ -247,21 +257,33 @@ public class PaymentQueueService {
                     orderId = "ORDER_" + payment.getUserId() + "_" + System.currentTimeMillis();
                     
                     // 4. LOCK WAREHOUSE ITEMS TRƯỚC (Reserve inventory trước khi hold money)
-                    Map<Long, Integer> productQuantities = new java.util.HashMap<>();
+                    Map<Long, Integer> productVariantQuantities = new java.util.HashMap<>();
                     for (Map<String, Object> cartItem : cartItems) {
-                        Long productId = Long.valueOf(cartItem.get("productId").toString());
+                        // Lấy productVariantId từ cart item
+                        Long productVariantId = null;
+                        if (cartItem.containsKey("productVariantId")) {
+                            productVariantId = Long.valueOf(cartItem.get("productVariantId").toString());
+                        } else if (cartItem.containsKey("productId")) {
+                            // Fallback: nếu vẫn dùng productId (backward compatibility)
+                            productVariantId = Long.valueOf(cartItem.get("productId").toString());
+                        }
+                        
+                        if (productVariantId == null) {
+                            throw new RuntimeException("Không tìm thấy productVariantId trong cart item");
+                        }
+                        
                         Integer quantity = Integer.valueOf(cartItem.get("quantity").toString());
-                        productQuantities.put(productId, productQuantities.getOrDefault(productId, 0) + quantity);
+                        productVariantQuantities.put(productVariantId, productVariantQuantities.getOrDefault(productVariantId, 0) + quantity);
                     }
 
                     // Reserve warehouse items với timeout TRƯỚC khi hold money để tránh hold tiền mà không có hàng
-                    List<Warehouse> lockedItems = warehouseLockService.reserveWarehouseItemsWithTimeout(productQuantities, payment.getUserId(), 5); // 5 phút timeout
+                    List<Warehouse> lockedItems = warehouseLockService.reserveWarehouseItemsWithTimeoutByVariant(productVariantQuantities, payment.getUserId(), 5); // 5 phút timeout
                     
                     // 5. HOLD MONEY SAU KHI ĐÃ LOCK ĐƯỢC HÀNG
                     walletHoldService.holdMoney(payment.getUserId(), payment.getTotalAmount(), orderId);
                     
                     // 6. Kiểm tra lại sau khi lock - tính tổng số lượng cần thiết
-                    int totalRequiredQuantity = productQuantities.values().stream().mapToInt(Integer::intValue).sum();
+                    int totalRequiredQuantity = productVariantQuantities.values().stream().mapToInt(Integer::intValue).sum();
                     if (lockedItems.isEmpty() || lockedItems.size() < totalRequiredQuantity) {
                         log.warn("Failed to lock enough warehouse items for user: {} (required: {}, locked: {}), unlocking warehouse items", 
                             payment.getUserId(), totalRequiredQuantity, lockedItems.size());
@@ -338,28 +360,28 @@ public class PaymentQueueService {
     private void updateOrderItemsWithActualWarehouseIds(Order order, List<Warehouse> lockedItems) {
         log.info("Updating OrderItems with actual warehouse IDs for order: {}", order.getId());
         
-        // Group locked items by productId
-        Map<Long, List<Warehouse>> lockedItemsByProduct = lockedItems.stream()
-                .collect(Collectors.groupingBy(warehouse -> warehouse.getProduct().getId()));
+        // Group locked items by productVariantId
+        Map<Long, List<Warehouse>> lockedItemsByVariant = lockedItems.stream()
+                .collect(Collectors.groupingBy(warehouse -> warehouse.getProductVariant().getId()));
         
         // Get all OrderItems for this order
         List<OrderItem> orderItems = orderItemRepository.findByOrderIdOrderByCreatedAtAsc(order.getId());
         
         int warehouseIndex = 0;
         for (OrderItem orderItem : orderItems) {
-            Long productId = orderItem.getProductId();
-            List<Warehouse> productWarehouses = lockedItemsByProduct.get(productId);
+            Long productVariantId = orderItem.getProductVariantId();
+            List<Warehouse> variantWarehouses = lockedItemsByVariant.get(productVariantId);
             
-            if (productWarehouses != null && !productWarehouses.isEmpty()) {
+            if (variantWarehouses != null && !variantWarehouses.isEmpty()) {
                 // Gán warehouseId thực tế cho OrderItem
-                Warehouse actualWarehouse = productWarehouses.get(warehouseIndex % productWarehouses.size());
+                Warehouse actualWarehouse = variantWarehouses.get(warehouseIndex % variantWarehouses.size());
                 orderItem.setWarehouseId(actualWarehouse.getId());
                 
                 // Set sellerId từ warehouse
                 if (actualWarehouse.getUser() != null) {
                     orderItem.setSellerId(actualWarehouse.getUser().getId());
-                    log.info("Updated OrderItem {} with warehouseId: {} and sellerId: {} (productId: {})", 
-                            orderItem.getId(), actualWarehouse.getId(), actualWarehouse.getUser().getId(), productId);
+                    log.info("Updated OrderItem {} with warehouseId: {} and sellerId: {} (productVariantId: {})", 
+                            orderItem.getId(), actualWarehouse.getId(), actualWarehouse.getUser().getId(), productVariantId);
                 } else {
                     log.warn("Warehouse {} has no user, cannot set sellerId for OrderItem {}", 
                             actualWarehouse.getId(), orderItem.getId());
@@ -388,12 +410,28 @@ public class PaymentQueueService {
             // Unlock tất cả warehouse items đã lock
             for (Map<String, Object> cartItem : cartItems) {
                 try {
-                    Long productId = Long.valueOf(cartItem.get("productId").toString());
-                    warehouseLockService.unlockWarehouseItems(List.of(productId));
-                    log.info("Unlocked warehouse items for product: {}", productId);
+                    // Lấy productVariantId từ cart item
+                    Long productVariantId = null;
+                    if (cartItem.containsKey("productVariantId")) {
+                        productVariantId = Long.valueOf(cartItem.get("productVariantId").toString());
+                    } else if (cartItem.containsKey("productId")) {
+                        productVariantId = Long.valueOf(cartItem.get("productId").toString());
+                    }
+                    
+                    if (productVariantId != null) {
+                        // Unlock theo warehouseId nếu có, hoặc theo productVariantId
+                        Object warehouseIdObj = cartItem.get("warehouseId");
+                        if (warehouseIdObj != null) {
+                            Long warehouseId = Long.valueOf(warehouseIdObj.toString());
+                            warehouseLockService.unlockWarehouseItem(warehouseId);
+                            log.info("Unlocked warehouse item: {}", warehouseId);
+                        } else {
+                            log.warn("No warehouseId found in cart item for productVariant: {}", productVariantId);
+                        }
+                    }
                 } catch (Exception unlockError) {
-                    log.error("Failed to unlock warehouse for product {}: {}", 
-                        cartItem.get("productId"), unlockError.getMessage());
+                    log.error("Failed to unlock warehouse for cart item: {}", 
+                        cartItem, unlockError.getMessage());
                 }
             }
             
@@ -428,12 +466,18 @@ public class PaymentQueueService {
             // Unlock warehouse items
             for (Map<String, Object> cartItem : cartItems) {
                 try {
-                    Long productId = Long.valueOf(cartItem.get("productId").toString());
-                    warehouseLockService.unlockWarehouseItems(List.of(productId));
-                    log.info("Unlocked warehouse for product {}", productId);
+                    // Unlock theo warehouseId nếu có
+                    Object warehouseIdObj = cartItem.get("warehouseId");
+                    if (warehouseIdObj != null) {
+                        Long warehouseId = Long.valueOf(warehouseIdObj.toString());
+                        warehouseLockService.unlockWarehouseItem(warehouseId);
+                        log.info("Unlocked warehouse item: {}", warehouseId);
+                    } else {
+                        log.warn("No warehouseId found in cart item for unlock");
+                    }
                 } catch (Exception unlockError) {
-                    log.error("Failed to unlock warehouse for product {}: {}", 
-                        cartItem.get("productId"), unlockError.getMessage());
+                    log.error("Failed to unlock warehouse for cart item: {}", 
+                        cartItem, unlockError.getMessage());
                 }
             }
             

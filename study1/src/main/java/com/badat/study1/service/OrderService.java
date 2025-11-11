@@ -49,13 +49,21 @@ public class OrderService {
         // Tạo order code unique hoặc sử dụng customOrderCode
         String orderCode = customOrderCode != null ? customOrderCode : generateOrderCode();
 
-        // Lấy thông tin shop, stall, seller từ cart item đầu tiên
+        // Lấy thông tin shop, product, seller từ cart item đầu tiên
         Map<String, Object> firstCartItem = cartItems.get(0);
-        Long stallId = Long.valueOf(firstCartItem.get("stallId").toString());
+        
+        // Lấy productId (Product cha) từ cart item
+        Object productIdObj = firstCartItem.get("productId");
+        
+        if (productIdObj == null) {
+            throw new RuntimeException("Missing productId in cart item");
+        }
+        
+        Long productId = Long.valueOf(productIdObj.toString());
 
         // Lấy thông tin product để lấy shopId
-        Product product = productRepository.findById(stallId)
-                .orElseThrow(() -> new RuntimeException("Product not found: " + stallId));
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
 
         // Lấy sellerId từ shopId
         Shop shop = shopRepository.findById(product.getShopId())
@@ -66,7 +74,7 @@ public class OrderService {
         Order order = Order.builder()
                 .buyerId(buyerId)
                 .shopId(product.getShopId())
-                .productId(stallId)
+                .productId(productId)
                 .sellerId(sellerId)
                 .totalAmount(BigDecimal.ZERO)
                 .totalCommissionAmount(BigDecimal.ZERO)
@@ -87,27 +95,33 @@ public class OrderService {
         for (Map<String, Object> cartItem : cartItems) {
             try {
                 // Validate và lấy các giá trị từ cartItem
-                Object productIdObj = cartItem.get("productId");
+                // Lấy productVariantId (ưu tiên) hoặc productId (backward compatibility)
+                Object productVariantIdObj = cartItem.get("productVariantId");
+                if (productVariantIdObj == null) {
+                    productVariantIdObj = cartItem.get("productId"); // Fallback
+                }
+                
                 Object warehouseIdObj = cartItem.get("warehouseId");
                 Object quantityObj = cartItem.get("quantity");
                 Object priceObj = cartItem.get("price");
-                Object stallIdObj = cartItem.get("stallId");
+                Object parentProductIdObj = cartItem.get("productId"); // ID của Product cha
                 Object variantNameObj = cartItem.get("name");
 
-                if (productIdObj == null || warehouseIdObj == null || quantityObj == null ||
-                        priceObj == null || stallIdObj == null) {
+                if (productVariantIdObj == null || warehouseIdObj == null || quantityObj == null ||
+                        priceObj == null || parentProductIdObj == null) {
                     log.error("Missing required fields in cart item: {}", cartItem);
                     throw new RuntimeException("Missing required fields in cart item");
                 }
 
-                Long productId = Long.valueOf(productIdObj.toString());
+                Long productVariantId = Long.valueOf(productVariantIdObj.toString());
                 Long warehouseId = Long.valueOf(warehouseIdObj.toString());
                 Integer quantity = Integer.valueOf(quantityObj.toString());
                 BigDecimal unitPrice = new BigDecimal(priceObj.toString());
-                Long itemStallId = Long.valueOf(stallIdObj.toString());
+                // Lấy productId (Product cha)
+                Long itemProductId = Long.valueOf(parentProductIdObj.toString());
 
-                // Lấy thông tin stall để tính commission
-                BigDecimal commissionRate = getCommissionRate(itemStallId);
+                // Lấy thông tin product để tính commission
+                BigDecimal commissionRate = getCommissionRate(itemProductId);
 
                 // Tạo nhiều OrderItem riêng biệt cho mỗi quantity
                 for (int i = 0; i < quantity; i++) {
@@ -122,7 +136,7 @@ public class OrderService {
                     // Tạo OrderItem với quantity = 1
                     OrderItem orderItem = OrderItem.builder()
                             .orderId(savedOrder.getId())
-                            .productVariantId(productId)
+                            .productVariantId(productVariantId) // ID của ProductVariant
                             .warehouseId(warehouseId) // Sẽ được cập nhật với warehouseId thực tế
                             .quantity(1) // Mỗi OrderItem có quantity = 1
                             .unitPrice(unitPrice)
@@ -132,7 +146,7 @@ public class OrderService {
                             .sellerAmount(itemSellerAmount)
                             .sellerId(itemSellerId) // Sẽ được cập nhật trong PaymentQueueService
                             .shopId(product.getShopId()) // Thêm shop_id
-                            .productId(stallId) // Thêm product_id (product parent)
+                            .productId(itemProductId) // Thêm product_id (product parent)
                             .productVariantName(variantNameObj != null ? variantNameObj.toString() : null)
                             .status(OrderItem.Status.PENDING)
                             .notes("Order item from cart - item " + (i + 1) + " of " + quantity)
@@ -145,12 +159,12 @@ public class OrderService {
                     totalCommissionAmount = totalCommissionAmount.add(itemCommissionAmount);
                     totalSellerAmount = totalSellerAmount.add(itemSellerAmount);
 
-                    log.info("Created order item {} for product: {}, warehouseId: {}, amount: {}",
-                            i + 1, productId, warehouseId, itemTotalAmount);
+                    log.info("Created order item {} for productVariant: {}, warehouseId: {}, amount: {}",
+                            i + 1, productVariantId, warehouseId, itemTotalAmount);
                 }
 
-                log.info("Created {} order items for product: {} with total amount: {}",
-                        quantity, productId, unitPrice.multiply(BigDecimal.valueOf(quantity)));
+                log.info("Created {} order items for productVariant: {} with total amount: {}",
+                        quantity, productVariantId, unitPrice.multiply(BigDecimal.valueOf(quantity)));
 
             } catch (Exception e) {
                 log.error("Failed to create order item for cart item: {}", cartItem, e);
@@ -176,10 +190,10 @@ public class OrderService {
      * Tạo order đơn giản cho một sản phẩm (backward compatibility)
      */
     @Transactional
-    public Order createSimpleOrder(Long buyerId, Long sellerId, Long shopId, Long stallId,
-                                   Long productId, Long warehouseId, Integer quantity,
+    public Order createSimpleOrder(Long buyerId, Long sellerId, Long shopId, Long productId,
+                                   Long productVariantId, Long warehouseId, Integer quantity,
                                    BigDecimal unitPrice, String paymentMethod, String notes) {
-        return createSimpleOrder(buyerId, sellerId, shopId, stallId, productId, warehouseId,
+        return createSimpleOrder(buyerId, sellerId, shopId, productId, productVariantId, warehouseId,
                 quantity, unitPrice, paymentMethod, notes, null);
     }
 
@@ -187,12 +201,12 @@ public class OrderService {
      * Tạo order đơn giản cho một sản phẩm với orderCode tùy chỉnh (backward compatibility)
      */
     @Transactional
-    public Order createSimpleOrder(Long buyerId, Long sellerId, Long shopId, Long stallId,
-                                   Long productId, Long warehouseId, Integer quantity,
+    public Order createSimpleOrder(Long buyerId, Long sellerId, Long shopId, Long productId,
+                                   Long productVariantId, Long warehouseId, Integer quantity,
                                    BigDecimal unitPrice, String paymentMethod, String notes, String customOrderCode) {
 
-        log.info("Creating simple order for buyer: {}, seller: {}, product: {}, quantity: {}",
-                buyerId, sellerId, productId, quantity);
+        log.info("Creating simple order for buyer: {}, seller: {}, productVariant: {}, quantity: {}",
+                buyerId, sellerId, productVariantId, quantity);
 
         // Tạo order code unique hoặc sử dụng customOrderCode
         String orderCode = customOrderCode != null ? customOrderCode : generateOrderCode();
@@ -200,8 +214,8 @@ public class OrderService {
         // Tính toán các số tiền
         BigDecimal totalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
-        // Lấy commission rate từ stall
-        BigDecimal commissionRate = getCommissionRate(stallId);
+        // Lấy commission rate từ product
+        BigDecimal commissionRate = getCommissionRate(productId);
         BigDecimal commissionAmount = totalAmount.multiply(commissionRate).divide(BigDecimal.valueOf(100));
         BigDecimal sellerAmount = totalAmount.subtract(commissionAmount);
 
@@ -209,7 +223,7 @@ public class OrderService {
         Order order = Order.builder()
                 .buyerId(buyerId)
                 .shopId(shopId)
-                .productId(stallId)
+                .productId(productId)
                 .sellerId(sellerId)
                 .totalAmount(totalAmount)
                 .totalCommissionAmount(commissionAmount)
@@ -225,14 +239,14 @@ public class OrderService {
         // Tạo OrderItem
         String variantName = null;
         try {
-            variantName = productVariantRepository.findById(productId)
+            variantName = productVariantRepository.findById(productVariantId)
                     .map(ProductVariant::getName)
                     .orElse(null);
         } catch (Exception ignored) {}
 
         OrderItem orderItem = OrderItem.builder()
                 .orderId(savedOrder.getId())
-                .productVariantId(productId)
+                .productVariantId(productVariantId)
                 .warehouseId(warehouseId)
                 .quantity(quantity)
                 .unitPrice(unitPrice)
@@ -242,7 +256,7 @@ public class OrderService {
                 .sellerAmount(sellerAmount)
                 .sellerId(sellerId) // Sử dụng sellerId được truyền vào
                 .shopId(shopId) // Thêm shop_id
-                .productId(stallId) // Thêm product_id (product parent)
+                .productId(productId) // Thêm product_id (product parent)
                 .productVariantName(variantName)
                 .status(OrderItem.Status.COMPLETED)
                 .notes("Simple order item")
