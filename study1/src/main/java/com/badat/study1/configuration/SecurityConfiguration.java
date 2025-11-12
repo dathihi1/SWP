@@ -26,6 +26,8 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 @Configuration
 @EnableWebSecurity
@@ -163,21 +165,22 @@ public class SecurityConfiguration {
                     String accessToken = jwtService.generateAccessToken(oauth2User.getUser());
 
                     // Set JWT token as cookie
-                    String cookieValue = "accessToken=" + accessToken + "; Path=/; Max-Age=3600; SameSite=Lax";
-                    if (request.isSecure()) {
-                        cookieValue += "; Secure";
+                    String refreshToken = jwtService.generateRefreshToken(oauth2User.getUser());
+
+                    boolean secureContext = request.isSecure() || "localhost".equalsIgnoreCase(request.getServerName());
+                    String accessCookie = "accessToken=" + accessToken + "; Path=/; Max-Age=3600; SameSite=None";
+                    String refreshCookie = "refreshToken=" + refreshToken + "; Path=/; Max-Age=86400; SameSite=None";
+                    if (secureContext) {
+                        accessCookie += "; Secure";
+                        refreshCookie += "; Secure";
                     }
-                    response.setHeader("Set-Cookie", cookieValue);
+                    response.addHeader("Set-Cookie", accessCookie);
+                    response.addHeader("Set-Cookie", refreshCookie);
 
                     try {
                         // Check if user is admin and redirect accordingly
-                        if (oauth2User.getUser().getRole().name().equals("ADMIN")) {
-                            response.sendRedirect("/admin");
-                        } else {
-                            response.sendRedirect("/?login=success");
-                        }
-                        
-                        // Log OAuth2 login to audit
+                        String redirectUrl = oauth2User.getUser().getRole().name().equals("ADMIN") ? "/admin" : "/?login=success";
+
                         String ip = request.getHeader("X-Forwarded-For");
                         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
                             ip = request.getHeader("X-Real-IP");
@@ -186,11 +189,48 @@ public class SecurityConfiguration {
                             ip = request.getRemoteAddr();
                         }
                         String ua = request.getHeader("User-Agent");
-                        // Defer to AuditLogService via ApplicationContext if available is complicated here; simply attach to JWT and log elsewhere.
-                        // For now, set headers for a downstream filter/service to log.
                         response.setHeader("X-Auth-Logged", "oauth2");
                         response.setHeader("X-Client-IP", ip);
-                        if (ua != null) response.setHeader("X-Client-UA", ua);
+                        if (ua != null) {
+                            response.setHeader("X-Client-UA", ua);
+                        }
+
+                        String encodedAccessToken = Base64.getEncoder().encodeToString(accessToken.getBytes(StandardCharsets.UTF_8));
+                        String encodedRefreshToken = Base64.getEncoder().encodeToString(refreshToken.getBytes(StandardCharsets.UTF_8));
+                        response.setContentType("text/html;charset=UTF-8");
+                        response.getWriter().write("""
+                                <!DOCTYPE html>
+                                <html lang="en">
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <title>Login Success</title>
+                                </head>
+                                <body>
+                                <script>
+                                    (function() {
+                                        try {
+                                            var accessToken = atob('%s');
+                                            var refreshToken = atob('%s');
+                                            if (window.authManager && typeof window.authManager.setTokens === 'function') {
+                                                window.authManager.setTokens(accessToken, refreshToken);
+                                            } else {
+                                                localStorage.setItem('accessToken', accessToken);
+                                                localStorage.setItem('refreshToken', refreshToken);
+                                            }
+                                            if (window.authManager && typeof window.authManager.updateLastActivity === 'function') {
+                                                window.authManager.updateLastActivity();
+                                            }
+                                        } catch (err) {
+                                            console.error('Failed to persist OAuth tokens', err);
+                                        }
+                                        window.location.replace('%s');
+                                    })();
+                                </script>
+                                </body>
+                                </html>
+                                """.formatted(encodedAccessToken, encodedRefreshToken, redirectUrl));
+                        response.getWriter().flush();
+                        return;
                     } catch (Exception e) {
                         log.error("Error in OAuth2 success handler: {}", e.getMessage());
                         try {

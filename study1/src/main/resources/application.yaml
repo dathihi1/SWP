@@ -95,7 +95,7 @@ jwt:
 security:
   captcha:
     expire-minutes: 5
-    length: 1
+    length: 4
     max-attempts-per-ip: 5      # NEW
     lockout-minutes: 15          # NEW
   rate-limit:

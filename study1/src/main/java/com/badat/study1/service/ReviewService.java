@@ -21,35 +21,34 @@ public class ReviewService {
     private final OrderItemRepository orderItemRepository;
 
     @Transactional
-    public Review createReview(Long orderId, Long productId, Long buyerId, 
+    public Review createReview(Long orderId, Long orderItemId, Long buyerId,
                               Integer rating, String title, String content) {
-        
-        // Get order details
+
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Order not found"));
         
-        // Get seller and shop info from order
-        Long sellerId = order.getSellerId();
-        Long shopId = order.getShopId();
-        Long productIdFromOrder = order.getProductId();
-        
-        // Resolve product variant for order-level review when productId is not provided
-        if (productId == null) {
-            java.util.List<OrderItem> orderItems = orderItemRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
-            if (orderItems == null || orderItems.isEmpty() || orderItems.get(0).getProductVariantId() == null) {
-                throw new RuntimeException("Không tìm thấy biến thể trong đơn hàng để đánh giá");
-            }
-            productId = orderItems.get(0).getProductVariantId();
+        OrderItem orderItem = orderItemRepository.findById(orderItemId)
+            .orElseThrow(() -> new RuntimeException("Order item not found"));
+        if (!orderItem.getOrderId().equals(orderId)) {
+            throw new RuntimeException("Order item does not belong to the specified order");
+        }
+        if (!order.getBuyerId().equals(buyerId)) {
+            throw new RuntimeException("Order does not belong to the current user");
         }
 
-        // Create review
+        Long sellerId = orderItem.getSellerId();
+        Long shopId = orderItem.getShopId();
+        Long productId = orderItem.getProductId();
+        Long productVariantId = orderItem.getProductVariantId();
+
         Review review = Review.builder()
             .orderId(orderId)
-            .productVariantId(productId)
+            .orderItemId(orderItemId)
+            .productVariantId(productVariantId)
             .buyerId(buyerId)
             .sellerId(sellerId)
             .shopId(shopId)
-            .productId(productIdFromOrder)
+            .productId(productId)
             .rating(rating)
             .title(title)
             .content(content)
