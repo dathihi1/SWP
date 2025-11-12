@@ -26,6 +26,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -573,6 +574,8 @@ public class ShopServiceImpl implements ShopService {
 
     @Override
     public String updateProductQuantityFromFile(User user, Long productVariantId, org.springframework.web.multipart.MultipartFile file, RedirectAttributes redirectAttributes) {
+        final String originalFileName = file != null ? file.getOriginalFilename() : null;
+        final String safeFileName = (originalFileName != null && !originalFileName.isBlank()) ? originalFileName : "unknown";
         try {
             // Logic nghiệp vụ: xử lý file và cập nhật kho
             var productVariantOptional = productVariantRepository.findById(productVariantId);
@@ -590,15 +593,22 @@ public class ShopServiceImpl implements ShopService {
                 redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền cập nhật kho cho gian hàng này!");
                 return "redirect:/seller/product-management";
             }
-            String content = new String(file.getBytes(), "UTF-8").trim();
+            if (file == null || file.isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "File upload không hợp lệ!");
+                return "redirect:/seller/add-quantity/" + productVariantId;
+            }
+            String content = new String(file.getBytes(), StandardCharsets.UTF_8)
+                    .replace("\uFEFF", "")
+                    .trim();
             String[] lines = content.split("\\r?\\n");
             int successCount = 0;
             int failureCount = 0;
-            StringBuilder resultDetails = new StringBuilder();
+            StringBuilder invalidLineDetails = new StringBuilder();
             java.util.Set<String> processedItemKeys = new java.util.HashSet<>();
             // Load existing identifiers (scoped by same subcategory) for this variant for duplicate check in DB
             var existingItems = warehouseRepository.findByProductVariantIdAndIsDeleteFalse(productVariant.getId());
             final String currentSubcategory = productVariant.getSubcategory();
+            InventoryFormat expectedFormat = determineFormat(currentSubcategory);
             java.util.Set<String> existingKeys = new java.util.HashSet<>();
             for (var it : existingItems) {
                 // ensure same subcategory when checking duplicates in DB
@@ -606,7 +616,8 @@ public class ShopServiceImpl implements ShopService {
                         && it.getItemSubcategory().equalsIgnoreCase(currentSubcategory)) {
                     String[] ep = it.getItemData().split("\\|");
                     String key = extractIdentifier(currentSubcategory, ep);
-                    if (key != null) existingKeys.add(key);
+                    String normalized = normalizeIdentifier(key);
+                    if (normalized != null) existingKeys.add(normalized);
                 }
             }
             for (int i = 0; i < lines.length; i++) {
@@ -617,30 +628,44 @@ public class ShopServiceImpl implements ShopService {
                     // Yêu cầu đúng 2 phần theo định dạng đã công bố
                     if (parts.length != 2) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Định dạng không hợp lệ.\n");
+                        appendInvalidLine(invalidLineDetails, i + 1, "Định dạng không hợp lệ");
                         continue;
                     }
-                    
-                    String itemData = line;
-                    String itemKey = extractIdentifier(productVariant.getSubcategory(), parts);
+                    String[] sanitizedParts = new String[] {
+                            cleanPart(parts[0]),
+                            cleanPart(parts[1])
+                    };
+                    if (sanitizedParts[0] == null || sanitizedParts[1] == null) {
+                        failureCount++;
+                        appendInvalidLine(invalidLineDetails, i + 1, "Thiếu dữ liệu bắt buộc");
+                        continue;
+                    }
+                    if (!validateLineFormat(expectedFormat, sanitizedParts)) {
+                        failureCount++;
+                        appendInvalidLine(invalidLineDetails, i + 1, "Dữ liệu không đúng định dạng cho loại sản phẩm");
+                        continue;
+                    }
+                    String itemData = sanitizedParts[0] + "|" + sanitizedParts[1];
+                    String itemKey = extractIdentifier(productVariant.getSubcategory(), sanitizedParts);
+                    String normalizedKey = normalizeIdentifier(itemKey);
                     // Kiểm tra khóa định danh bắt buộc theo subcategory
-                    if (itemKey == null || itemKey.isBlank()) {
+                    if (normalizedKey == null) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Không có khóa định danh hợp lệ.\n");
+                        appendInvalidLine(invalidLineDetails, i + 1, "Không có khóa định danh hợp lệ");
                         continue;
                     }
-                    if (itemKey != null && processedItemKeys.contains(itemKey)) {
+                    if (processedItemKeys.contains(normalizedKey)) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Dòng trùng lặp trong file.\n");
+                        appendInvalidLine(invalidLineDetails, i + 1, "Dòng trùng lặp trong file");
                         continue;
                     }
-                    boolean existsInDb = (itemKey != null && existingKeys.contains(itemKey));
+                    boolean existsInDb = existingKeys.contains(normalizedKey);
                     if (existsInDb) {
                         failureCount++;
-                        resultDetails.append("Dòng ").append(i + 1).append(": Đã tồn tại trong hệ thống.\n");
+                        appendInvalidLine(invalidLineDetails, i + 1, "Đã tồn tại trong hệ thống");
                         continue;
                     }
-                    if (itemKey != null) processedItemKeys.add(itemKey);
+                    processedItemKeys.add(normalizedKey);
                         com.badat.study1.model.Warehouse warehouseItem = com.badat.study1.model.Warehouse.builder()
                             .itemSubcategory(productVariant.getSubcategory())
                                 .itemData(itemData)
@@ -653,7 +678,8 @@ public class ShopServiceImpl implements ShopService {
                     successCount++;
                 } catch (Exception ex) {
                     failureCount++;
-                    resultDetails.append("Dòng ").append(i + 1).append(": Lỗi xử lý - ").append(ex.getMessage() != null ? ex.getMessage() : "Lỗi không xác định").append(".\n");
+                    String errorMessage = ex.getMessage() != null ? ex.getMessage() : "Lỗi không xác định";
+                    appendInvalidLine(invalidLineDetails, i + 1, "Lỗi xử lý - " + errorMessage);
                 }
             }
             long warehouseCount = warehouseRepository.countByProductVariantIdAndLockedFalseAndIsDeleteFalse(productVariantId);
@@ -680,19 +706,8 @@ public class ShopServiceImpl implements ShopService {
                 }
             } catch (Exception ignore) {}
             try {
-                StringBuilder detailedResult = new StringBuilder();
-                detailedResult.append("Tên biến thể: ").append(productVariant.getName()).append("\n");
-                detailedResult.append("Tên file: ").append(file.getOriginalFilename()).append("\n");
-                detailedResult.append("Ngày upload: ").append(java.time.LocalDateTime.now().toString()).append("\n");
-                detailedResult.append("Tổng số dòng: ").append(lines.length).append("\n");
-                detailedResult.append("Thành công: ").append(successCount).append("\n");
-                detailedResult.append("Thất bại: ").append(failureCount).append("\n");
-                detailedResult.append("Trạng thái: ").append(successCount > 0 ? "THÀNH CÔNG" : "THẤT BẠI").append("\n");
-                if (resultDetails.length() > 0) {
-                    detailedResult.append("\nChi tiết:\n").append(resultDetails.toString());
-                }
                 com.badat.study1.model.UploadHistory uploadHistory = com.badat.study1.model.UploadHistory.builder()
-                        .fileName(file.getOriginalFilename())
+                        .fileName(safeFileName)
                         .productName(productVariant.getName())
                         .isSuccess(successCount > 0)
                         .result(successCount > 0 ? "SUCCESS" : "FAILED")
@@ -700,7 +715,7 @@ public class ShopServiceImpl implements ShopService {
                         .totalItems(lines.length)
                         .successCount(successCount)
                         .failureCount(failureCount)
-                        .resultDetails(detailedResult.toString())
+                        .resultDetails(invalidLineDetails.length() > 0 ? invalidLineDetails.toString() : null)
                         .productVariant(productVariant)
                         .product(parentProduct)
                         .user(user)
@@ -718,19 +733,12 @@ public class ShopServiceImpl implements ShopService {
                 var productVariantOptional = productVariantRepository.findById(productVariantId);
                 if (productVariantOptional.isPresent()) {
                     ProductVariant failedProductVariant = productVariantOptional.get();
-                    StringBuilder detailedResult = new StringBuilder();
-                    detailedResult.append("Tên biến thể: ").append(failedProductVariant.getName()).append("\n");
-                    detailedResult.append("Tên file: ").append(file.getOriginalFilename()).append("\n");
-                    detailedResult.append("Ngày upload: ").append(java.time.LocalDateTime.now().toString()).append("\n");
-                    detailedResult.append("Tổng số dòng: 0\n");
-                    detailedResult.append("Thành công: 0\n");
-                    detailedResult.append("Thất bại: 1\n");
-                    detailedResult.append("Trạng thái: THẤT BẠI\n");
-                    detailedResult.append("\nChi tiết lỗi:\n").append("Lỗi xử lý file: ").append(e.getMessage());
+                    StringBuilder detailedError = new StringBuilder();
+                    detailedError.append("Lỗi xử lý file: ").append(e.getMessage());
                     var failedParentProductOptional = productRepository.findById(failedProductVariant.getProductId());
                     if (failedParentProductOptional.isPresent()) {
                         com.badat.study1.model.UploadHistory uploadHistory = com.badat.study1.model.UploadHistory.builder()
-                                .fileName(file.getOriginalFilename())
+                                .fileName(safeFileName)
                                 .productName(failedProductVariant.getName())
                                 .isSuccess(false)
                                 .result("FAILED")
@@ -738,7 +746,7 @@ public class ShopServiceImpl implements ShopService {
                                 .totalItems(0)
                                 .successCount(0)
                                 .failureCount(1)
-                                .resultDetails(detailedResult.toString())
+                                .resultDetails(detailedError.toString())
                                 .productVariant(failedProductVariant)
                                 .product(failedParentProductOptional.get())
                                 .user(user)
@@ -778,27 +786,114 @@ public class ShopServiceImpl implements ShopService {
         }
     }
 
+    private String normalizeIdentifier(String key) {
+        String cleaned = cleanPart(key);
+        return cleaned == null ? null : cleaned.toLowerCase(Locale.ROOT);
+    }
+
+    private String cleanPart(String value) {
+        if (value == null) {
+            return null;
+        }
+        String cleaned = value.replace("\uFEFF", "").trim();
+        return cleaned.isEmpty() ? null : cleaned;
+    }
+
+    private void appendInvalidLine(StringBuilder builder, int lineNumber, String message) {
+        if (builder == null || message == null) {
+            return;
+        }
+        if (builder.length() > 0) {
+            builder.append('\n');
+        }
+        builder.append("Dòng ").append(lineNumber).append(": ").append(message);
+    }
+
     private String extractIdentifier(String subcategory, String[] parts) {
-        if (parts == null) return null;
-        String sub = subcategory == null ? "" : subcategory.toLowerCase();
+        if (parts == null || parts.length < 2) return null;
+        String sub = subcategory == null ? "" : subcategory.toLowerCase(Locale.ROOT);
+        String first = cleanPart(parts[0]);
+        String second = cleanPart(parts[1]);
+        if (first == null && second == null) {
+            return null;
+        }
         // Gmail: email|password -> key = email
         if (sub.contains("gmail")) {
-            String email = parts.length >= 2 ? parts[0].trim() : null;
-            if (email == null || !email.contains("@")) return null;
-            return email;
+            if (first == null || !first.contains("@")) return null;
+            return first;
         }
         // Thẻ cào: code|serial -> key = serial
         if (sub.contains("thẻ") || sub.contains("card")) {
-            return parts.length >= 2 ? parts[1].trim() : null;
+            return second;
         }
         // Tài khoản: username|password -> key = username
         if (sub.contains("tài khoản") || sub.contains("account") || sub.contains("acc")) {
-            return parts.length >= 2 ? parts[0].trim() : null;
+            return first;
         }
         // Default fallback: first part as identifier
-        return parts.length >= 2 ? parts[0].trim() : null;
-        }
+        return first;
+    }
 
+    private InventoryFormat determineFormat(String subcategory) {
+        String sub = subcategory == null ? "" : subcategory.toLowerCase(Locale.ROOT);
+        if (sub.contains("gmail")) {
+            return InventoryFormat.EMAIL;
+        }
+        if (sub.contains("thẻ") || sub.contains("card")) {
+            return InventoryFormat.CARD;
+        }
+        if (sub.contains("tài khoản") || sub.contains("account") || sub.contains("acc")) {
+            return InventoryFormat.ACCOUNT;
+        }
+        return InventoryFormat.GENERIC;
+    }
+
+    private boolean validateLineFormat(InventoryFormat format, String[] parts) {
+        if (parts == null || parts.length < 2) {
+            return false;
+        }
+        String first = parts[0];
+        String second = parts[1];
+        return switch (format) {
+            case EMAIL -> isValidEmail(first);
+            case CARD -> isValidCardCode(first) && isValidCardSerial(second);
+            case ACCOUNT -> isValidAccount(first);
+            case GENERIC -> true;
+        };
+    }
+
+    private boolean isValidEmail(String value) {
+        if (value == null) {
+            return false;
+        }
+        int atIndex = value.indexOf('@');
+        if (atIndex <= 0 || atIndex == value.length() - 1) {
+            return false;
+        }
+        if (!value.contains(".")) {
+            return false;
+        }
+        return !value.contains(" ");
+    }
+
+    private boolean isValidCardCode(String value) {
+        return value != null && value.matches("^[A-Za-z0-9]{6,}$");
+    }
+
+    private boolean isValidCardSerial(String value) {
+        return value != null && value.matches("^[A-Za-z0-9-]{6,}$");
+    }
+
+    private boolean isValidAccount(String value) {
+        return value != null && value.length() >= 3;
+    }
+
+    private enum InventoryFormat {
+        EMAIL,
+        CARD,
+        ACCOUNT,
+        GENERIC
+    }
 }
 
 
