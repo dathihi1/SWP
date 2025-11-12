@@ -139,13 +139,6 @@ public class ShopController {
             return "redirect:/seller/add-product";
         }
         
-        // Validation cơ bản: kiểm tra shop tồn tại
-        var userShop = shopRepository.findByUserId(user.getId());
-        if (userShop.isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Bạn chưa có shop. Vui lòng tạo shop trước khi tạo sản phẩm!");
-            return "redirect:/seller/product-management";
-        }
-        
         return shopService.addProduct(user, productName, productCategory, productSubcategory, shortDescription, detailedDescription, productImageFile, uniqueProducts, isCropped, redirectAttributes);
     }
 
@@ -166,7 +159,6 @@ public class ShopController {
 
         return shopService.sellerShopPage(user, model);
     }
-
 
     @GetMapping("/seller/product-management")
     public String sellerShopManagementPage(Model model) {

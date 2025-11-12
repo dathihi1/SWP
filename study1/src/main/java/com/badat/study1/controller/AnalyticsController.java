@@ -34,79 +34,34 @@ public class AnalyticsController {
                                                      Authentication authentication) {
         User user = (User) authentication.getPrincipal();
 
-        LocalDate start;
-        LocalDate end;
-        if (month != null && month.matches("\\d{4}-\\d{2}")) {
-            YearMonth ym = YearMonth.parse(month);
-            start = ym.atDay(1);
-            end = ym.atEndOfMonth();
-        } else {
-            end = LocalDate.now();
-            start = end.minusDays(29);
+        LocalDateRange range = resolveRange(month);
+        LocalDate start = range.start();
+        LocalDate end = range.end();
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.plusDays(1).atStartOfDay().minusNanos(1);
+
+        List<OrderItem> orderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
+
+        List<OrderItem> orderItemsInRange = orderItems.stream()
+                .filter(orderItem -> orderItem != null && orderItem.getCreatedAt() != null)
+                .filter(orderItem -> isWithinRange(orderItem.getCreatedAt(), startDateTime, endDateTime))
+                .collect(Collectors.toList());
+
+        if (orderItemsInRange.isEmpty()) {
+            return ResponseEntity.ok(buildEmptyResponse(start, end));
         }
 
-        LocalDateTime startDateTime = start.atStartOfDay();
-        List<OrderItem> orderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
-        
-        // Filter order items by date range
-        List<OrderItem> orderItemsInRange = orderItems.stream()
-                .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDateTime))
-                .collect(Collectors.toList());
-        
-        // Filter completed order items for revenue calculation
         List<OrderItem> completed = orderItemsInRange.stream()
                 .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.COMPLETED)
                 .collect(Collectors.toList());
 
-        // Prepare labels per day
-        List<String> labels = new ArrayList<>();
-        List<BigDecimal> totals = new ArrayList<>();
-        List<Long> counts = new ArrayList<>();
-        BigDecimal revenueSum = BigDecimal.ZERO;
-        long ordersSum = 0L;
-
-        long days = java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
-        for (int i = 0; i < days; i++) {
-            LocalDate day = start.plusDays(i);
-            labels.add(day.toString());
-            
-            // Revenue: chỉ tính từ COMPLETED order items
-            BigDecimal dayTotal = completed.stream()
-                    .filter(orderItem -> !orderItem.getCreatedAt().toLocalDate().isBefore(day) && !orderItem.getCreatedAt().toLocalDate().isAfter(day))
-                    .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            
-            // Order count: đếm số order_id riêng biệt từ order items
-            long dayCount = orderItemsInRange.stream()
-                    .filter(orderItem -> !orderItem.getCreatedAt().toLocalDate().isBefore(day) && !orderItem.getCreatedAt().toLocalDate().isAfter(day))
-                    .map(OrderItem::getOrderId)
-                    .distinct()
-                    .count();
-            
-            totals.add(dayTotal);
-            counts.add(dayCount);
-            revenueSum = revenueSum.add(dayTotal);
-            ordersSum += dayCount;
-        }
-
-        // Calculate pending amount (PENDING order items limited by selected date range)
-        BigDecimal pendingSum = orderItems.stream()
+        Map<String, Object> body = buildSalesResponse(start, end, orderItemsInRange, completed);
+        BigDecimal pendingSum = orderItemsInRange.stream()
                 .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.PENDING)
-                .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDateTime))
-                .filter(orderItem -> {
-                    LocalDate od = orderItem.getCreatedAt().toLocalDate();
-                    return !od.isBefore(start) && !od.isAfter(end);
-                })
                 .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("labels", labels);
-        body.put("totals", totals);
-        body.put("counts", counts);
-        body.put("revenueSum", revenueSum);
-        body.put("ordersSum", ordersSum);
         body.put("pendingSum", pendingSum);
+
         return ResponseEntity.ok(body);
     }
 
@@ -138,84 +93,97 @@ public class AnalyticsController {
                                                           Authentication authentication) {
         User user = (User) authentication.getPrincipal();
 
-        LocalDate start;
-        LocalDate end;
-        if (month != null && month.matches("\\d{4}-\\d{2}")) {
-            YearMonth ym = YearMonth.parse(month);
-            start = ym.atDay(1);
-            end = ym.atEndOfMonth();
-        } else {
-            end = LocalDate.now();
-            start = end.minusDays(29);
-        }
+        LocalDateRange range = resolveRange(month);
+        LocalDate start = range.start();
+        LocalDate end = range.end();
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.plusDays(1).atStartOfDay().minusNanos(1);
 
         var userShop = shopRepository.findByUserId(user.getId());
         if (userShop.isEmpty()) {
-            return ResponseEntity.ok(Collections.emptyMap());
+            return ResponseEntity.ok(buildEmptyResponse(start, end));
         }
 
-        // security: validate product belongs to seller's shop if provided
         if (stallId != null) {
             var product = productRepository.findByIdAndShopIdAndIsDeleteFalse(stallId, userShop.get().getId());
             if (product.isEmpty()) {
-                return ResponseEntity.ok(Collections.emptyMap());
+                return ResponseEntity.ok(buildEmptyResponse(start, end));
             }
         }
 
-        LocalDateTime startDt = start.atStartOfDay();
         List<OrderItem> orderItems = orderItemRepository.findByWarehouseUserOrderByCreatedAtDesc(user.getId());
-        
-        // Filter order items by date range and product
+
         List<OrderItem> orderItemsInRange = orderItems.stream()
-                .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDt))
+                .filter(orderItem -> orderItem != null && orderItem.getCreatedAt() != null)
                 .filter(orderItem -> stallId == null || stallId.equals(orderItem.getProductId()))
+                .filter(orderItem -> isWithinRange(orderItem.getCreatedAt(), startDateTime, endDateTime))
                 .collect(Collectors.toList());
-        
-        // Filter completed order items for revenue calculation
-        List<OrderItem> filtered = orderItemsInRange.stream()
+
+        if (orderItemsInRange.isEmpty()) {
+            return ResponseEntity.ok(buildEmptyResponse(start, end));
+        }
+
+        List<OrderItem> completed = orderItemsInRange.stream()
                 .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.COMPLETED)
                 .collect(Collectors.toList());
 
+        Map<String, Object> body = buildSalesResponse(start, end, orderItemsInRange, completed);
+
+        BigDecimal pendingSum = orderItemsInRange.stream()
+                .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.PENDING)
+                .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        body.put("pendingSum", pendingSum);
+
+        return ResponseEntity.ok(body);
+    }
+
+    private boolean isWithinRange(LocalDateTime createdAt, LocalDateTime start, LocalDateTime end) {
+        return (createdAt.isAfter(start) || createdAt.isEqual(start))
+                && (createdAt.isBefore(end) || createdAt.isEqual(end));
+    }
+
+    private LocalDateRange resolveRange(String month) {
+        if (month != null && month.matches("\\d{4}-\\d{2}")) {
+            YearMonth ym = YearMonth.parse(month);
+            return new LocalDateRange(ym.atDay(1), ym.atEndOfMonth());
+        }
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusDays(29);
+        return new LocalDateRange(start, end);
+    }
+
+    private Map<String, Object> buildSalesResponse(LocalDate start,
+                                                   LocalDate end,
+                                                   List<OrderItem> orderItemsInRange,
+                                                   List<OrderItem> completedItems) {
         List<String> labels = new ArrayList<>();
         List<BigDecimal> totals = new ArrayList<>();
         List<Long> counts = new ArrayList<>();
         BigDecimal revenueSum = BigDecimal.ZERO;
         long ordersSum = 0L;
+
         long days = java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
         for (int i = 0; i < days; i++) {
             LocalDate day = start.plusDays(i);
             labels.add(day.toString());
-            
-            // Revenue: chỉ tính từ COMPLETED order items
-            BigDecimal dayTotal = filtered.stream()
-                    .filter(orderItem -> !orderItem.getCreatedAt().toLocalDate().isBefore(day) && !orderItem.getCreatedAt().toLocalDate().isAfter(day))
+
+            BigDecimal dayTotal = completedItems.stream()
+                    .filter(orderItem -> isSameDay(orderItem.getCreatedAt(), day))
                     .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            
-            // Order count: đếm số order_id riêng biệt từ order items
+
             long dayCount = orderItemsInRange.stream()
-                    .filter(orderItem -> !orderItem.getCreatedAt().toLocalDate().isBefore(day) && !orderItem.getCreatedAt().toLocalDate().isAfter(day))
+                    .filter(orderItem -> isSameDay(orderItem.getCreatedAt(), day))
                     .map(OrderItem::getOrderId)
                     .distinct()
                     .count();
-            
+
             totals.add(dayTotal);
             counts.add(dayCount);
             revenueSum = revenueSum.add(dayTotal);
             ordersSum += dayCount;
         }
-
-        // pending sum for selected stall (or all stalls) limited by selected date range
-        BigDecimal pendingSum = orderItems.stream()
-                .filter(orderItem -> orderItem.getStatus() == OrderItem.Status.PENDING)
-                .filter(orderItem -> orderItem.getCreatedAt().isAfter(startDt))
-                .filter(orderItem -> stallId == null || stallId.equals(orderItem.getProductId()))
-                .filter(orderItem -> {
-                    LocalDate od = orderItem.getCreatedAt().toLocalDate();
-                    return !od.isBefore(start) && !od.isAfter(end);
-                })
-                .map(orderItem -> orderItem.getTotalAmount() != null ? orderItem.getTotalAmount() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> body = new HashMap<>();
         body.put("labels", labels);
@@ -223,9 +191,36 @@ public class AnalyticsController {
         body.put("counts", counts);
         body.put("revenueSum", revenueSum);
         body.put("ordersSum", ordersSum);
-        body.put("pendingSum", pendingSum);
-        return ResponseEntity.ok(body);
+        body.put("pendingSum", BigDecimal.ZERO);
+        return body;
     }
+
+    private Map<String, Object> buildEmptyResponse(LocalDate start, LocalDate end) {
+        long days = java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
+        List<String> labels = new ArrayList<>();
+        List<BigDecimal> totals = new ArrayList<>();
+        List<Long> counts = new ArrayList<>();
+        for (int i = 0; i < days; i++) {
+            LocalDate day = start.plusDays(i);
+            labels.add(day.toString());
+            totals.add(BigDecimal.ZERO);
+            counts.add(0L);
+        }
+        Map<String, Object> body = new HashMap<>();
+        body.put("labels", labels);
+        body.put("totals", totals);
+        body.put("counts", counts);
+        body.put("revenueSum", BigDecimal.ZERO);
+        body.put("ordersSum", 0L);
+        body.put("pendingSum", BigDecimal.ZERO);
+        return body;
+    }
+
+    private boolean isSameDay(LocalDateTime dateTime, LocalDate day) {
+        return dateTime != null && dateTime.toLocalDate().isEqual(day);
+    }
+
+    private record LocalDateRange(LocalDate start, LocalDate end) {}
 }
 
 
