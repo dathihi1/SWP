@@ -1,9 +1,11 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.Order;
+import com.badat.study1.model.OrderItem;
 import com.badat.study1.model.Review;
 import com.badat.study1.model.User;
 import com.badat.study1.repository.OrderRepository;
+import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.service.ReviewService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +16,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -25,6 +26,7 @@ public class ReviewController {
     private final ReviewService reviewService;
     private final ReviewRepository reviewRepository;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @PostMapping("/reviews")
     public ResponseEntity<Map<String, Object>> createReview(@RequestBody Map<String, Object> reviewData) {
@@ -33,10 +35,13 @@ public class ReviewController {
             User user = (User) auth.getPrincipal();
             
             Long orderId = Long.valueOf(reviewData.get("orderId").toString());
-            Long productId = null;
-            if (reviewData.containsKey("productId") && reviewData.get("productId") != null && !reviewData.get("productId").toString().isBlank()) {
-                productId = Long.valueOf(reviewData.get("productId").toString());
+            if (!reviewData.containsKey("orderItemId") || reviewData.get("orderItemId") == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Thiếu thông tin orderItemId để đánh giá"
+                ));
             }
+            Long orderItemId = Long.valueOf(reviewData.get("orderItemId").toString());
             Integer rating = Integer.valueOf(reviewData.get("rating").toString());
             String title = reviewData.get("title") != null ? reviewData.get("title").toString() : null;
             String content = reviewData.get("content") != null ? reviewData.get("content").toString() : null;
@@ -60,15 +65,27 @@ public class ReviewController {
                     "message", "Chỉ có thể đánh giá đơn hàng đã hoàn thành"
                 ));
             }
+            OrderItem orderItem = orderItemRepository.findById(orderItemId)
+                .orElseThrow(() -> new RuntimeException("Order item not found"));
+            if (!orderItem.getOrderId().equals(orderId)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Sản phẩm không thuộc về đơn hàng này"
+                ));
+            }
+            if (orderItem.getStatus() != OrderItem.Status.COMPLETED) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Chỉ có thể đánh giá sản phẩm đã hoàn thành giao dịch"
+                ));
+            }
             
-            // Check if review already exists for this order by current user
-            List<Review> existingReviews = reviewRepository.findByOrderIdAndIsDeleteFalse(orderId);
-            boolean alreadyReviewedByUser = existingReviews.stream()
-                .anyMatch(r -> r.getBuyerId().equals(user.getId()));
+            // Check if review already exists for this order item by current user
+            boolean alreadyReviewedByUser = reviewRepository.existsByOrderItemIdAndBuyerIdAndIsDeleteFalse(orderItemId, user.getId());
             if (alreadyReviewedByUser) {
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
-                    "message", "Bạn đã đánh giá đơn hàng này rồi"
+                    "message", "Bạn đã đánh giá sản phẩm này trong đơn hàng rồi"
                 ));
             }
             
@@ -84,7 +101,7 @@ public class ReviewController {
                 ));
             }
             
-            Review review = reviewService.createReview(orderId, productId, user.getId(), rating, title, content);
+            Review review = reviewService.createReview(orderId, orderItemId, user.getId(), rating, title, content);
             
             return ResponseEntity.ok(Map.of(
                 "success", true,

@@ -27,6 +27,13 @@ public class Review extends BaseEntity {
     @JoinColumn(name = "order_id", insertable = false, updatable = false)
     Order order;
     
+    @Column(name = "order_item_id")
+    Long orderItemId;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_item_id", insertable = false, updatable = false)
+    OrderItem orderItem;
+    
     @Column(name = "product_variant_id", nullable = false)
     Long productVariantId;
     
