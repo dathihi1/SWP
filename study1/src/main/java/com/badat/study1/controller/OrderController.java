@@ -1,9 +1,10 @@
 package com.badat.study1.controller;
 
 import com.badat.study1.model.Order;
-import com.badat.study1.model.User;
 import com.badat.study1.model.Product;
+import com.badat.study1.model.User;
 import com.badat.study1.repository.ProductRepository;
+import com.badat.study1.repository.ReviewRepository;
 import com.badat.study1.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class OrderController {
     
     private final OrderService orderService;
     private final ProductRepository productRepository;
+    private final ReviewRepository reviewRepository;
     
     /**
      * Lấy danh sách orders của user hiện tại với thông tin OrderItem
@@ -57,7 +59,7 @@ public class OrderController {
                 orderMap.put("createdAt", order.getCreatedAt());
                 orderMap.put("notes", order.getNotes());
                 
-                // Thêm thông tin OrderItem nếu có
+                        // Thêm thông tin OrderItem nếu có
                 if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
                     List<Map<String, Object>> orderItems = order.getOrderItems().stream().map(item -> {
                         Map<String, Object> itemMap = new HashMap<>();
@@ -105,6 +107,15 @@ public class OrderController {
                             itemMap.put("warehouse", null);
                         }
                         
+                        boolean hasReview = false;
+                        try {
+                            if (item.getId() != null) {
+                                hasReview = reviewRepository.existsByOrderItemIdAndBuyerIdAndIsDeleteFalse(item.getId(), user.getId());
+                            }
+                        } catch (Exception ex) {
+                            log.warn("Failed to check review status for order item {}: {}", item.getId(), ex.getMessage());
+                        }
+                        itemMap.put("reviewed", hasReview);
                         return itemMap;
                     }).collect(Collectors.toList());
                     orderMap.put("orderItems", orderItems);
@@ -237,6 +248,16 @@ public class OrderController {
                         itemMap.put("warehouse", warehouseInfo);
                     }
                     
+                    boolean hasReview = false;
+                    try {
+                        if (item.getId() != null && order.getBuyerId() != null) {
+                            hasReview = reviewRepository.existsByOrderItemIdAndBuyerIdAndIsDeleteFalse(item.getId(), order.getBuyerId());
+                        }
+                    } catch (Exception ex) {
+                        log.warn("Failed to check review status for order item detail {}: {}", item.getId(), ex.getMessage());
+                    }
+                    itemMap.put("reviewed", hasReview);
+
                     return itemMap;
                 }).collect(Collectors.toList());
                 orderDetail.put("orderItems", orderItems);

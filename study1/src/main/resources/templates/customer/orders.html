@@ -200,11 +200,6 @@
                                     <small class="text-muted">${itemCount} sản phẩm</small>
                                 </div>
                                 <div class="col-md-2 text-end d-flex justify-content-end gap-2">
-                                    ${order.status === 'COMPLETED' ? `
-                                    <button class=\"btn btn-outline-success btn-sm\" data-review-order-id=\"${order.id}\" onclick=\"openReviewModal(${order.id})\">
-                                        <i class=\"fa-solid fa-star me-1\"></i>Đánh giá
-                                    </button>
-                                    ` : ''}
                                     <button class="btn btn-outline-primary btn-sm" onclick="toggleOrderDetails('order${order.id}')">
                                         <i class="fa-solid fa-eye me-1"></i>Chi tiết
                                     </button>
@@ -290,6 +285,21 @@
                                                 </div>
                                             </div>
                                         `}
+                                        <div class="mt-3 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                ${item.reviewed ? `<span class="badge bg-success-subtle text-success"><i class="fa-solid fa-circle-check me-1"></i>Đã đánh giá</span>` : ''}
+                                            </div>
+                                            ${order.status === 'COMPLETED' ? (item.reviewed ? '' : `
+                                                <button class="btn btn-outline-success btn-sm"
+                                                    data-review-button="item-${item.id}"
+                                                    data-order-id="${order.id}"
+                                                    data-order-item-id="${item.id}"
+                                                    data-item-name="${encodeURIComponent(item.productVariantName || item.productName || 'Sản phẩm')}"
+                                                    onclick="handleOpenReview(this)">
+                                                    <i class="fa-solid fa-star me-1"></i>Đánh giá sản phẩm
+                                                </button>
+                                            `) : ''}
+                                        </div>
                                     </div>
                                 </div>
                             `).join('') : `
@@ -826,6 +836,11 @@
                 </style>
                 <form id="reviewForm" onsubmit="event.preventDefault(); submitReview();">
                     <input type="hidden" id="reviewOrderId" />
+                    <input type="hidden" id="reviewOrderItemId" />
+                    <div class="mb-3">
+                        <label class="form-label">Sản phẩm</label>
+                        <div class="form-control-plaintext fw-semibold" id="reviewItemName">--</div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Chấm điểm</label>
                         <div id="ratingStars" class="rating-stars">
@@ -853,6 +868,19 @@
 <script>
     let reviewModalInstance;
     let selectedRating = 0;
+    function handleOpenReview(button) {
+        if (!button) return;
+        const orderId = button.getAttribute('data-order-id');
+        const orderItemId = button.getAttribute('data-order-item-id');
+        const encodedName = button.getAttribute('data-item-name') || '';
+        let itemName = '';
+        try {
+            itemName = decodeURIComponent(encodedName);
+        } catch (err) {
+            itemName = encodedName;
+        }
+        openReviewModal(orderId, orderItemId, itemName);
+    }
     function renderRatingStars(hoverValue = null) {
         const stars = document.querySelectorAll('#ratingStars i');
         const value = hoverValue ?? selectedRating;
@@ -878,8 +906,10 @@
         });
         renderRatingStars();
     }
-    function openReviewModal(orderId) {
+    function openReviewModal(orderId, orderItemId, itemName = '') {
         document.getElementById('reviewOrderId').value = orderId;
+        document.getElementById('reviewOrderItemId').value = orderItemId;
+        document.getElementById('reviewItemName').textContent = itemName || 'Sản phẩm';
         selectedRating = 0;
         document.getElementById('reviewContent').value = '';
         const modalEl = document.getElementById('reviewModal');
@@ -890,6 +920,11 @@
 
     async function submitReview() {
         const orderId = document.getElementById('reviewOrderId').value;
+        const orderItemId = document.getElementById('reviewOrderItemId').value;
+        if (!orderItemId) {
+            showNotification('Không xác định được sản phẩm để đánh giá', 'error');
+            return;
+        }
         const rating = selectedRating;
         if (!rating || rating < 1) {
             showNotification('Vui lòng chọn số sao đánh giá', 'error');
@@ -901,16 +936,19 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ orderId, rating, content })
+                body: JSON.stringify({ orderId, orderItemId, rating, content })
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
                 throw new Error(data.message || 'Gửi đánh giá thất bại');
             }
             showNotification('Đã gửi đánh giá thành công', 'success');
-            const btn = document.querySelector(`[data-review-order-id="${orderId}"]`);
-            if (btn) {
-                btn.remove();
+            const reviewBtn = document.querySelector(`[data-review-button="item-${orderItemId}"]`);
+            if (reviewBtn) {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-success-subtle text-success';
+                badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Đã đánh giá';
+                reviewBtn.replaceWith(badge);
             }
             if (reviewModalInstance) reviewModalInstance.hide();
         } catch (e) {
