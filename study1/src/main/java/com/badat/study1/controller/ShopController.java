@@ -599,26 +599,6 @@ public class ShopController {
             return "redirect:/seller/add-quantity/" + productVariantId;
         }
         
-        // Validation cơ bản: kiểm tra product variant tồn tại
-        var productVariantOptional = productVariantRepository.findById(productVariantId);
-        if (productVariantOptional.isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy sản phẩm!");
-            return "redirect:/seller/product-management";
-        }
-        
-        // Validation cơ bản: kiểm tra shop tồn tại và quyền cập nhật
-        var userShop = shopRepository.findByUserId(user.getId());
-        if (userShop.isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy shop!");
-            return "redirect:/seller/product-management";
-        }
-        ProductVariant productVariant = productVariantOptional.get();
-        Product parentProduct = productRepository.findById(productVariant.getProductId()).orElse(null);
-        if (parentProduct == null || !parentProduct.getShopId().equals(userShop.get().getId())) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền cập nhật kho cho gian hàng này!");
-            return "redirect:/seller/product-management";
-        }
-        
         return shopService.updateProductQuantityFromFile(user, productVariantId, file, redirectAttributes);
     }
 

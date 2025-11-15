@@ -75,6 +75,11 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<Warehouse> findByProductVariantIdAndIsDeleteFalse(Long productVariantId);
     
     /**
+     * Find all items by product variant (including deleted)
+     */
+    List<Warehouse> findByProductVariantId(Long productVariantId);
+    
+    /**
      * Find recent warehouse items for a specific product (last 50 records)
      */
     @Query(value = "SELECT * FROM warehouse WHERE product_id = :productId ORDER BY created_at DESC LIMIT 50", nativeQuery = true)
