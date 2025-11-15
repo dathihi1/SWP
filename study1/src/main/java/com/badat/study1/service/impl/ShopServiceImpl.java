@@ -2,7 +2,10 @@ package com.badat.study1.service.impl;
 
 import com.badat.study1.model.Product;
 import com.badat.study1.model.ProductVariant;
+import com.badat.study1.model.Review;
 import com.badat.study1.model.User;
+import com.badat.study1.model.UploadHistory;
+import com.badat.study1.model.Warehouse;
 import com.badat.study1.repository.OrderItemRepository;
 import com.badat.study1.repository.ProductRepository;
 import com.badat.study1.repository.ProductVariantRepository;
@@ -11,30 +14,35 @@ import com.badat.study1.repository.ShopRepository;
 import com.badat.study1.repository.UploadHistoryRepository;
 import com.badat.study1.repository.WarehouseRepository;
 import com.badat.study1.service.ShopService;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import java.util.List;
-import java.util.Map;
 import com.badat.study1.model.OrderItem;
 import com.badat.study1.model.Order;
 import com.badat.study1.dto.OrderSummary;
 import org.springframework.ui.Model;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
-import java.util.Locale;
-import java.util.stream.Collectors;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ShopServiceImpl implements ShopService {
@@ -185,7 +193,7 @@ public class ShopServiceImpl implements ShopService {
         model.addAttribute("product", product.get());
         int validatedPage = Math.max(0, page);
         Pageable pageable = PageRequest.of(validatedPage, 5);
-        Page<com.badat.study1.model.UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductVariantIdOrderByCreatedAtDesc(productVariantId, pageable);
+        Page<UploadHistory> uploadHistoryPage = uploadHistoryRepository.findByProductVariantIdOrderByCreatedAtDesc(productVariantId, pageable);
         if (validatedPage >= uploadHistoryPage.getTotalPages() && uploadHistoryPage.getTotalPages() > 0) {
             validatedPage = uploadHistoryPage.getTotalPages() - 1;
             pageable = PageRequest.of(validatedPage, 5);
@@ -303,16 +311,16 @@ public class ShopServiceImpl implements ShopService {
             return "redirect:/seller/product-management";
         }
         var products = productRepository.findByShopIdAndIsDeleteFalse(userShop.get().getId());
-        var productStats = new java.util.ArrayList<java.util.Map<String, Object>>();
+        var productStats = new ArrayList<Map<String, Object>>();
         for (var product : products) {
             var productReviews = reviewRepository.findByProductIdAndIsDeleteFalse(product.getId());
             double averageRating = 0.0;
             int reviewCount = productReviews.size();
             if (reviewCount > 0) {
-                averageRating = productReviews.stream().mapToInt(com.badat.study1.model.Review::getRating).average().orElse(0.0);
+                averageRating = productReviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
             }
             int unreadCount = (int) productReviews.stream().filter(review -> !review.getIsRead()).count();
-            var productStat = new java.util.HashMap<String, Object>();
+            var productStat = new HashMap<String, Object>();
             productStat.put("product", product);
             productStat.put("averageRating", Math.round(averageRating * 10.0) / 10.0);
             productStat.put("reviewCount", reviewCount);
@@ -320,7 +328,7 @@ public class ShopServiceImpl implements ShopService {
             productStats.add(productStat);
         }
         Pageable pageable = PageRequest.of(0, 1000);
-        Page<com.badat.study1.model.Review> reviewsPage = reviewRepository.findBySellerIdAndShopIdAndIsDeleteFalse(user.getId(), userShop.get().getId(), pageable);
+        Page<Review> reviewsPage = reviewRepository.findBySellerIdAndShopIdAndIsDeleteFalse(user.getId(), userShop.get().getId(), pageable);
         model.addAttribute("reviews", reviewsPage.getContent());
         model.addAttribute("productStats", productStats);
         return "seller/reviews";
@@ -339,32 +347,32 @@ public class ShopServiceImpl implements ShopService {
         // Logic nghiệp vụ: kiểm tra product thuộc shop của user
         var product = productRepository.findById(productId).orElse(null);
         if (product == null) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Không tìm thấy sản phẩm"));
+            return ResponseEntity.status(404).body(Map.of("error", "Không tìm thấy sản phẩm"));
         }
         var userShop = shopRepository.findByUserId(user.getId()).orElse(null);
         if (userShop == null) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Không tìm thấy shop"));
+            return ResponseEntity.status(404).body(Map.of("error", "Không tìm thấy shop"));
         }
         if (!product.getShopId().equals(userShop.getId())) {
-            return ResponseEntity.status(403).body(java.util.Map.of("error", "Không có quyền truy cập"));
+            return ResponseEntity.status(403).body(Map.of("error", "Không có quyền truy cập"));
         }
         var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(productId);
         var reviewDTOs = reviews.stream().map(review -> {
-            var dto = new java.util.HashMap<String, Object>();
+            var dto = new HashMap<String, Object>();
             dto.put("id", review.getId());
             dto.put("rating", review.getRating());
             dto.put("content", review.getContent());
             dto.put("replyContent", review.getReplyContent());
             dto.put("createdAt", review.getCreatedAt());
             dto.put("isRead", review.getIsRead());
-            var buyerInfo = new java.util.HashMap<String, Object>();
+            var buyerInfo = new HashMap<String, Object>();
             buyerInfo.put("username", review.getBuyer().getUsername());
             dto.put("buyer", buyerInfo);
-            var productVariantInfo = new java.util.HashMap<String, Object>();
+            var productVariantInfo = new HashMap<String, Object>();
             productVariantInfo.put("name", review.getProductVariant() != null ? review.getProductVariant().getName() : "N/A");
             dto.put("productVariant", productVariantInfo);
             return dto;
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
         return ResponseEntity.ok(reviewDTOs);
     }
 
@@ -373,14 +381,14 @@ public class ShopServiceImpl implements ShopService {
         // Logic nghiệp vụ: kiểm tra product thuộc shop của user
         var product = productRepository.findById(productId).orElse(null);
         if (product == null) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Không tìm thấy sản phẩm"));
+            return ResponseEntity.status(404).body(Map.of("error", "Không tìm thấy sản phẩm"));
         }
         var userShop = shopRepository.findByUserId(user.getId()).orElse(null);
         if (userShop == null) {
-            return ResponseEntity.status(404).body(java.util.Map.of("error", "Không tìm thấy shop"));
+            return ResponseEntity.status(404).body(Map.of("error", "Không tìm thấy shop"));
         }
         if (!product.getShopId().equals(userShop.getId())) {
-            return ResponseEntity.status(403).body(java.util.Map.of("error", "Không có quyền truy cập"));
+            return ResponseEntity.status(403).body(Map.of("error", "Không có quyền truy cập"));
         }
         var reviews = reviewRepository.findByProductIdAndIsDeleteFalse(productId);
         int updated = 0;
@@ -391,7 +399,7 @@ public class ShopServiceImpl implements ShopService {
                 updated++;
             }
         }
-        return ResponseEntity.ok(java.util.Map.of("message", "Đã đánh dấu đánh giá là đã đọc", "count", updated));
+        return ResponseEntity.ok(Map.of("message", "Đã đánh dấu đánh giá là đã đọc", "count", updated));
     }
 
     @Override
@@ -430,7 +438,7 @@ public class ShopServiceImpl implements ShopService {
                            String productSubcategory,
                            String shortDescription,
                            String detailedDescription,
-                           org.springframework.web.multipart.MultipartFile productImageFile,
+                           MultipartFile productImageFile,
                            Boolean uniqueProducts,
                            String isCropped,
                            RedirectAttributes redirectAttributes) {
@@ -471,7 +479,7 @@ public class ShopServiceImpl implements ShopService {
                             String status,
                             String shortDescription,
                             String detailedDescription,
-                            org.springframework.web.multipart.MultipartFile productImageFile,
+                            MultipartFile productImageFile,
                             RedirectAttributes redirectAttributes) {
         try {
             var productOptional = productRepository.findById(id);
@@ -573,8 +581,12 @@ public class ShopServiceImpl implements ShopService {
     }
 
     @Override
-    public String updateProductQuantityFromFile(User user, Long productVariantId, org.springframework.web.multipart.MultipartFile file, RedirectAttributes redirectAttributes) {
-        final String originalFileName = file != null ? file.getOriginalFilename() : null;
+    public String updateProductQuantityFromFile(User user, Long productVariantId, MultipartFile file, RedirectAttributes redirectAttributes) {
+        if (file == null || file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file hợp lệ!");
+            return "redirect:/seller/add-quantity/" + productVariantId;
+        }
+        final String originalFileName = file.getOriginalFilename();
         final String safeFileName = (originalFileName != null && !originalFileName.isBlank()) ? originalFileName : "unknown";
         try {
             // Logic nghiệp vụ: xử lý file và cập nhật kho
@@ -585,18 +597,7 @@ public class ShopServiceImpl implements ShopService {
             }
             ProductVariant productVariant = productVariantOptional.get();
             var userShop = shopRepository.findByUserId(user.getId());
-            if (userShop.isEmpty()) {
-                return "redirect:/seller/product-management";
-            }
             Product parentProduct = productRepository.findById(productVariant.getProductId()).orElse(null);
-            if (parentProduct == null || !parentProduct.getShopId().equals(userShop.get().getId())) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền cập nhật kho cho gian hàng này!");
-                return "redirect:/seller/product-management";
-            }
-            if (file == null || file.isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "File upload không hợp lệ!");
-                return "redirect:/seller/add-quantity/" + productVariantId;
-            }
             String content = new String(file.getBytes(), StandardCharsets.UTF_8)
                     .replace("\uFEFF", "")
                     .trim();
@@ -604,12 +605,12 @@ public class ShopServiceImpl implements ShopService {
             int successCount = 0;
             int failureCount = 0;
             StringBuilder invalidLineDetails = new StringBuilder();
-            java.util.Set<String> processedItemKeys = new java.util.HashSet<>();
+            Set<String> processedItemKeys = new HashSet<>();
             // Load existing identifiers (scoped by same subcategory) for this variant for duplicate check in DB
-            var existingItems = warehouseRepository.findByProductVariantIdAndIsDeleteFalse(productVariant.getId());
+            var existingItems = warehouseRepository.findByProductVariantId(productVariant.getId());
             final String currentSubcategory = productVariant.getSubcategory();
             InventoryFormat expectedFormat = determineFormat(currentSubcategory);
-            java.util.Set<String> existingKeys = new java.util.HashSet<>();
+            Set<String> existingKeys = new HashSet<>();
             for (var it : existingItems) {
                 // ensure same subcategory when checking duplicates in DB
                 if (it.getItemSubcategory() != null && currentSubcategory != null
@@ -666,7 +667,7 @@ public class ShopServiceImpl implements ShopService {
                         continue;
                     }
                     processedItemKeys.add(normalizedKey);
-                        com.badat.study1.model.Warehouse warehouseItem = com.badat.study1.model.Warehouse.builder()
+                        Warehouse warehouseItem = Warehouse.builder()
                             .itemSubcategory(productVariant.getSubcategory())
                                 .itemData(itemData)
                                 .productVariant(productVariant)
@@ -706,7 +707,7 @@ public class ShopServiceImpl implements ShopService {
                 }
             } catch (Exception ignore) {}
             try {
-                com.badat.study1.model.UploadHistory uploadHistory = com.badat.study1.model.UploadHistory.builder()
+                UploadHistory uploadHistory = UploadHistory.builder()
                         .fileName(safeFileName)
                         .productName(productVariant.getName())
                         .isSuccess(successCount > 0)
@@ -737,7 +738,7 @@ public class ShopServiceImpl implements ShopService {
                     detailedError.append("Lỗi xử lý file: ").append(e.getMessage());
                     var failedParentProductOptional = productRepository.findById(failedProductVariant.getProductId());
                     if (failedParentProductOptional.isPresent()) {
-                        com.badat.study1.model.UploadHistory uploadHistory = com.badat.study1.model.UploadHistory.builder()
+                        UploadHistory uploadHistory = UploadHistory.builder()
                                 .fileName(safeFileName)
                                 .productName(failedProductVariant.getName())
                                 .isSuccess(false)
@@ -770,9 +771,9 @@ public class ShopServiceImpl implements ShopService {
             }
             var upload = uploadOptional.get();
             if (!upload.getUser().getId().equals(user.getId())) {
-                return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body("Access denied");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
             }
-            var response = new java.util.HashMap<String, Object>();
+            var response = new HashMap<String, Object>();
             response.put("fileName", upload.getFileName());
             response.put("createdAt", upload.getCreatedAt().toString());
             response.put("totalItems", upload.getTotalItems());
@@ -782,7 +783,7 @@ public class ShopServiceImpl implements ShopService {
             response.put("isSuccess", upload.getIsSuccess());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error");
         }
     }
 
@@ -854,12 +855,16 @@ public class ShopServiceImpl implements ShopService {
         }
         String first = parts[0];
         String second = parts[1];
-        return switch (format) {
-            case EMAIL -> isValidEmail(first);
-            case CARD -> isValidCardCode(first) && isValidCardSerial(second);
-            case ACCOUNT -> isValidAccount(first);
-            case GENERIC -> true;
-        };
+        if (format == InventoryFormat.EMAIL) {
+            return isValidEmail(first);
+        }
+        if (format == InventoryFormat.CARD) {
+            return isValidCardCode(first) && isValidCardSerial(second);
+        }
+        if (format == InventoryFormat.ACCOUNT) {
+            return isValidAccount(first);
+        }
+        return true;
     }
 
     private boolean isValidEmail(String value) {

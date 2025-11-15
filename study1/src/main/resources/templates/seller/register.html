@@ -250,9 +250,7 @@
                 Vui lòng cập nhật thông tin và gửi lại đơn đăng ký.
             </p>
         </div>
-        
-        
-        
+
         <!-- Form đăng ký chỉ hiển thị cho user chưa có role SELLER và shop không đang chờ duyệt -->
         <form th:if="${!alreadySeller && !isPendingApproval}" method="post" th:action="@{/seller/register}" enctype="multipart/form-data" id="sellerRegisterForm">
             <div class="grid">
