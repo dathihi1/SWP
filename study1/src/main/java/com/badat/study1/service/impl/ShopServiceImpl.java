@@ -607,16 +607,24 @@ public class ShopServiceImpl implements ShopService {
             StringBuilder invalidLineDetails = new StringBuilder();
             Set<String> processedItemKeys = new HashSet<>();
             // Load existing identifiers (scoped by same subcategory) for this variant for duplicate check in DB
+            // IMPORTANT: Using findByProductVariantId (not findByProductVariantIdAndIsDeleteFalse) to check ALL items
+            // including those with isDelete = true, to prevent uploading duplicate items even if they were deleted
             var existingItems = warehouseRepository.findByProductVariantId(productVariant.getId());
             final String currentSubcategory = productVariant.getSubcategory();
-            InventoryFormat expectedFormat = determineFormat(currentSubcategory);
+            // Use productCategory (loại sản phẩm) instead of subcategory (loại cụ thể) to determine format
+            final String productCategory = parentProduct != null ? parentProduct.getProductCategory() : null;
+            InventoryFormat expectedFormat = determineFormat(productCategory != null ? productCategory : currentSubcategory);
             Set<String> existingKeys = new HashSet<>();
+            // Use productCategory (loại sản phẩm) for extracting identifier from existing items to ensure consistency
+            String categoryForExistingItems = productCategory != null ? productCategory : currentSubcategory;
+            // Check ALL existing items (including isDelete = true) to prevent duplicate uploads
             for (var it : existingItems) {
                 // ensure same subcategory when checking duplicates in DB
+                // Note: We check ALL items regardless of isDelete status to prevent duplicates
                 if (it.getItemSubcategory() != null && currentSubcategory != null
                         && it.getItemSubcategory().equalsIgnoreCase(currentSubcategory)) {
                     String[] ep = it.getItemData().split("\\|");
-                    String key = extractIdentifier(currentSubcategory, ep);
+                    String key = extractIdentifier(categoryForExistingItems, ep);
                     String normalized = normalizeIdentifier(key);
                     if (normalized != null) existingKeys.add(normalized);
                 }
@@ -647,7 +655,9 @@ public class ShopServiceImpl implements ShopService {
                         continue;
                     }
                     String itemData = sanitizedParts[0] + "|" + sanitizedParts[1];
-                    String itemKey = extractIdentifier(productVariant.getSubcategory(), sanitizedParts);
+                    // Use productCategory (loại sản phẩm) instead of subcategory (loại cụ thể) to extract identifier
+                    String categoryForIdentifier = productCategory != null ? productCategory : productVariant.getSubcategory();
+                    String itemKey = extractIdentifier(categoryForIdentifier, sanitizedParts);
                     String normalizedKey = normalizeIdentifier(itemKey);
                     // Kiểm tra khóa định danh bắt buộc theo subcategory
                     if (normalizedKey == null) {
@@ -810,40 +820,46 @@ public class ShopServiceImpl implements ShopService {
         builder.append("Dòng ").append(lineNumber).append(": ").append(message);
     }
 
-    private String extractIdentifier(String subcategory, String[] parts) {
+    private String extractIdentifier(String category, String[] parts) {
         if (parts == null || parts.length < 2) return null;
-        String sub = subcategory == null ? "" : subcategory.toLowerCase(Locale.ROOT);
+        String cat = category == null ? "" : category.toLowerCase(Locale.ROOT);
         String first = cleanPart(parts[0]);
         String second = cleanPart(parts[1]);
         if (first == null && second == null) {
             return null;
         }
-        // Gmail: email|password -> key = email
-        if (sub.contains("gmail")) {
+        // Email/Gmail: email|password -> key = email
+        // productCategory can be "Email" or subcategory can contain "gmail"
+        if (cat.contains("email") || cat.contains("gmail")) {
             if (first == null || !first.contains("@")) return null;
             return first;
         }
         // Thẻ cào: code|serial -> key = serial
-        if (sub.contains("thẻ") || sub.contains("card")) {
+        // productCategory can be "Thẻ game" or contain "thẻ"/"card"
+        if (cat.contains("thẻ") || cat.contains("card")) {
             return second;
         }
         // Tài khoản: username|password -> key = username
-        if (sub.contains("tài khoản") || sub.contains("account") || sub.contains("acc")) {
+        // productCategory can be "Tài khoản" or contain "tài khoản"/"account"/"acc"
+        if (cat.contains("tài khoản") || cat.contains("account") || cat.contains("acc")) {
             return first;
         }
         // Default fallback: first part as identifier
         return first;
     }
 
-    private InventoryFormat determineFormat(String subcategory) {
-        String sub = subcategory == null ? "" : subcategory.toLowerCase(Locale.ROOT);
-        if (sub.contains("gmail")) {
+    private InventoryFormat determineFormat(String category) {
+        String cat = category == null ? "" : category.toLowerCase(Locale.ROOT);
+        // Check for Email: productCategory can be "Email" or subcategory can contain "gmail"
+        if (cat.contains("email") || cat.contains("gmail")) {
             return InventoryFormat.EMAIL;
         }
-        if (sub.contains("thẻ") || sub.contains("card")) {
+        // Check for Card: productCategory can be "Thẻ game" or contain "thẻ"/"card"
+        if (cat.contains("thẻ") || cat.contains("card")) {
             return InventoryFormat.CARD;
         }
-        if (sub.contains("tài khoản") || sub.contains("account") || sub.contains("acc")) {
+        // Check for Account: productCategory can be "Tài khoản" or contain "tài khoản"/"account"/"acc"
+        if (cat.contains("tài khoản") || cat.contains("account") || cat.contains("acc")) {
             return InventoryFormat.ACCOUNT;
         }
         return InventoryFormat.GENERIC;
